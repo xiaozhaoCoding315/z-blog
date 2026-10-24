@@ -1,0 +1,9 @@
+# 换行符规范：shell 脚本必须 LF（CRLF 会导致容器内 /bin/sh 解析失败）
+* text=auto
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
