@@ -1,0 +1,119 @@
+---
+title: 用 Next.js 搭建全栈博客：架构设计与实现
+date: 2026-10-24
+description: 从内容层设计到渲染策略，拆解这个博客的核心架构：MDX 文件即数据库、React Server Components、静态生成与动态能力的平衡。
+tags: [Next.js, 全栈, React]
+---
+
+把「写博客」做成一个全栈工程，最有意思的不是页面本身，而是**架构决策**。这篇文章拆解本站的技术方案，供想自己搭一个的你参考。
+
+## 整体架构
+
+一个 Next.js 应用同时承担三层职责：
+
+- **内容层**：`content/posts/` 目录下的 MDX 文件是唯一内容源，Git 负责版本管理
+- **渲染层**：App Router + React Server Components，构建时生成静态页面
+- **服务层**：API Routes 提供动态能力——浏览量、语义搜索、RAG 问答
+
+```
+浏览器
+  │
+  ├── 静态页面（文章/列表/首页）──── 构建时生成，CDN 级速度
+  ├── API Routes（浏览量/搜索/AI）── 按需服务端渲染
+  │
+  ├── PostgreSQL ──── 浏览量、向量数据
+  └── 智谱 GLM API ── 聊天/摘要/Embedding
+```
+
+## 内容层：文件即数据库
+
+文章用 frontmatter 描述元信息，用 zod 做启动时校验——**写错字段名直接在控制台报警，而不是渲染出一片空白**：
+
+```ts title="src/lib/content-core.ts"
+export const postMetaSchema = z.object({
+  title: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  description: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  pinned: z.boolean().default(false),
+  draft: z.boolean().default(false),
+});
+```
+
+解析层用 React 的 `cache` 包一层，同一次渲染内所有组件共享同一份解析结果，避免重复读盘：
+
+```ts
+export const getAllPosts = cache((): Post[] =>
+  listRawPosts()
+    .filter((p) => !p.meta.draft)
+    .sort(byDateDesc)
+);
+```
+
+### 为什么不用数据库存文章
+
+不是不能，而是不划算。对个人博客来说：
+
+- 文章存 Git 仓库，天然获得版本历史和 diff
+- 用 VS Code + 本地写作体验远好于浏览器里的富文本编辑器
+- `git pull` 就是发布，回滚 = `git revert`
+
+数据库留给真正需要它的功能：浏览量、评论、向量数据。
+
+## 渲染策略：静态优先
+
+文章页是典型的「一次构建、多次读取」内容，用 `generateStaticParams` 全量预渲染：
+
+```tsx title="src/app/blog/[slug]/page.tsx"
+export function generateStaticParams() {
+  return getAllPosts().map((post) => ({ slug: post.slug }));
+}
+```
+
+而浏览量这类动态数据走**客户端注入**：页面本身保持静态，挂载后再请求 API 更新数字。SEO 和性能不受影响，动态感一点不少。
+
+## MDX 渲染管线
+
+MDX = Markdown + 组件。渲染管线经过四道处理：
+
+```ts
+const rehypePlugins = [
+  rehypeSlug,             // 标题加 id，目录/锚点依赖它
+  rehypeAutolinkHeadings, // 标题可点击跳转
+  [rehypePrettyCode, {    // Shiki 双主题代码高亮
+    theme: { light: "github-light-default", dark: "github-dark-default" },
+    keepBackground: false,
+  }],
+];
+```
+
+代码块在文章里直接写语言即可，支持行高亮和文件名标注：
+
+```tsx {4,7-9} title="示例：自定义 MDX 组件"
+const components = {
+  a: SmartAnchor,   // 内部链接走 Link，外部新开标签
+  pre: PreBlock,    // 包一层复制按钮
+  Callout,          // 提示框组件
+};
+```
+
+## 样式系统：Tailwind v4 + CSS 变量主题
+
+主题基于 OKLCH 色彩空间定义——比 HEX/RGB 更符合人眼感知，调出来的暗色主题过渡更自然。深浅两套主题只是切换一组 CSS 变量：
+
+```css
+.dark {
+  --background: oklch(0.128 0.014 285);
+  --primary: oklch(0.7 0.17 285);
+  /* … */
+}
+```
+
+<Callout type="info">
+OKLCH 的第三个参数是色相角度。本站的紫罗兰色系集中在 285° 附近，
+改变这个角度就能整体换色——比一个一个改 HEX 高效得多。
+</Callout>
+
+## 小结
+
+这套架构的核心思想是**各司其职**：文件管内容、Git 管版本、构建管性能、数据库管动态、AI 管「新颖」。下一步，可以看看 [RAG 问答助手是怎么实现的](/blog/rag-powered-blog)。

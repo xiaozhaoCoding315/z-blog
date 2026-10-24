@@ -1,0 +1,140 @@
+---
+title: 从零开始：用 Docker 把应用部署到云服务器
+date: 2026-10-20
+description: 一台刚租的云服务器能干什么？这份指南从 SSH 初始化讲起，用 Docker Compose 把一个全栈应用（Next.js + PostgreSQL）部署上线。
+tags: [Docker, 部署, Linux, 运维]
+---
+
+买服务器容易，把应用「体面地」部署上去难。所谓体面：**一次命令完成部署、进程挂了自动拉起、数据不丢、以后更新只需要 git pull**。这份指南记录本站从一台空服务器到上线的全过程。
+
+## 第一步：服务器初始化
+
+拿到服务器的第一件事不是装环境，而是加固。以 Ubuntu 为例：
+
+```bash title="SSH 基础加固"
+# 1. 更新系统
+apt update && apt upgrade -y
+
+# 2. 用密钥登录，禁用密码登录（先本地 ssh-copy-id）
+sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+systemctl restart sshd
+
+# 3. 防火墙：只放行 SSH 和 HTTP
+ufw allow OpenSSH
+ufw allow 80/tcp
+ufw enable
+```
+
+<Callout type="warning" title="先确认密钥能登录">
+禁用密码登录前，务必开一个新终端测试密钥登录成功——
+否则下次连接不上服务器，只能去云厂商控制台救援了。
+</Callout>
+
+## 第二步：安装 Docker
+
+官方脚本一行搞定，装完记得把 `docker` 组赋予当前用户，避免每次都 sudo：
+
+```bash
+curl -fsSL https://get.docker.com | sh
+usermod -aG docker $USER   # 重新登录生效
+```
+
+## 第三步：写 Dockerfile（多阶段构建）
+
+Next.js 开启 `output: "standalone"` 后，构建产物只有几十 MB。配合多阶段构建，最终镜像不包含 node_modules 和源码：
+
+```dockerfile title="Dockerfile"
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+# standalone 产物：一个 node 进程就能跑
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+## 第四步：Compose 编排应用 + 数据库
+
+单独跑容器没有意义，价值在于**编排**。一个 `docker-compose.yml` 把应用和数据库声明成一个整体：
+
+```yaml title="docker-compose.yml"
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: blog
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # 数据落盘，容器删了数据还在
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blog"]
+      interval: 5s
+
+  app:
+    build: .
+    ports:
+      - "80:3000"          # 直接对外提供 80 端口
+    environment:
+      DATABASE_URL: postgres://blog:${DB_PASSWORD}@db:5432/blog
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped  # 崩溃自动拉起
+
+volumes:
+  pgdata:
+```
+
+上线与更新：
+
+```bash
+# 首次部署
+git clone https://github.com/you/repo && cd repo
+cp .env.example .env && vim .env    # 填入密钥
+docker compose up -d --build
+
+# 以后每次更新
+git pull && docker compose up -d --build
+```
+
+## 为什么是 Docker 而不是直接跑
+
+直接在服务器上 `npm start` 也能跑，但你迟早会遇到这些问题，而 Docker 天然解决它们：
+
+- **环境漂移**：「我本地是好的」——容器把 Node 版本、系统依赖原样打包
+- **依赖污染**：全局装的包越来越多，项目之间互相打架——每个容器隔离
+- **没有进程守护**：终端一关进程就死——`restart: unless-stopped` 交给 Docker
+- **数据库安装麻烦**：一条 service 声明替代手动装 PostgreSQL
+
+<Callout type="tip" title="数据备份">
+最重要的一个卷是 pgdata。一条 cron 就能每天备份：
+<code>docker exec db pg_dump -U blog blog | gzip > backup_$(date +%F).sql.gz</code>
+</Callout>
+
+## 没有域名怎么办
+
+只有 IP 也能跑（本站最初就是这样），但有两点注意：
+
+1. 没有域名就无法签发 HTTPS 证书，浏览器会提示「不安全」——涉及密码的功能不能上线
+2. 部分浏览器 API（如剪贴板）在 HTTP 下受限，代码里要做好降级
+
+域名到位后，加一层 Caddy 反代即可全自动 HTTPS，不需要改应用代码。
+
+## 总结
+
+部署不是玄学，本质是把「应用 + 依赖 + 进程守护 + 数据持久化」四件事声明清楚。Docker Compose 用一个 YAML 文件完成了这个声明——这份文件本身，就是你的部署文档。

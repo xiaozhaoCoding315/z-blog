@@ -1,0 +1,127 @@
+---
+title: 给博客装上大脑：RAG 从原理到落地
+date: 2026-10-22
+description: 拆解本站 AI 助手的完整实现：分块、Embedding、pgvector 向量检索、流式生成与引用溯源，附全部核心代码。
+tags: [AI, RAG, 向量检索, PostgreSQL]
+---
+
+右下角那颗对话按钮背后，是一套完整的 RAG（Retrieval-Augmented Generation，检索增强生成）管线。这篇文章把它的每一环拆开讲清楚。
+
+## RAG 解决什么问题
+
+大模型不知道你博客上写了什么——它的训练数据里没有你的文章。微调模型成本高、更新慢，而 RAG 的思路朴素得多：
+
+> 用户提问时，先把相关的文章片段检索出来，连同问题一起塞给大模型，让它「开卷考试」。
+
+优势立竿见影：回答有据可依、内容随博客更新而更新、不需要训练任何模型。
+
+## 管线全景
+
+```
+同步阶段（发布文章时）          问答阶段（用户提问时）
+┌─────────────────┐          ┌─────────────────┐
+│  MDX 文章        │          │  用户问题        │
+│   ↓ 按标题分块    │          │   ↓ Embedding   │
+│   ↓ Embedding    │          │   ↓ 向量检索 top-K│
+│   ↓ 写入 pgvector │          │   ↓ 拼装 Prompt  │
+└─────────────────┘          │   ↓ 流式生成      │
+                             │   ↓ 引用溯源      │
+                             └─────────────────┘
+```
+
+## 第一步：分块（Chunking）
+
+分块的粒度直接决定检索质量：太碎丢失上下文，太大稀释语义。本站按**二级标题切块**，超出 800 字再滑动切分，保留 100 字重叠防止句子被拦腰截断：
+
+```ts title="src/lib/chunk.ts（节选）"
+export function chunkMarkdown(content: string) {
+  const sections = content.split(/\n(?=## )/); // 按二级标题切
+  const chunks: Chunk[] = [];
+  for (const section of sections) {
+    if (section.length <= MAX_CHARS) {
+      chunks.push(toChunk(section));
+    } else {
+      // 滑动窗口切分，带重叠
+      for (let i = 0; i < section.length; i += MAX_CHARS - OVERLAP) {
+        chunks.push(toChunk(section.slice(i, i + MAX_CHARS)));
+      }
+    }
+  }
+  return chunks.filter((c) => c.text.length >= MIN_CHARS);
+}
+```
+
+<Callout type="tip">
+分块时保留标题行很重要——「## 部署到服务器」这一行携带的语义信息，
+会让 Embedding 的向量显著更贴近「怎么上线」这类问题。
+</Callout>
+
+## 第二步：Embedding 与 pgvector
+
+Embedding 模型把文本映射成高维向量，语义相近的文本在向量空间里距离更近。本站用智谱 `embedding-3`，1024 维：
+
+存储用 PostgreSQL 的 pgvector 扩展，检索就是一条 SQL——`<=>` 是余弦距离算符，HNSW 索引保证毫秒级响应：
+
+```sql
+CREATE TABLE chunks (
+  id        bigserial PRIMARY KEY,
+  post_slug text NOT NULL,
+  heading   text,
+  content   text NOT NULL,
+  embedding vector(1024)
+);
+
+-- 余弦距离检索 + HNSW 索引
+CREATE INDEX ON chunks USING hnsw (embedding vector_cosine_ops);
+
+SELECT post_slug, heading, content
+FROM chunks
+ORDER BY embedding <=> $1  -- $1 = 问题的向量
+LIMIT 6;
+```
+
+增量同步靠内容哈希：每篇文章算一次 SHA-256，没变的直接跳过，所以**每次部署的全量同步实际上只处理新增和修改的文章**，成本几乎为零。
+
+## 第三步：检索增强生成
+
+提问时，把检索到的片段拼进 System Prompt，并要求模型**用 [1] [2] 标注引用**：
+
+```ts title="src/app/api/chat/route.ts（核心逻辑）"
+const context = retrieved
+  .map((c, i) => `[${i + 1}] 《${c.title}》${c.heading}\n${c.content}`)
+  .join("\n\n");
+
+const messages = [
+  {
+    role: "system",
+    content: `你是本博客的 AI 助手。仅根据下面的资料回答问题，
+并在句末用 [编号] 标注引用来源。资料之外的问题请如实说明不知道。
+
+资料：
+${context}`,
+  },
+  ...用户消息,
+];
+
+// Vercel AI SDK：流式返回给前端
+const result = streamText({ model: glm, messages });
+return result.toUIMessageStreamResponse();
+```
+
+前端用 `useChat` 接收流式输出，正则解析消息里的 `[1]` 渲染成可点击的引用徽章，点击直达对应文章的锚点——**AI 的每一个论点都能溯源**。
+
+## 顺手得到的两个功能
+
+同一套向量库还顺便支撑了另外两个能力：
+
+1. **语义搜索**：搜索「怎么上线网站」能命中写着「Docker 部署」的文章——关键词匹配做不到，向量可以
+2. **相关文章推荐**：每篇文章的摘要向量互相算距离，取最近的三篇，构建时算好写进静态页面，零运行时开销
+
+<Callout type="info" title="成本参考">
+embedding-3 定价约 ¥0.5/百万 token，一篇两千字文章全部分块向量化成本不到一分钱。
+GLM-4-flash 目前免费，个人博客的 AI 功能几乎零成本运行。
+</Callout>
+
+## 总结
+
+RAG 没有黑魔法：**分块 → 向量化 → 检索 → 拼提示词 → 流式生成**，每一环都是可以独立优化的工程问题。把这套管线跑通之后，你会发现自己手里已经有了构建「任何基于私有知识库的 AI 应用」的全部积木。
