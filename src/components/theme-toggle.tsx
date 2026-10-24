@@ -2,14 +2,19 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+
+const emptySubscribe = () => () => {};
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  // SSR 渲染月亮图标，客户端挂载后按真实主题渲染（避免水合不匹配）
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   return (
     <Button
@@ -19,7 +24,6 @@ export function ThemeToggle() {
       className="text-muted-foreground"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
-      {/* 避免水合不匹配：挂载后再渲染实际图标 */}
       {mounted && resolvedTheme === "dark" ? (
         <Sun className="size-[1.1rem]" />
       ) : (

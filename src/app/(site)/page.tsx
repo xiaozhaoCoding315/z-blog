@@ -103,7 +103,7 @@ export default function HomePage() {
         <section className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
           <SectionHeading title="精选文章" hint="值得从这开始" />
           <div className="grid gap-4 sm:grid-cols-2">
-            {pinned.map((post, i) => (
+            {pinned.map((post) => (
               <PostCard key={post.slug} post={toCardData(post)} variant="featured" />
             ))}
           </div>
@@ -114,7 +114,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-4 pt-10 sm:px-6">
         <SectionHeading title="最新文章" hint="刚出炉的" href="/blog" />
         <div className="grid gap-4 sm:grid-cols-2">
-          {latest.map((post, i) => (
+          {latest.map((post) => (
             <PostCard key={post.slug} post={toCardData(post)} />
           ))}
         </div>

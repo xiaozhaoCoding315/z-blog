@@ -21,6 +21,9 @@ export function generateStaticParams() {
     .map((post) => ({ slug: post.slug }));
 }
 
+// 文章内容依赖 params 生成，禁用 instant shell 以换取完整首屏
+export const instant = false;
+
 export async function generateMetadata({
   params,
 }: {

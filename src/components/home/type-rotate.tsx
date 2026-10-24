@@ -30,13 +30,13 @@ export function TypeRotate({
       }
     } else if (phase === "pausing") {
       timer = setTimeout(() => setPhase("deleting"), 1200);
+    } else if (text.length > 0) {
+      timer = setTimeout(() => setText(word.slice(0, text.length - 1)), 45);
     } else {
-      if (text.length > 0) {
-        timer = setTimeout(() => setText(word.slice(0, text.length - 1)), 45);
-      } else {
+      timer = setTimeout(() => {
         setWordIndex((i) => (i + 1) % words.length);
         setPhase("typing");
-      }
+      }, 120);
     }
     return () => clearTimeout(timer);
   }, [text, phase, wordIndex, words]);

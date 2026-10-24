@@ -102,7 +102,7 @@ export function BlogBrowser({
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {filtered.map((post, i) => (
+          {filtered.map((post) => (
             <PostCard key={post.slug} post={post} />
           ))}
         </div>

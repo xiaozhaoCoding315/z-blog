@@ -1,28 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { siteConfig } from "@/config/site";
+
+/** 客户端独有值（SSR 用 fallback），避免 setState-in-effect */
+function useClientOnly<T>(getSnapshot: () => T, getServerSnapshot: () => T): T {
+  const subscribe = () => () => {};
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
 
 /** 运行天数：客户端计算，避免构建时固化 */
 export function UpTimeDays({ className }: { className?: string }) {
-  const [days, setDays] = useState<number | null>(null);
-
-  useEffect(() => {
-    const start = new Date(siteConfig.startedAt).getTime();
-    if (!Number.isNaN(start)) {
-      setDays(Math.max(1, Math.ceil((Date.now() - start) / 86400000)));
-    }
-  }, []);
-
-  return <span className={className}>{days ?? "—"}</span>;
+  const start = new Date(siteConfig.startedAt).getTime();
+  const days = useClientOnly(
+    () =>
+      Number.isNaN(start)
+        ? "—"
+        : String(Math.max(1, Math.ceil((Date.now() - start) / 86400000))),
+    () => "—"
+  );
+  return <span className={className}>{days}</span>;
 }
 
 export function CurrentYear() {
-  const [year, setYear] = useState<number | null>(null);
-
-  useEffect(() => {
-    setYear(new Date().getFullYear());
-  }, []);
-
-  return <>{year ?? siteConfig.startedAt.slice(0, 4)}</>;
+  const year = useClientOnly(
+    () => String(new Date().getFullYear()),
+    () => siteConfig.startedAt.slice(0, 4)
+  );
+  return <>{year}</>;
 }

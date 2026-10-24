@@ -1,0 +1,53 @@
+name: blog
+
+services:
+  # PostgreSQL + pgvector：文章向量与浏览量数据
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: blog
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blog -d blog"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # 本地开发时不需要对外暴露数据库端口；如需宿主机访问再取消注释
+    # ports:
+    #   - "5432:5432"
+
+  # Next.js 应用（standalone 产物），首次部署：docker compose up -d --build
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: postgres://blog:${DB_PASSWORD}@db:5432/blog
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+      CHAT_MODEL: ${CHAT_MODEL:-glm-4.6}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-embedding-3}
+      EMBEDDING_DIMS: ${EMBEDDING_DIMS:-1024}
+      SYNC_SECRET: ${SYNC_SECRET:-}
+      NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost}
+      NEXT_PUBLIC_SITE_START_DATE: ${NEXT_PUBLIC_SITE_START_DATE:-}
+      NEXT_PUBLIC_GISCUS_REPO: ${NEXT_PUBLIC_GISCUS_REPO:-}
+      NEXT_PUBLIC_GISCUS_REPO_ID: ${NEXT_PUBLIC_GISCUS_REPO_ID:-}
+      NEXT_PUBLIC_GISCUS_CATEGORY: ${NEXT_PUBLIC_GISCUS_CATEGORY:-Announcements}
+      NEXT_PUBLIC_GISCUS_CATEGORY_ID: ${NEXT_PUBLIC_GISCUS_CATEGORY_ID:-}
+    ports:
+      - "80:3000"
+
+volumes:
+  pgdata:
