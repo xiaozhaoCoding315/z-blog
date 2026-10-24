@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cpu, Database, Mail, Server, Sparkles, Terminal } from "lucide-react";
 import { GithubIcon } from "@/components/icons/github";
 import { siteConfig } from "@/config/site";
+import { GithubHeatmap } from "@/components/about/github-heatmap";
 
 export const metadata: Metadata = {
   title: "关于",
@@ -92,15 +93,21 @@ export default function AboutPage() {
 
       <section className="mt-12">
         <h2 className="mb-5 font-heading text-xl font-bold tracking-tight">
+          开源活跃
+        </h2>
+        <GithubHeatmap />
+      </section>
+
+      <section className="mt-12">
+        <h2 className="mb-5 font-heading text-xl font-bold tracking-tight">
           关于本站
         </h2>
         <div className="glass rounded-xl p-6 text-sm leading-relaxed text-muted-foreground">
           <p>
-            本站是一个完全自研的全栈项目：内容用 MDX + Git 管理，
-            文章页构建时静态生成；PostgreSQL + pgvector
-            承载浏览量统计与向量化后的文章分块；⌘K 语义搜索与右下角的
-            AI 问答助手基于 RAG 管线（Embedding 检索 + 流式生成 + 引用溯源）。
-            整个站点通过 Docker Compose 一键部署。
+            本站是我从零手写的全栈项目：文章用 MDX + Git 管理，页面构建时静态生成；
+            数据库承载浏览量统计与文章向量索引。⌘K 搜索能理解「意思相近」的查询，
+            右下角的 AI 助手回答问题时会标注引用来源、可点击回溯原文。
+            整个站点跑在 Docker 里，一条命令完成部署。
           </p>
           <p className="mt-3 flex items-start gap-2">
             <Cpu className="mt-0.5 size-4 shrink-0 text-primary" />

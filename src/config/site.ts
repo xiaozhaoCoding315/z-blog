@@ -7,14 +7,14 @@ export const siteConfig = {
   name: process.env.NEXT_PUBLIC_SITE_NAME ?? "Z·Blog",
   title: process.env.NEXT_PUBLIC_SITE_NAME ?? "Z·Blog",
   description:
-    "一个全栈 / AI 应用开发者的个人博客：技术随笔、项目实践与 AI 玩法，配备语义搜索与 RAG 智能问答。",
+    "一个热爱编程的程序员的技术博客：学习笔记、项目实践与踩坑复盘。",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   // 站点建立日期，用于首页「运行天数」统计
   startedAt: process.env.NEXT_PUBLIC_SITE_START_DATE ?? "2026-10-25",
   author: {
     name: "Z",
     avatar: "/images/avatar.png",
-    bio: "全栈 / AI 应用开发者。热爱造轮子，正在把 AI 集成进生活的每个角落。",
+    bio: "热爱编程的程序员。喜欢从零造轮子，把想法一个个变成能跑起来的东西，再把过程写下来。",
     email: "mailto:me@example.com",
   },
   links: {
@@ -25,6 +25,7 @@ export const siteConfig = {
     { title: "首页", href: "/" },
     { title: "博客", href: "/blog" },
     { title: "项目", href: "/projects" },
+    { title: "统计", href: "/stats" },
     { title: "友链", href: "/friends" },
     { title: "关于", href: "/about" },
   ],

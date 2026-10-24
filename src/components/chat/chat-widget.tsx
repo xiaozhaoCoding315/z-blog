@@ -17,10 +17,10 @@ interface ChatSource {
 }
 
 const SUGGESTIONS = [
-  "这个博客是怎么搭建的？",
-  "博客有哪些 AI 功能？",
-  "如何把应用部署到服务器？",
-  "RAG 是什么？",
+  "这个博客是怎么搭起来的？",
+  "怎么把应用部署到服务器？",
+  "写文章的流程是什么样的？",
+  "推荐一篇入门文章",
 ];
 
 export function ChatWidget() {
@@ -127,7 +127,7 @@ export function ChatWidget() {
                 <p className="text-sm font-semibold leading-tight">博客 AI 助手</p>
                 <p className="truncate text-[11px] text-muted-foreground">
                   {aiStatus === "on"
-                    ? "基于博客文章的 RAG 问答 · 回答附引用来源"
+                    ? "读过站内所有文章 · 回答附引用来源"
                     : aiStatus === "loading"
                       ? "连接中…"
                       : "AI 未配置"}

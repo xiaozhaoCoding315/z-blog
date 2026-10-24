@@ -4,7 +4,12 @@ import { getDb, ensureSchema } from "@/db/client";
 import { chunks, posts as postsTable } from "@/db/schema";
 import { listRawPosts } from "@/lib/content-core";
 import { chunkMarkdown } from "@/lib/chunk";
-import { aiEnabled, chatModel, embeddingModel } from "@/lib/ai";
+import {
+  chatEnabled,
+  chatModel,
+  embeddingEnabled,
+  embeddingModel,
+} from "@/lib/ai";
 
 /**
  * 博客内容同步引擎：
@@ -48,14 +53,14 @@ export async function syncPosts(options?: {
 
     // ---- AI 摘要（frontmatter 已有 description 时直接复用）----
     let summary: string | null = post.meta.description ?? null;
-    if (!summary && aiEnabled) {
+    if (!summary && chatEnabled) {
       summary = await generateSummary(post.meta.title, post.content);
       console.log(`[sync]   AI 摘要已生成`);
     }
 
     // ---- 摘要向量（相关文章推荐用）----
     let summaryEmbedding: number[] | null = null;
-    if (summary && aiEnabled) {
+    if (summary && embeddingEnabled) {
       try {
         const { embeddings } = await embedMany({
           model: embeddingModel,
@@ -90,7 +95,7 @@ export async function syncPosts(options?: {
       });
 
     // ---- 分块向量化 ----
-    if (aiEnabled) {
+    if (embeddingEnabled) {
       const pieces = chunkMarkdown(post.content);
       await db.delete(chunks).where(inArray(chunks.postSlug, [post.slug]));
 
@@ -131,11 +136,13 @@ export async function syncPosts(options?: {
     total: fsPosts.length,
     synced,
     skipped: fsPosts.length - synced,
-    aiEnabled,
+    aiEnabled: chatEnabled && embeddingEnabled,
   };
   console.log(
     `[sync] 完成：${result.total} 篇（更新 ${synced}，跳过 ${result.skipped}）` +
-      (aiEnabled ? "" : " · AI 未启用，仅同步元数据")
+      (embeddingEnabled
+        ? ""
+        : " · 向量服务未启用，仅同步元数据")
   );
   return result;
 }

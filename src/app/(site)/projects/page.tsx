@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { ExternalLink } from "lucide-react";
-import { GithubIcon } from "@/components/icons/github";
+import { CheckCircle2, ExternalLink } from "lucide-react";
 import { projects } from "@/config/portfolio";
+import { GithubIcon } from "@/components/icons/github";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "项目",
-  description: "我做过的一些项目：全栈应用、AI 系统、数据分析。",
+  description: "我做过的一些项目：工程 Agent、全栈应用与数据分析。",
 };
 
 const statusStyle: Record<string, string> = {
@@ -32,11 +33,21 @@ export default function ProjectsPage() {
         {projects.map((project) => (
           <Card
             key={project.name}
-            className="card-hover glass overflow-hidden"
+            className={cn(
+              "card-hover glass overflow-hidden",
+              project.featured && "md:col-span-2"
+            )}
           >
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-lg">{project.name}</CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-baseline gap-x-3">
+                  <CardTitle className="text-lg">{project.name}</CardTitle>
+                  {project.tagline && (
+                    <span className="text-gradient text-sm font-semibold">
+                      {project.tagline}
+                    </span>
+                  )}
+                </div>
                 <span
                   className={`rounded-full border px-2 py-0.5 text-[11px] ${statusStyle[project.status]}`}
                 >
@@ -48,6 +59,21 @@ export default function ProjectsPage() {
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {project.description}
               </p>
+
+              {project.featured && project.highlights && (
+                <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                  {project.highlights.map((item) => (
+                    <li
+                      key={item}
+                      className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground"
+                    >
+                      <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {project.stack.map((tech) => (
                   <Badge
@@ -59,28 +85,30 @@ export default function ProjectsPage() {
                   </Badge>
                 ))}
               </div>
-              <div className="mt-4 flex gap-3 text-xs">
-                {project.repo && (
-                  <a
-                    href={project.repo}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <GithubIcon className="size-3.5" /> 源码
-                  </a>
-                )}
-                {project.link && (
-                  <a
-                    href={project.link}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <ExternalLink className="size-3.5" /> 访问
-                  </a>
-                )}
-              </div>
+              {(project.repo || project.link) && (
+                <div className="mt-4 flex gap-3 text-xs">
+                  {project.repo && (
+                    <a
+                      href={project.repo}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <GithubIcon className="size-3.5" /> 源码
+                    </a>
+                  )}
+                  {project.link && (
+                    <a
+                      href={project.link}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <ExternalLink className="size-3.5" /> 访问
+                    </a>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

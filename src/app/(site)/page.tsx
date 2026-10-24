@@ -50,13 +50,13 @@ export default function HomePage() {
         <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 pb-20 pt-24 text-center sm:px-6 sm:pt-32">
           <span className="glass mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs text-muted-foreground">
             <Sparkles className="size-3.5 text-primary" />
-            全栈开发 · AI 应用 · 技术写作
+            热爱编程 · 乐于折腾 · 持续构建
           </span>
 
           <h1 className="max-w-3xl font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl">
             你好，我是 {siteConfig.author.name}
             <br />
-            一名 <TypeRotate words={["全栈开发者", "AI 应用爱好者", "RAG 实践者", "开源学习者"]} />
+            一个 <TypeRotate words={["热爱编程的程序员", "喜欢造轮子的工程师", "把想法写进代码的人", "边踩坑边记录的人"]} />
           </h1>
 
           <p className="mt-6 max-w-xl text-balance leading-relaxed text-muted-foreground sm:text-lg">
@@ -138,8 +138,8 @@ export default function HomePage() {
               ))}
             </div>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              语义搜索与右下角的 AI 助手由 RAG 管线驱动：文章向量化存入
-              PostgreSQL，提问时检索最相关的片段，再由大模型流式生成回答。
+              这个站点是我一行一行亲手搭起来的：写样式、写服务端、自己折腾部署，它跟着我的学习曲线一起迭代。
+              右下角的 AI 助手读过站里的每一篇文章，有任何问题可以直接问它。
             </p>
           </CardContent>
         </Card>

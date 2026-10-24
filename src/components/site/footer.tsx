@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Rss } from "lucide-react";
 import { GithubIcon } from "@/components/icons/github";
 import { CurrentYear, UpTimeDays } from "@/components/site/runtime-info";
+import { TerminalLinkButton } from "@/components/terminal/terminal-link-button";
 import { siteConfig } from "@/config/site";
 
 export function Footer() {
@@ -58,6 +59,9 @@ export function Footer() {
                 >
                   <Rss className="size-4" /> RSS 订阅
                 </a>
+              </li>
+              <li>
+                <TerminalLinkButton />
               </li>
             </ul>
           </div>

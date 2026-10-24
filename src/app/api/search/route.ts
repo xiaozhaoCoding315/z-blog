@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { embed } from "ai";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { aiEnabled, embeddingModel } from "@/lib/ai";
+import { embeddingEnabled, embeddingModel } from "@/lib/ai";
 
 export const maxDuration = 60;
 
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   if (!q) return NextResponse.json({ items: [] });
 
   const db = getDb();
-  if (!db || !aiEnabled) return NextResponse.json({ items: [] });
+  if (!db || !embeddingEnabled) return NextResponse.json({ items: [] });
 
   try {
     const { embedding } = await embed({ model: embeddingModel, value: q });
