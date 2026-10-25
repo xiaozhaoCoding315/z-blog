@@ -11,8 +11,10 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# 构建期不需要真实密钥：未配置 AI key 时同步与相关功能在运行时降级
-ENV NEXT_TELEMETRY_DISABLED=1
+# NEXT_PUBLIC_* 在构建时内联进产物，必须在此注入正确的公网地址
+ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 RUN npm run build
 
 FROM node:20-alpine AS runner
