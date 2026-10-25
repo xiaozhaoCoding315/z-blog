@@ -33,6 +33,10 @@ services:
       args:
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_GISCUS_REPO: ${NEXT_PUBLIC_GISCUS_REPO:-}
+        NEXT_PUBLIC_GISCUS_REPO_ID: ${NEXT_PUBLIC_GISCUS_REPO_ID:-}
+        NEXT_PUBLIC_GISCUS_CATEGORY: ${NEXT_PUBLIC_GISCUS_CATEGORY:-Announcements}
+        NEXT_PUBLIC_GISCUS_CATEGORY_ID: ${NEXT_PUBLIC_GISCUS_CATEGORY_ID:-}
     restart: unless-stopped
     logging:
       driver: json-file
