@@ -1,0 +1,23 @@
+---
+question: 线程之间有哪些通信方式？
+category: Java 并发
+difficulty: 中
+tags: [线程通信]
+---
+按"协作深度"递进着答：
+
+**1. 共享内存 + 同步**：大家读写同一个变量，用 volatile（保证可见）或锁（保证原子）——最原始也最通用
+
+**2. wait/notify（管程模型）**：一个让出锁等人喊，一个喊人——生产者消费者的经典骨架。升级版是 Lock + Condition（多个等待区精准唤醒）
+
+**3. LockSupport 的 park/unpark**：更底层的"暂停/放行"。和 wait 最大的区别：**unpark 可以先于 park 调用**（发"许可证"，先发后领都行），wait 的 notify 先发就作废了。AQS 挂起唤醒线程全用它
+
+**4. 队列解耦**：BlockingQueue——生产者消费者隔着队列说话，最工程化
+
+**5. Join**：等另一个线程跑完（父亲等儿子放学）——本质也是 wait
+
+**6. 并发工具类**：CountDownLatch（等 N 个完成）、CyclicBarrier（互相等齐）、Semaphore（限并发数）
+
+**7. 管道 PipedInputStream**：字节流互通，了解即可
+
+**答题套路**：按这个清单报菜名，每个一句话场景，最后说"实际项目里 BlockingQueue 和 CountDownLatch 用得最多"——广度+务实都有。

@@ -1,0 +1,18 @@
+---
+question: 分布式链路追踪的原理？traceId 是怎么一路传下去的？
+category: 分布式 & 微服务
+difficulty: 中
+tags: [链路追踪, traceId]
+companies: [美团, 字节]
+---
+**问题**：一个请求跨 8 个服务，报错时日志散在 8 台机器上——查一个问题像拼图游戏。
+
+**核心模型——trace 三件套**：**traceId**（一次请求的全局唯一 ID，全程不变）、**spanId**（每段处理的 ID，标识父子层级）、**parentSpanId**（谁调用的我）。串起来就是一棵调用树。
+
+**传递机制（关键考点）**：traceId 怎么跨服务传？——**塞进 HTTP header**（W3C 标准的 traceparent，或自定义 X-Trace-Id）。A 调 B 时自动带上；B 的框架（SkyWalking agent / Sleuth / OpenTelemetry）拦截请求**取出来放进自己的日志上下文（MDC）**，继续调 C 时再往下带。**日志打出来每行都带 traceId**——grep 一个 ID，8 个服务的完整链路日志全出来。
+
+**实现三巨头**：SkyWalking（字节码注入无侵入、国内主流）、Zipkin/Jaeger（OpenTracing 系）、OpenTelemetry（**新一代标准**，正在统一江湖，metrics+logs+traces 三合一）。
+
+**实践加分**：采样策略（全采太贵——错误请求 100% 采 + 正常请求 1% 采）；**MDC 的坑**——线程池里 traceId 会丢（ThreadLocal 不跨线程），要用 TransmittableThreadLocal 或装饰任务。
+
+**一句话**："链路追踪 = 给每个请求发一张全程通用的身份证，走到哪刷到哪"。

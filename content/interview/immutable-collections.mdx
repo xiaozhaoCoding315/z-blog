@@ -1,0 +1,17 @@
+---
+question: 怎么让一个集合"不可变"？各方法有什么坑？
+category: Java 集合
+difficulty: 中
+tags: [不可变集合]
+---
+**三种"看起来不可变"的方式，坑各不同**：
+
+**1. Collections.unmodifiableList(list)**——贴封条不换房：返回一个"拒绝修改"的视图，但**底层还是原来那个 list**——你拿着原引用改，"不可变"视图跟着变！多线程共享时照样出事。
+
+**2. List.of(...)（JDK 9+）**——真·不可变：数据是独立拷贝，谁也改不了。坑：**不允许 null 元素**（List.of(null) 直接 NPE），老代码迁移容易踩。
+
+**3. 防御性拷贝**：构造时 `new ArrayList<>(source)` 复制一份——防止"调用方留着原引用偷偷改"。**把可变对象传出方法边界时的标配动作**。
+
+**为什么追求不可变**：不可变 = 天然线程安全 + 可放心共享 + hashCode 稳定可做 key。Guava 的 ImmutableList、Java record 配 List.of 是现代写法。
+
+**经典 bug 场景**：方法返回 unmodifiableList 包装，调用方多线程读——你以为安全了，其实另一个线程拿着原始 list 在 add，读线程读到一半结构变了，ConcurrentModificationException。**不可变要彻底：视图不够，拷贝才稳**。

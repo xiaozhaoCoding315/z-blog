@@ -1,0 +1,18 @@
+---
+question: Java 21 虚拟线程是什么？和平台线程什么区别？
+category: Java 并发
+difficulty: 中
+tags: [虚拟线程, Loom]
+companies: [字节, 阿里]
+---
+**一句话**：虚拟线程 = 由 JVM 而不是操作系统管理的"超轻量线程"——**百万级并发成为可能**。
+
+**原理讲个"戏法"**：虚拟线程跑在一个载体（平台线程）上；一旦执行阻塞调用（等 IO、sleep），JVM **把它从载体上摘下来**（栈帧存到堆里），载体立刻去跑别的虚拟线程；IO 好了再挂回去。**载体（真正的 OS 线程）永远在干活，从不干等**——就像只有一个理发师，但顾客等待时不占椅子（去旁边刷手机）。
+
+**和协程的对比**：Go goroutine 是编译器+runtime 层的；Java 虚拟线程在 JDK 层做同样的事，**还不用改编程模型**（照样写同步阻塞代码，JVM 自动帮你异步化）——这就是它比 Reactor/Netty 那套响应式代码亲民的原因。
+
+**怎么用**：`Thread.ofVirtual().start(runnable)` 或 `Executors.newVirtualThreadPerTaskExecutor()`。
+
+**三个使用忠告**：别池化（虚拟线程廉价，用完即弃）；CPU 密集型无收益（它优化的是阻塞等待）；**synchronized 块内阻塞会"钉住"载体**（JDK 21 的限制，24 已优化）——高并发下热点 synchronized 换 ReentrantLock。
+
+**定位**：IO 密集服务的吞吐革命，"每个请求一个线程"的老模型重新成立了。

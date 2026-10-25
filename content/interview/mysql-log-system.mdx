@@ -1,0 +1,16 @@
+---
+question: redo log、undo log、binlog 分别是干什么的？
+category: MySQL
+difficulty: 难
+tags: [日志体系, redo, binlog]
+companies: [阿里, 字节, 美团]
+---
+**三本账各管一摊**，用"银行柜台"记：
+
+**redo log（InnoDB 的）——持久性保镖**：物理日志，记"哪个页改了什么"。**WAL 先写日志再刷数据页**——改内存里的页 + 顺序写 redo（快），脏页慢慢刷盘。**崩溃恢复全靠它重放**：crash 后已提交的数据不丢。这就是 InnoDB crash-safe 的来源。循环写（固定大小，写满触发刷盘）。
+
+**undo log——回滚与 MVCC 的时光机**：逻辑日志，记"怎么撤销"（insert 的 undo 是 delete）。事务回滚靠它；**MVCC 的版本链也是它**——读旧版本就是顺着 undo 链往回找。
+
+**binlog（Server 层的）——复制与归档**：逻辑日志，记"做了什么变更"。**主从复制的数据源头**、数据恢复（误删表从备份+binlog 重放）、Canal 订阅监听的也是它。追加写不覆盖。
+
+**为什么两本日志（redo+binlog）**：历史原因——binlog 是 MySQL 层的（所有引擎共享），redo 是 InnoDB 私有的；功能也互补：一个保证崩溃恢复，一个服务复制归档。**两本账怎么保持一致**——就是下一题"两阶段提交"。

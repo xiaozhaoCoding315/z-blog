@@ -1,0 +1,20 @@
+---
+question: WebSocket 的握手过程？和 HTTP 什么关系？
+category: 计算机网络
+difficulty: 中
+tags: [WebSocket]
+companies: [美团]
+---
+**WebSocket 的聪明之处：借 HTTP 的壳完成升级**——同一个 80/443 端口，无需新开防火墙规则。
+
+**握手三步**：
+
+1. 客户端发普通 HTTP GET，但带两个特殊头：`Upgrade: websocket`、`Connection: Upgrade`、`Sec-WebSocket-Key`（随机 base64）
+2. 服务器若支持，回 **101 Switching Protocols**：`Upgrade: websocket` + `Sec-WebSocket-Accept`（Key + 固定 GUID 做 SHA-1 再 base64——防止普通 HTTP 服务器误答）
+3. **握完手连接就从"HTTP 模式"切到"WebSocket 模式"**——之后双向自由发帧（帧格式自带 opcode：文本/二进制/ping-pong/close），**不再有 HTTP 的请求响应概念**
+
+**和 HTTP 的本质区别**：HTTP 是"你问我答"（客户端不问服务器不能说）；WebSocket 是**全双工电话**——服务器可以主动推（股票行情、聊天消息、协作编辑）。
+
+**必考对比 SSE**：SSE 单向下行、HTTP 原生、自动重连——LLM 流式输出的天选；WebSocket 双向、二进制支持、要心跳保活——**需要客户端也频繁说话**的场景（游戏、协同、语音）才用它。
+
+**生产要点**：心跳（ping/pong 60 秒，防 NAT 超时断连）；断线重连+消息补偿（重连后拉离线消息）；网关要配 WebSocket 透传（nginx proxy 升级头）。

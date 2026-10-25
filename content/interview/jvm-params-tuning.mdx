@@ -1,0 +1,26 @@
+---
+question: 生产环境的 JVM 参数一般怎么设置？
+category: JVM
+difficulty: 中
+tags: [JVM参数, 调优]
+---
+**先给一套 4C8G 容器的常见起点**（有标准答案比空谈有用）：
+
+```
+-Xms4g -Xmx4g                          # 堆固定大小（防动态扩缩抖动）
+-Xmn2g 或用 G1 不显式设新生代
+-XX:+UseG1GC -XX:MaxGCPauseMillis=100  # G1 + 停顿目标
+-XX:MetaspaceSize=256m
+-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/dump/
+-Xlog:gc*:file=/data/gc.log:time
+```
+
+**每个参数的道理**：
+- **Xms=Xmx**：堆大小固定——运行期扩容缩容都有停顿和抖动，容器时代资源是划定的，一步到位
+- **Dump 三件套**：OOM 自动拍快照——**线上出事时"现场"比什么都值钱**，没快照的 OOM 重现难如登天
+- **GC 日志常开**：开销极小，调优排障全靠它
+- 容器注意：加 `-XX:+UseContainerSupport`（8u191+/10+ 默认开）——否则 JVM 看到的是宿主机内存，容器限 2G 它以为自己有 64G，直接 OOMKilled
+
+**调优先立"观察后动手"**：GC 日志看 Young GC 频率（Survivor 太小或对象存活率高）、Mixed/Full GC 是否出现（堆不够或晋升太快）——**对着症状调，不玄学**。
+
+**反模式**：抄网上一堆 `-XX:+UseStringDeduplication` 之类堆参数——绝大多数服务用默认 + 上面那套基线就够了。

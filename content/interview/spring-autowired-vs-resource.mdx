@@ -1,0 +1,15 @@
+---
+question: "@Autowired、@Resource、@Inject 有什么区别？"
+category: Spring
+difficulty: 易
+tags: [注入]
+---
+**一句话分野**：@Autowired 是 Spring 亲儿子（byType 优先）；@Resource 是 JDK 标准注解（byName 优先）；@Inject 也是标准注解（byType，需额外引依赖）。
+
+**@Autowired 按"类型"找的烦恼**：接口有两个实现类——它懵了，启动直接报 NoUniqueBeanDefinitionException。三个解法：@Primary 标主实现、@Qualifier("名字")点名要谁、或者字段名直接写成实现类 bean 名（Spring 会拿名字兜底）。
+
+**@Resource 的逻辑反过来**：先按名字找，找不到再按类型——`@Resource(name = "redisService")` 点名精准。它是 javax 标准，理论上换 IoC 框架也能用（虽然现实里没人换）。
+
+**实际项目怎么选**：国内团队 @Autowired 占绝对主流（IDE 友好、Spring 全家桶无缝）；构造器注入党会跳出来反对两者——**构造器注入**（IDEA 也推荐）有三大好处：依赖不可变（final）、不会 NPE（构造时必须给全）、循环依赖启动就报错（早暴露早治疗）。
+
+**加分收尾**："新代码我倾向构造器注入 + Lombok @RequiredArgsConstructor，字段注入留着兼容老代码"。

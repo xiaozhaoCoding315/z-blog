@@ -1,0 +1,13 @@
+---
+question: Iterator 和 ListIterator 的区别？为什么遍历时删除要用迭代器？
+category: Java 集合
+difficulty: 易
+tags: [迭代器]
+---
+**Iterator** 是所有集合通用的单向遍历器：hasNext / next / remove 三板斧。**ListIterator** 是 List 专属增强版：能**双向走**（previous）、能**改值**（set）、能**插入**（add）、能拿索引。
+
+**为什么遍历时删除必须用 iterator.remove()**（核心考点）：集合和迭代器各自记账——集合有修改次数 modCount，迭代器创建时抄一份。你用 list.remove() 删，集合的账本变了但迭代器不知道，下次 next 对账发现不一致，抛 ConcurrentModificationException。而 **iterator.remove() 会同步更新两本账**，安全。
+
+**JDK8+ 的偷懒姿势**：`list.removeIf(x -> x.isInvalid())`——内部就是安全版迭代器，一行搞定。并发场景直接 CopyOnWriteArrayList（遍历的是快照，怎么删都不炸）。
+
+**一个反直觉的例外**：for-each 里删"倒数第二个元素"不会抛异常——删除后游标恰好等于 size，hasNext 返回 false，对账环节被跳过。知道这个说明你真踩过坑，但**别在生产里依赖它**。

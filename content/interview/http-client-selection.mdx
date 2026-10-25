@@ -1,0 +1,21 @@
+---
+question: RestTemplate、WebClient、OpenFeign 怎么选？
+category: Spring
+difficulty: 中
+tags: [HTTP客户端]
+---
+**三者的世代关系**：RestTemplate（老同步）→ WebClient（新异步响应式）→ OpenFeign（声明式 RPC 风格）。
+
+**RestTemplate**：同步阻塞，一请求一线程，简单直观。Spring 已标记"维护模式"（不删但不再加新特性）——老项目继续用没毛病，**并发量不高的内部系统它依然省心**。
+
+**WebClient**：WebFlux 体系的异步客户端——不占线程等响应（事件驱动），高并发 IO 密集下吞吐强。代价：响应式编程的心智成本（Mono/Flux 链式调试劝退不少人）。适合网关、聚合层这种"同时在飞几十个请求"的角色。
+
+**OpenFeign**：**像调本地方法一样调远程**——定义接口+注解，框架生成实现：
+
+```java
+@FeignClient(name = "order-service")
+interface OrderClient { @GetMapping("/orders/{id}") Order get(@PathVariable Long id); }
+// 注入直接 orderClient.get(1L)，HTTP 细节全透明
+```
+
+**选型口诀**：微服务间调用无脑 OpenFeign（+ 注册中心负载均衡）；需要精细控制或高并发聚合用 WebClient；简单场景老代码 RestTemplate 凑合。**技术选型不是越新越好，是越合身越好**。

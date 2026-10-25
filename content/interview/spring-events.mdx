@@ -1,0 +1,15 @@
+---
+question: Spring 事件机制是什么？适合什么场景？
+category: Spring
+difficulty: 中
+tags: [事件, 解耦]
+---
+**核心三件套**：事件（继承 ApplicationEvent）、发布者（applicationEventPublisher.publishEvent）、监听器（@EventListener 注解方法）。
+
+**它解决什么**：**同进程内的解耦**。注册成功后要发欢迎邮件、加积分、推通知——在 register() 里调三个 Service，注册逻辑和一堆下游耦合。改成"注册成功"事件一发，谁关心谁监听，**注册方法一行下游代码都不留**。
+
+**和 MQ 的区别**（必被追问）：Spring 事件是**同 JVM 内**的调用（默认同步、无网络），零基础设施成本但进程挂了事件就没了；MQ 是跨进程、可靠投递、削峰。**进程内解耦用事件，跨服务解耦用 MQ**——别拿事件做"必然要发生"的关键链路（它默认不保证消费成功）。
+
+**两个进阶姿势**：`@Async` 加在监听器上变异步（不阻塞主流程）；TransactionalEventListener 的 AFTER_COMMIT——**事务提交后才触发**，避免"监听器读了未提交数据"的经典 bug。
+
+**实战提醒**：发布默认同步执行——监听器抛异常会把主流程炸了；重要场景记得 @Async + 自己的错误处理。

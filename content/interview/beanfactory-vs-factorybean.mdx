@@ -1,0 +1,17 @@
+---
+question: BeanFactory 和 FactoryBean 的区别？
+category: Spring
+difficulty: 中
+tags: [BeanFactory, FactoryBean]
+---
+**名字像亲兄弟，实际是两个世界的物种**——这是道文字陷阱题。
+
+**BeanFactory：IoC 容器本体**。ApplicationContext 的爹地——那个"装着所有 Bean 的大工厂"。你平时不直接用它，但它无处不在。
+
+**FactoryBean：一个"会造 Bean 的 Bean"**。它本身是个 Bean，但 getBean 拿到它时返回的不是它自己，而是**它的 getObject() 造出来的东西**——工厂模式的 Bean 化。
+
+**举个真实例子**：Mybatis 的 SqlSessionFactoryBean——你配一个 FactoryBean，它负责把 Configuration、数据源一堆零件组装出真正要用的 SqlSessionFactory。**当你需要"创建一个 Bean 前要做复杂装配逻辑"时，FactoryBean 就是官方给的后门**。
+
+**验证小实验**：`getBean("xxx")` 拿到产品，`getBean("&xxx")`（加个 &）拿到工厂本身——& 前缀就是干这个的。
+
+**答题要点**：先把"一个是容器、一个是特殊 Bean"的定位讲清，再举 SqlSessionFactoryBean 的例子——证明你不是背名词，是真用过。

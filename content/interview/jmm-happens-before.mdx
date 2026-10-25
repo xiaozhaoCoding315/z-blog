@@ -1,0 +1,22 @@
+---
+question: JMM 是什么？happens-before 规则怎么用？
+category: Java 并发
+difficulty: 难
+tags: [JMM, 内存模型]
+companies: [字节, 阿里]
+---
+**JMM（Java 内存模型）解决"各 CPU 缓存不一致 + 编译器乱序优化"带来的可见性和有序性问题**——它是一套承诺：程序在什么条件下能"看到"别的线程的修改。
+
+**happens-before 是 JMM 的核心语言**：如果 A happens-before B，那么 A 的结果对 B 可见且顺序有保证。**它不是"时间上先发生"**——而是逻辑上的可见性承诺。
+
+**六条规则**（挑五条高频的记）：
+
+1. **程序顺序**：单线程里前面的代码 hb 后面的（编译器可以重排，但要保证语义等价）
+2. **监视器锁**：解锁 hb 后续加锁——所以 synchronized 块里的修改，下个拿到锁的人看得见
+3. **volatile**：写 hb 后续读——volatile 的可见性就是这条撑的
+4. **线程 start/join**：start 前的操作 hb 线程内的代码；线程结束 hb join 之后的代码
+5. **传递性**：A hb B，B hb C，则 A hb C
+
+**怎么用（实战题）**：双重检查锁单例为什么要 volatile？——没有 volatile 时"new 对象"的三步（分配/初始化/赋引用）可能重排，另一线程拿到未初始化的引用——**加 volatile 就是套用规则 3**，写 hb 读，重排被禁。
+
+**答题格局**：说"JMM 是规范，volatile/synchronized/lock 是实现工具，happens-before 是判断依据"——三位一体。

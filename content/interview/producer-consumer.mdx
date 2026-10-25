@@ -1,0 +1,26 @@
+---
+question: 手写一个生产者消费者模型，有几种方式？
+category: Java 并发
+difficulty: 中
+tags: [生产者消费者]
+companies: [所有大厂]
+---
+**三种姿势从原始到现代**：
+
+**1. wait/notifyAll（考基本功）**：
+
+```java
+synchronized (lock) {
+    while (queue.size() == MAX) lock.wait();   // 满了等——必须 while 不是 if（防虚假唤醒）
+    queue.add(item);
+    lock.notifyAll();                          // 唤醒消费者
+}
+```
+
+三个易错点：wait 必须在 synchronized 里；判断条件用 **while 循环**再查一次（被唤醒后条件可能又变了）；notifyAll 比 notify 安全（避免唤醒同类死锁）。
+
+**2. BlockingQueue（生产首选）**：`LinkedBlockingQueue.put()` 满了自动阻塞、`take()` 空了自动阻塞——**上面那套 synchronized/wait 全被封装掉了**，业务代码五行搞定。这就是"不要重复造轮子"的标准案例。
+
+**3. Condition 精准唤醒**：Lock + 两个 Condition（notFull / notEmpty）——比 notifyAll 精准（只唤醒对方不唤醒同类），高并发下性能更好。
+
+**答题策略**：先写 BlockingQueue 版（证明工程能力），再补一句"底层原理是 wait/notify 或 Condition，我可以手写"——两条腿都展示。

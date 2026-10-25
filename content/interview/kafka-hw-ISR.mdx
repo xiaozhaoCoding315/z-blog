@@ -1,0 +1,19 @@
+---
+question: Kafka 的 ISR、HW、LEO 是什么？acks 和它们什么关系？
+category: 消息队列
+difficulty: 难
+tags: [Kafka, 可靠性]
+companies: [字节, 阿里]
+---
+**三个词一张图讲清**（以分区为单位，每个副本各有各的账本）：
+
+- **LEO**（Log End Offset）：每个副本自己写到了哪——"我抄到第几页"
+- **HW**（High Watermark）：**全组公认已安全同步到哪**——所有 ISR 副本的最小 LEO。**消费者只能读到 HW 以下**——保证"读到的都是多副本都有的"
+- **ISR**（In-Sync Replicas）：跟得上的副本小分队（含 leader）。掉队的（落后超过 replica.lag.time.max.ms=30s）被踢出 ISR，追上再回来
+
+**acks 与它们的关系**（本题串联处）：
+- acks=0：leader 收到就回——不等同步，leader 挂了消息就丢
+- acks=1：leader 本地落盘就回——follower 还没抄，leader 挂了 follower 没这段
+- **acks=all**：**ISR 里全部确认**才回——配合 `min.insync.replicas=2`（ISR 至少 2 个才接受写入），消息安全才成立。**单独 acks=all 而 ISR 只剩 leader 自己，等于没保护**——这两个参数必须成对出现
+
+**生产事故剧本**：配了 acks=all 但没设 min.insync.replicas，两 follower 卡掉队 → ISR 只剩 leader → 写入照常 ack → leader 磁盘损坏 → 消息蒸发。**"all 是态度，min.insync 是底线"**。

@@ -1,0 +1,25 @@
+---
+question: 什么是 CPU 缓存行和伪共享？怎么避免？
+category: 操作系统
+difficulty: 难
+tags: [CPU缓存, 伪共享]
+companies: [字节]
+---
+**背景**：CPU 比内存快 100 倍，中间靠缓存兜着。缓存不按"单个变量"搬运——**一次搬 64 字节（一个缓存行 cache line）**，隔壁变量顺手一起搬进来（空间局部性：访问 array[5]，array[6][7] 八成也快用了）。
+
+**伪共享——好心办坏事**：两个**不同线程频繁写**的变量恰好挤在同一个缓存行（比如 `volatile long a; volatile long b;` 相邻声明，俩 long 才 16 字节，同一行）。**缓存一致性协议（MESI）按行管理**——线程 1（核 A）写 a，核 B 整行的缓存作废；线程 2（核 B）写 b，核 A 的整行又作废——**俩变量毫无关系，却互相把对方的缓存踢来踢去，性能断崖**。
+
+**验证感受**：著名的 Disruptor 框架测试——两个线程分别自增相邻的 long 和间隔 64 字节的 long，**性能差数倍**。
+
+**解法——缓存行填充（padding）**：在热点变量前后塞占位变量，独占一个缓存行：
+
+```java
+public class Padded {
+    public volatile long value;
+    public long p1, p2, p3, p4, p5, p6;  // 填充：让 value 独占缓存行
+}
+```
+
+JDK8+ 有注解 `@Contended`（需 JVM 参数开启）自动填充；Disruptor/RingBuffer、LongAdder 的 Cell 都是实战应用。
+
+**答题格局**：能讲出"伪共享 = 无关变量同行的缓存一致性乒乓"这句压缩总结，就是真懂了。

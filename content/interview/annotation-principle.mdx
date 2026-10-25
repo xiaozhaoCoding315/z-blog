@@ -1,0 +1,24 @@
+---
+question: 注解的原理是什么？@Override 之类的注解是怎么起作用的？
+category: Java 基础
+difficulty: 中
+tags: [注解, 元注解]
+companies: [字节]
+---
+**注解本身是"贴纸"，啥也不干**——它只是继承 Annotation 的特殊接口，真正的魔力在"谁来看这张贴纸"。
+
+**三个角色**：元注解（造贴纸的模具：@Target 贴哪、@Retention 活多久）→ 注解本身（贴纸）→ **读取者**（干活的：编译器、框架的反射代码）。
+
+**按 Retention 分三种命运**：
+- SOURCE：编译完就丢（@Override——编译器检查完就没用了，javac 看到它只做校验）
+- CLASS：留在字节码里但运行时拿不到（少见）
+- RUNTIME：运行时反射可读（**框架全靠这档**）
+
+**Spring 怎么用**：@Component 的注解扫描就是——启动时反射遍历类，发现类上贴着 @Component 就注册成 Bean；@Autowired 就是扫描字段上的贴纸然后注入。**注解 + 反射 = 一切魔法框架的地基**。
+
+**自定义一个立即体会**：
+
+```java
+@Retention(RetentionPolicy.RUNTIME) @Target(ElementType.METHOD)
+@interface Log { }
+// AOP 里 @Around("@annotation(Log)") —— 方法贴了 @Log 就自动记日志

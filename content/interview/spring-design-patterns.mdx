@@ -1,0 +1,26 @@
+---
+question: Spring 框架里用到了哪些设计模式？
+category: Spring
+difficulty: 中
+tags: [设计模式]
+companies: [所有大厂]
+---
+结合**真实代码位置**答，比背九大模式有说服力：
+
+**1. 工厂模式**：BeanFactory 体系——容器就是个超级工厂，getBean 按名/类型取货
+
+**2. 单例模式**：Bean 默认作用域——但不是饿汉式，是**注册表式单例**（ConcurrentHashMap 存实例，双检锁+三级缓存处理并发与循环依赖）
+
+**3. 代理模式**：AOP 的本体——JDK 动态代理/CGLIB 给 Bean 包壳，@Transactional、@Cacheable 全靠这层壳
+
+**4. 模板方法**：JdbcTemplate、RedisTemplate——"流程骨架定死（获取连接/执行/释放），变化部分留参数"——把"忘关连接"这种重复错误从业务代码里消灭
+
+**5. 观察者**：ApplicationEvent 事件机制（上一题）
+
+**6. 策略模式**：Resource 加载（classpath/file/url 各一个实现）；实例化策略（SimpleInstantiationStrategy vs CGLIB 的）
+
+**7. 适配器**：SpringMVC 的 HandlerAdapter——Controller 有多种返回/参数形态，适配器统一成 DispatcherServlet 认识的接口
+
+**8. 责任链**：MVC 拦截器链、AOP 拦截器链（事务/日志切面一层层包）
+
+**答题节奏**：挑代理、模板方法、观察者三个展开（能画出的），其他报名字+一句话定位。

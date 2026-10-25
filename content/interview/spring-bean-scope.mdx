@@ -1,0 +1,20 @@
+---
+question: Bean 的作用域有哪些？prototype 有什么坑？
+category: Spring
+difficulty: 易
+tags: [Bean作用域]
+---
+**两大常用 + 三个了解**：
+
+- **singleton（默认）**：容器里**只有一个实例**，所有人共享——无状态的 Service/Component 都用它（Spring 的 Bean 默认无状态，所以多线程共享才安全）
+- **prototype**：**每次 getBean/注入都 new 一个新的**——有状态且不能共享的对象
+- request/session/application：Web 场景每请求/每会话一个（少用）
+- websocket：每个 WebSocket 会话一个
+
+**prototype 的两大坑（考点所在）**：
+
+**1. 容器不管销毁**：singleton 的销毁回调（@PreDestroy）容器负责调；**prototype 交给你的那一刻容器就撒手了**——资源清理要自己负责。
+
+**2. 作用域注入错配——经典中的经典**：singleton 的 Service A 注入 prototype 的 Bean B——A 只在创建时注入**一次** B，之后永远用这同一个 B（**prototype 名存实亡**）。解法：注入 ObjectFactory/ObjectProvider（`bProvider.getObject()` 用时现取）、@Lookup 方法注入。
+
+**有状态怎么办的工程正解**：**别用 prototype 存状态**——状态放方法参数/ThreadLocal/请求上下文，Bean 保持无状态单例。**"把状态从 Bean 里赶出去"比"给 Bean 换作用域"更治本**——这句说出来是高级理解。

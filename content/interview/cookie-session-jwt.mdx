@@ -1,0 +1,22 @@
+---
+question: Cookie、Session、Token、JWT 的区别和选型？
+category: 计算机网络
+difficulty: 中
+tags: [认证, JWT]
+companies: [所有大厂]
+---
+**演进主线：状态放哪的问题**。
+
+**Cookie + Session（经典）**：登录后服务器建 Session（内存/Redis），发个 SessionID 给 Cookie。**状态在服务端**——踢人、改权限立刻生效。坑：**分布式要 Session 共享**（Redis 集中存）+ Cookie 天然绑域名（跨域麻烦）+ 移动端/小程序没有 Cookie 环境。
+
+**Token（泛指）**：登录后发一串令牌，客户端存着每次请求带上（通常 Authorization header）。服务端**验证令牌**——可无状态可查库。
+
+**JWT（自包含的 Token）**：令牌里**编码了用户信息**（Header.Payload.Signature），签名防篡改——服务端**不用查库，验签即认证**，天然适合分布式/多服务。**但它最著名的缺陷也是自包含**：
+
+- **签发后无法作废**（到期前一直有效）——退出登录/踢人怎么办？只能引入 Redis 黑名单（那不又回到有状态了吗）
+- Payload 只是 base64 **不是加密**——别放敏感信息
+- 体积比 SessionID 大，每个请求都带着
+
+**选型口诀**：**单体/传统 Web → Session（简单直接能踢人）；分布式/API/多端 → JWT（无状态）+ **短过期 + Refresh Token 轮换** + 敏感操作二次校验；对注销即时性要求高 → JWT + Redis 黑名单或干脆服务端 Session。
+
+**答题格局**："没有银弹——安全性（可控注销）和便利性（无状态横向扩展）的权衡，按业务挑"。

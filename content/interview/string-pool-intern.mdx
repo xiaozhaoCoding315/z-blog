@@ -1,0 +1,14 @@
+---
+question: new String("abc") 创建了几个对象？intern 是干什么的？
+category: Java 基础
+difficulty: 中
+tags: [String, 常量池]
+companies: [美团]
+---
+**经典答案是"1 个或 2 个"**：字节码里遇到 "abc" 字面量时，若常量池还没有它，就在常量池建一个（第 1 个）；new String 又在堆里建一个新对象（第 2 个）。若常量池已有 "abc"（比如前面用过），就只 new 一个。
+
+**两个引用的区别**：常量池里的那份是全局共享的；new 出来的这份是私有的副本。所以 `"abc" == new String("abc")` 是 false（地址不同），equals 是 true。
+
+**intern 的作用**：把字符串"登记"进常量池并返回常量池里的那份——`new String("abc").intern() == "abc"` 是 true。**实际用途**：解析大量重复字符串（比如日志级别、城市名）时，先 intern 再比较可以用 == 替代 equals 提速——但常量池本身也在堆里且占内存，滥用反而更慢，现代 JVM 下这属于"知道即可"的优化。
+
+**注意**：JDK 7 起 intern 把引用放进堆的字符串池而不是复制，行为有细微变化——答出版本差异是加分项。

@@ -1,0 +1,21 @@
+---
+question: 跨域是什么？CORS 的原理和解决方式？
+category: 计算机网络
+difficulty: 中
+tags: [CORS, 跨域]
+companies: [所有大厂]
+---
+**跨域是浏览器的安全机制**（同源策略：协议+域名+端口全相同才算同源）——**服务器之间不存在跨域**，curl、后端互调随便通。
+
+**CORS（跨域资源共享）是官方解法**，核心是**浏览器和服务器之间的一套"签证"对话**：
+
+**简单请求**：浏览器直接发，但偷偷带 `Origin: a.com`；服务器响应头 `Access-Control-Allow-Origin: a.com` → 浏览器放行；没这个头 → **浏览器把响应拦下**（注意：**服务器已经执行了**，拦的是前端看结果——这就是为什么跨域错误里请求可能是 200）。
+
+**预检请求（preflight，重点）**：请求"不那么简单"（带自定义 header、Content-Type 是 JSON、非 GET/POST/HEAD）时，浏览器先发一个 **OPTIONS** 试探："我想带这些 header 发 JSON 可以吗？"——服务器回"允许的来源/方法/头" → 浏览器才发真请求。**你在浏览器看到的诡异 OPTIONS 请求就是它**。
+
+**解决方式按场景**：
+- 前后端分离 → **后端配 CORS 响应头**（Spring @CrossOrigin / CorsFilter / 网关统一配——**推荐在网关统一做**）
+- 带 cookie → 前端 withCredentials + 后端 `Allow-Credentials: true` 且 Origin **不能是 `*`**（必须写具体域名）
+- 开发期临时 → vite/webpack 的 devServer proxy（把请求代理成同源，骗过浏览器）
+
+**高频坑**：OPTIONS 被网关鉴权拦截（401）——预检不带 cookie/token，**鉴权必须放行 OPTIONS**。

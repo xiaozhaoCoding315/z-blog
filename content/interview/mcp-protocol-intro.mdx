@@ -1,0 +1,18 @@
+---
+question: MCP（Model Context Protocol）是什么？解决什么问题？
+category: Agent / LLM 应用
+difficulty: 中
+tags: [MCP, 协议]
+companies: [字节]
+---
+**MCP 之前的世界——M×N 地狱**：M 个 AI 应用 × N 种工具/数据源，每个应用接每个工具都要单独开发——我们接 ChatGPT 的插件、Claude 的 function、自己的私有格式，**工具生态碎片化**。
+
+**MCP 的野心——"AI 应用的 USB-C"**：Anthropic 提出的开放协议，把 **应用（Host/Client）与工具/数据提供方（Server）之间的连接标准化**——工具方实现一次 MCP Server（暴露工具、资源、提示模板），**所有支持 MCP 的应用都能用**；应用方接入一次协议，**所有 MCP 工具都能接**——M×N 变 M+N。
+
+**三个原语**：**Tools**（可调用的函数——查库、发邮件）；**Resources**（可读的数据——文件、数据库表）；**Prompts**（预设的提示模板）。
+
+**传输**：本地 stdio（命令行起进程，本地工具）或 Streamable HTTP（远程服务）——JSON-RPC 消息格式。
+
+**和 Function Calling 的关系（高频混淆）**：Function Calling 是**模型的能力**（会按 schema 输出调用参数）；MCP 是**生态的协议**（应用与工具提供方之间的标准接口）——**FC 负责"会说"，MCP 负责"接到哪"**，互补不替代。
+
+**现状与务实判断**：OpenAI、Google 都已跟进支持，正在成为事实标准；自建内部工具暴露成 MCP Server 一次，公司内所有 Agent 共用——**这就是它的价值**。

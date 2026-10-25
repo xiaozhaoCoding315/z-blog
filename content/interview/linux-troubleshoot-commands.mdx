@@ -1,0 +1,23 @@
+---
+question: 线上 Linux 服务器出问题，你的排查命令套路是什么？
+category: 操作系统
+difficulty: 中
+tags: [Linux, 排查]
+companies: [所有大厂]
+---
+**背下这套"四板斧顺序"——top → 定位资源 → 深入验证**：
+
+**第一板斧·整体体检**：`top`（CPU/负载/内存一屏看）+ `uptime`（负载趋势：1/5/15 分钟，load 超 CPU 核数=堵了）+ `df -h`（磁盘满没满——**磁盘 100% 是无数诡异故障的元凶**）。
+
+**第二板斧·按症状深入**：
+
+- **CPU 高**：`top` 找进程 → `top -Hp <pid>` 找线程 → jstack 定位（Java 线）或 `py-spy`（Python 线）
+- **内存高**：`free -h` 看 available 不是 free（buff/cache 可回收）；`ps aux --sort=-%mem | head` 找大户；Java 用 jmap/NMT 分析
+- **磁盘 IO 高**：`iostat -x 1`（%util 高=盘忙）；`iotop` 找哪个进程在狂读写——常见元凶：日志刷屏、数据库全表扫、swap 抖动
+- **网络异常**：`ss -s`（连接数概况）、`ss -ant state established | wc -l`、`netstat`/`tcpdump` 抓包分析、`ping`/`telnet 端口` 测连通
+
+**第三板斧·追责到文件**：`lsof -p <pid>`（进程打开了什么文件/连接）；`lsof | grep deleted`（**删了文件空间不释放的经典现场**——fd 还被握着）。
+
+**第四板斧·善后工具**：`dmesg -T | tail`（**OOM Killer 干掉了谁、硬件报错**——服务莫名消失先看这里！）、`sar`（历史指标回放——"昨晚三点发生了什么"）、`journalctl`/应用日志。
+
+**答题心法**：别背命令字典，**按"症状→假设→验证"的思路报组合拳**——面试官想看的是排查的条理性。

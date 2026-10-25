@@ -1,0 +1,15 @@
+---
+question: TCP 的 keepalive 和 HTTP 的 keep-alive 是一回事吗？
+category: 计算机网络
+difficulty: 中
+tags: [TCP, HTTP]
+---
+**完全两码事，纯属撞名**——这题就是考你会不会混。
+
+**HTTP keep-alive（应用层）——连接复用**：一次 HTTP 请求完别断 TCP，下一个请求接着用——省掉每次三次握手+TLS 握手的开销（HTTPS 下一次握手 100ms+）。HTTP/1.1 默认开启；HTTP/2 的多路复用是它的进化版（连接不但复用还能并行）。
+
+**TCP keepalive（传输层）——死链检测**：连接**空闲太久**（默认 2 小时）后，TCP 定时发探测包问"你还活着吗？"——连续几个没回应就宣告连接死亡。**它不是给 HTTP 复用用的，是清理"对端悄悄断电/网线拔了/NAT 表项过期"的僵尸连接**（对端不会给你发 FIN，你不知道它死了）。
+
+**为什么 2 小时基本没用**：等你发现死链黄花菜都凉了——所以应用层一般自己实现心跳（WebSocket ping/pong 30 秒、数据库连接池的 testOnBorrow/validationQuery）。
+
+**串起来的完整图景**：一个 HTTP 长连接（keep-alive）在空闲时，靠 TCP keepalive（或应用心跳）确认对端还活着——**一个管"复用省握手"，一个管"探活清死链"**。

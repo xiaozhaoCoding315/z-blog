@@ -1,0 +1,21 @@
+---
+question: Stream 流式 API 的原理？有哪些坑？
+category: Java 基础
+difficulty: 中
+tags: [Stream, Lambda]
+companies: [美团]
+---
+**Stream = 声明式的数据处理流水线**：`list.stream().filter(x -> x > 0).map(x -> x * 2).collect(toList())`——你说"要什么"，不说"怎么循环"。
+
+**原理两个关键词**：
+- **惰性求值**：filter/map 只是登记操作，**不触发计算**；**终结操作**（collect/forEach/count）才一次性拉起整条流水线——元素像流水一样一个个过完全部工序（不是每步都遍历一遍全集合）
+- **短路操作**：findFirst/anyMatch/limit 找到就停，不全量处理
+
+**四个高频坑**：
+
+1. **并行流的隐形炸弹**：parallelStream 底层是公共 ForkJoinPool——**里面做 IO 会饿死全应用的并行任务**；仅限纯 CPU 计算，且数据量要大（万级以下并行开销反而更慢）
+2. **forEach 里改外部集合**：不是线程安全的玩法，而且破坏声明式语义——要收集用 collect
+3. **无限流忘了 limit**：`Stream.generate(...)` 无限吐——必须 limit/短路截断
+4. **性能真相**：简单遍历 Stream 比传统 for 慢一点（装箱/多态调用）；**它的收益在可读性和并行化**，热路径极致性能仍用 for
+
+**实践口径**："集合转换过滤用 Stream（可读性碾压），简单计数/首元素 for 也行——**别教条，可读性和场景优先**"。

@@ -1,0 +1,16 @@
+---
+question: 什么是 SPI 机制？JDBC 为什么用它？
+category: Java 基础
+difficulty: 难
+tags: [SPI, JDBC]
+companies: [阿里]
+---
+**SPI（服务提供者接口）= "接口在框架里，实现在各家的 jar 里，运行时自动发现"**。像 USB 接口规范：主板只定接口，鼠标键盘各厂商自己做，插上就能用。
+
+**怎么发现的**：约定优于配置——实现方在自己的 jar 里放 `META-INF/services/接口全名` 文件，内容是实现类名；框架用 ServiceLoader 扫描所有 jar 的这个位置，把实现类全部加载。
+
+**JDBC 为什么需要它**：DriverManager 在 JDK 核心库里（由 Bootstrap 类加载器加载），MySQL 驱动 jar 在应用层——**双亲委派下"父亲看不见儿子的类"**。SPI 配合线程上下文类加载器"反向借手"，让核心库也能加载应用层实现。你写 `Class.forName("com.mysql...")` 的老代码为什么后来不用写了？——JDBC 4.0 起用 SPI 自动发现驱动。
+
+**框架应用**：Spring Boot 的自动配置清单（imports 文件）、Dubbo 的 SPI 增强（按 key 取实现+IOC 支撑）、SLF4J 绑定 Logback——全是这个思路。
+
+**一句话**：SPI 打通了"规范制定者"和"实现提供者"的解耦，是插件化架构的基石。

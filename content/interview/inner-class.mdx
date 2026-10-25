@@ -1,0 +1,23 @@
+---
+question: 内部类有哪几种？静态内部类单例为什么好用？
+category: Java 基础
+difficulty: 中
+tags: [内部类, 单例]
+---
+**四种，记"成员、静态、局部、匿名"**：
+
+- **成员内部类**：像实例字段，**天然持有外部类的引用**（所以能访问外部实例的东西）——这个隐藏引用也是内存泄漏的嫌疑犯之一
+- **静态内部类**：加了 static，**不持有外部引用**——就是个恰好写在里面的普通类
+- **局部内部类**：方法里定义，几乎不用
+- **匿名内部类**：没名字现场实现接口/继承——按钮监听器满天飞时代的产物，现在被 Lambda 大量替代（但 Lambda 只能替代"函数式接口"的匿名类）
+
+**静态内部类单例为什么优雅**（高频考点）：
+
+```java
+class Singleton {
+    private static class Holder { static final Singleton INSTANCE = new Singleton(); }
+    public static Singleton getInstance() { return Holder.INSTANCE; }
+}
+```
+
+两个白嫖的好处：**懒加载**——Holder 只在第一次 getInstance 时才加载，实例才创建；**线程安全**——类初始化由 JVM 保证只执行一次（clinit 锁），不用自己写 synchronized。既饿汉的安全又懒汉的按需，还不加锁——所以它是"教科书单例"。

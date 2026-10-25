@@ -1,0 +1,25 @@
+---
+question: CompletableFuture 怎么用？比 Future 好在哪？
+category: Java 并发
+difficulty: 中
+tags: [CompletableFuture, 异步]
+companies: [美团, 字节]
+---
+**老 Future 的两个死穴**：get() 要阻塞干等（等外卖只能站门口）；没有"好了之后干什么"的编排能力（回调链写不了）。
+
+**CompletableFuture = 异步任务的乐高**，核心三招：
+
+**1. 组合（thenCompose/thenCombine）**：查用户 → 拿到 id 查订单，链式不阻塞：
+
+```java
+queryUser(phone)                      // 异步查用户
+    .thenCompose(u -> queryOrder(u.getId()))   // 用结果发起下一步
+    .thenCombine(queryCreditAsync(), (order, credit) -> assemble(order, credit))  // 两个并行结果合并
+    .exceptionally(e -> fallback());           // 出错兜底
+```
+
+**2. 并行聚合**：`CompletableFuture.allOf(f1, f2, f3)`——页面聚合接口并行调 3 个下游再 join 汇总，总耗时 = 最慢那个而不是三者相加（300ms+300ms+300ms 变成 max=300ms）。
+
+**3. 线程池必须自己传**：不传 executor 时用公共 ForkJoinPool（CPU 密集型配置）——**你调接口查库的 IO 任务跑在 CPU 池上，会把别的任务饿死**。生产必须 `supplyAsync(task, ioExecutor)` 指定线程池，这是事故级细节。
+
+**对比 CountDownLatch**：allOf 能拿返回值、能异常传播、能超时——新代码别再用 Latch 拼凑。

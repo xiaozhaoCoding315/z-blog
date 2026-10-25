@@ -1,0 +1,24 @@
+---
+question: redo log 和 binlog 的一致性怎么保证？（两阶段提交）
+category: MySQL
+difficulty: 难
+tags: [两阶段提交, redo, binlog]
+companies: [字节]
+---
+**问题先立住**：更新一条数据要写 redo log 又要写 binlog——**俩日志必须同时成功或同时失败**，否则主库和从库数据永久不一致。
+
+**灾难推演**（假设没有协调机制）：
+- 先写 redo 后写 binlog，中间崩了：主库有数据（redo 恢复出来了），从库没有——主从不一致
+- 先写 binlog 后写 redo，中间崩了：从库有主库没有——反向不一致
+
+**InnoDB 的解法——内部两阶段提交**：
+
+1. redo log 写入并标记 **prepare** 状态
+2. 写 binlog
+3. redo log 标记 **commit**
+
+**崩溃恢复时的判断逻辑**（灵魂）：扫到 prepare 状态的 redo——**去看对应的 binlog 是否完整**：完整就提交（补个 commit）；不完整就回滚。**binlog 写成功是"事务真正成立"的裁决标准**——因为它代表从库可能已经拿到了，必须认账。
+
+**延伸**：`sync_binlog=1`（每次提交刷盘 binlog）+ `innodb_flush_log_at_trx_commit=1`（每次提交刷盘 redo）= 双 1 配置，最安全最慢——金融场景标配；性能敏感场景放宽为 100/秒级，代价是崩溃丢最近若干事务。
+
+**答题格局**："两阶段提交的本质是让 binlog 成为事务的最终裁决——它成功，事务就成立"，说到这句就够了。

@@ -1,0 +1,19 @@
+---
+question: 字符集为什么必须用 utf8mb4？utf8 和它的区别？
+category: MySQL
+difficulty: 易
+tags: [字符集]
+---
+**MySQL 的 utf8 是个"缩水版"**——历史遗留的最大坑之一：它最多 3 字节，**存不了 emoji 和部分生僻字**（这些是 4 字节的 UTF-8 字符）。
+
+**事故现场**：用户昵称带个 😀，insert 直接报 `Incorrect string value`——用户改个头像昵称就报错，工单莫名奇妙。
+
+**utf8mb4 才是真·UTF-8**（most bytes 4）——完整 4 字节支持，emoji、生僻汉字、"𠮷"这类字符全OK。**8.0 起默认字符集就是 utf8mb4**，老库（5.7 及以前默认 latin1/utf8）迁移时重点检查。
+
+**连带三件事**：
+
+1. **排序规则配套**：utf8mb4_general_ci（快）vs **utf8mb4_0900_ai_ci**（8.0 默认，更准确的 Unicode 排序）——join 两表排序规则不同会**索引失效**（隐式转换）
+2. **索引长度**：老版本 utf8mb4 下 varchar 索引有 767 字节限制（utf8mb4 每字符最多 4 字节，191 字符就到顶）——5.7+ 开 innodb_large_prefix 后 3072 字节
+3. **连接层也要对齐**：JDBC 连接串 `characterEncoding=utf8`（驱动会映射到 utf8mb4）+ 库表字符集一致——**三层（连接/库/表）不一致就会出现存进去就乱码**
+
+**一句话**：新项目一律 utf8mb4，别给 emoji 留后患。

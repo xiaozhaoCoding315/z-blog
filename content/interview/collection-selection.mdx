@@ -1,0 +1,20 @@
+---
+question: 场景题——存一组数据，ArrayList、LinkedList、HashMap 到底怎么选？
+category: Java 集合
+difficulty: 中
+tags: [选型]
+companies: [美团]
+---
+给你一把**三问选型法**，比背特性表实用：
+
+**第一问：是"键值对"还是"列表"？** 按 key 找东西（用户ID→用户信息）→ Map 系；只是排队/顺序集合 → List/Set 系。
+
+**第二问（Map 系）：要不要排序/范围查？** 要排行榜、找区间 → TreeMap；只是快速存取 → HashMap；并发 → ConcurrentHashMap。小 key 型对象（一行记录的字段集）可考虑 HashMap 的近亲实体类或 Redis Hash。
+
+**第三问（List/Set 系）：去重吗？随机访问多吗？两端操作多吗？**
+- 要去重 → Set（有序去重 LinkedHashSet / 排序 TreeSet）
+- 按下标访问为主 → ArrayList（别犹豫，LinkedList 的插删优势前提太苛刻）
+- 双端进出（栈/队列语义）→ **ArrayDeque**（比 LinkedList 快且省内存，官方推荐）
+- 读多写极少的并发列表 → CopyOnWriteArrayList
+
+**举个综合例子**：做个"最近搜索记录，最多存 10 条，重复的置顶"——用 **LinkedList + remove + addFirst**？不：用 ArrayDeque 或直接 ArrayList remove+add(0,·)（10 个元素谈性能是自寻烦恼，**数据量小时怎么简单怎么来**）——这句工程直觉说出来很加分。

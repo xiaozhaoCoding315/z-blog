@@ -1,0 +1,16 @@
+---
+question: Object 类有哪些核心方法？各自什么用？
+category: Java 基础
+difficulty: 易
+tags: [Object]
+---
+Object 是所有类的祖宗，**六个方法**个个有考点：
+
+- **equals / hashCode**：黄金搭档——hash 定位桶、equals 验明正身，必须配套重写（详见集合篇那题）
+- **toString**：打印时的"名片"，不重写输出的是 类名@哈希码 的乱码——Lombok @ToString 或 record 一键搞定
+- **clone**：默认浅拷贝（protected 的，想用得实现 Cloneable 并改 public）——深拷贝的坑在拷贝篇讲过，实践中更推荐"序列化重建"
+- **getClass**：运行时拿到 Class 对象——反射的入口
+- **wait / notify / notifyAll**：线程协作三件套——**必须在 synchronized 块里调**（得先持锁才能让出锁），这是和生产者消费者模型绑定的高频考点
+- finalize：对象回收前的"遗言"——**已废弃**（执行时机不定、性能差，JDK 9 起标记 deprecated），清理资源用 try-with-resources
+
+**答题技巧**：别平铺直叙，挑 equals/hashCode 和 wait/notify 深讲——一个连数据结构、一个连并发，体现知识网。

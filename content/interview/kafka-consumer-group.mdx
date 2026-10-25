@@ -1,0 +1,19 @@
+---
+question: Kafka 的消费者组和 rebalance 是怎么回事？
+category: 消息队列
+difficulty: 中
+tags: [Kafka, 消费组]
+companies: [字节]
+---
+**消费者组 = 天然的分槽干活机制**：一个 topic 有 8 个分区，消费组 4 个成员——每人认领 2 个分区；成员加到 8 个每人 1 个；**超过 8 个就有人失业**（多余的空转）——这是扩容消费能力的天花板。
+
+**不同组互不干扰**：订单服务一个组、风控服务一个组——**同一条消息两组各自完整消费一遍**（广播到组、组内单播）。这就是"一份消息多处消费"的实现方式。
+
+**rebalance（重平衡）——重新分蛋糕**：成员增减、分区数变化、成员"心跳超时被踢"时触发——分区重新分配。**代价惨重**：rebalance 期间**全组 STOP THE WORLD**（所有消费暂停），频繁 rebalance = 服务抖动。
+
+**生产三大诱因与药方**：
+1. 消费太慢，两次 poll 间隔超过 max.poll.interval.ms → 被误判死亡踢出 → 触发 rebalance → 更慢（**死亡螺旋**）——药方：调小 max.poll.records（每次少捞点）、消费逻辑异步化/批量优化
+2. GC 停顿导致心跳断——调大 session.timeout
+3. 成员频繁上下线（K8s 滚动发布）——用 CooperativeStickyAssignor（增量 rebalance，只动受影响的分区）
+
+**点睛**："rebalance 是 Kafka 消费端 90% 抖动的根源——三个参数（poll 间隔/批次大小/分配器）值得每个用 Kafka 的人盯紧"。

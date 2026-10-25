@@ -1,0 +1,27 @@
+---
+question: 线程池怎么优雅关闭？shutdown 和 shutdownNow 的区别？
+category: Java 并发
+difficulty: 中
+tags: [线程池, 优雅关闭]
+companies: [美团]
+---
+**关池像关餐厅，两种关法**：
+
+**shutdown()——温柔的"打烊"**：不再接新客（新任务被拒），**但在排队和在做 的全部做完**才关门。适合能等任务跑完的场景。
+
+**shutdownNow()——立刻清场**：尝试**中断正在执行的线程**（发 interrupt）、清空队列返回没执行的任务清单、停止接新。正在跑的任务收到 interrupt 是否真停，**取决于任务代码有没有响应中断**（循环里检查 Thread.interrupted() / 可中断的阻塞调用）。
+
+**优雅关闭标准姿势**：
+
+```java
+pool.shutdown();                              // 先拒绝新任务
+if (!pool.awaitTermination(30, TimeUnit.SECONDS)) {
+    pool.shutdownNow();                       // 30 秒没干完就强关
+    if (!pool.awaitTermination(10, TimeUnit.SECONDS))
+        log.error("线程池强制关闭失败");       // 还没停就要记日志排查了
+}
+```
+
+**连带的坑**：任务里 catch 了 InterruptedException 却不处理也不恢复中断标志——中断信号被吞，shutdownNow 失效。规矩是 catch 里要么收尾退出，要么 `Thread.currentThread().interrupt()` 把标志还回去。
+
+**Spring 的话**：@PreDestroy 或 contextClosed 事件里做上面这套——服务下线不停正在处理的请求，这就是"优雅停机"的底层件。

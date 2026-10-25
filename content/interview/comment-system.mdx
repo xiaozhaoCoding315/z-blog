@@ -1,0 +1,24 @@
+---
+question: 评论区怎么设计？千万级评论怎么存储和分页？
+category: 系统设计 & 场景
+difficulty: 中
+tags: [评论系统]
+companies: [字节, 美团]
+---
+**两种产品形态两套设计**：
+
+**1. 平铺式（电商/短视频）**：只需"按时间/热度取前 N 条"——评论表 (id, target_id, uid, content, like_cnt, create_time)，**target_id + 时间/热度建联合索引**分页。热评缓存 Redis ZSet（按点赞数排序，定时刷新）。
+
+**2. 两级式（论坛盖楼）**：根评论 + 回复。经典方案：**根评论一页页拉，回复挂在根评论下懒加载**——
+
+```
+comment: id, target_id, root_id, parent_id, reply_to_uid, content...
+-- root_id 是关键：根评论的 id（根评论自己 root_id = id）
+-- parent_id 是直接回复的那条（用于"回复@某人"）
+```
+
+查"某根评论的回复"：`WHERE root_id = ? ORDER BY id` 一个索引搞定——**回复树拍平存储，读取还是线性的**（不必递归查询）。
+
+**千万级的三个手段**：分库分表（按 target_id 分片，同一内容的评论同库）；**计数冗余**（评论数单独计数表/Redis，别 count(*)）；热门内容评论缓存（本地+Redis 两级）。
+
+**点睛**："评论系统的设计核心是**root_id 拍平**——用一点写冗余换读取的极简，树形结构几乎从不需要递归查"。
