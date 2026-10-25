@@ -3,6 +3,7 @@ import { embed } from "ai";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { embeddingEnabled, embeddingModel } from "@/lib/ai";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -25,6 +26,11 @@ export async function GET(request: Request) {
 
   const db = getDb();
   if (!db || !embeddingEnabled) return NextResponse.json({ items: [] });
+
+  // 限频：单 IP 每分钟 20 次（搜索每次消耗一次 embedding 调用）
+  if (!rateLimit(`search:${getClientIp(request)}`, 20, 60_000)) {
+    return NextResponse.json({ items: [], error: "too many requests" }, { status: 429 });
+  }
 
   try {
     const { embedding } = await embed({ model: embeddingModel, value: q });

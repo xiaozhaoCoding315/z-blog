@@ -11,6 +11,7 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { aiEnabled, chatModel, embeddingModel } from "@/lib/ai";
 import { githubSlug } from "@/lib/slug";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 120;
 
@@ -37,6 +38,18 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "AI 功能未启用：请在 .env 中配置 AI_API_KEY" },
       { status: 503 }
+    );
+  }
+
+  // 限频：单 IP 每分钟最多 5 次问答、每天最多 60 次（防公网刷 token）
+  const ip = getClientIp(request);
+  if (
+    !rateLimit(`chat:m:${ip}`, 5, 60_000) ||
+    !rateLimit(`chat:d:${ip}`, 60, 86_400_000)
+  ) {
+    return NextResponse.json(
+      { error: "提问太频繁啦，休息一下再来～" },
+      { status: 429 }
     );
   }
 
