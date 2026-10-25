@@ -1,0 +1,15 @@
+---
+question: 常见的垃圾收集器有哪些？G1 的回收原理？
+category: JVM
+difficulty: 难
+tags: [GC, G1]
+companies: [阿里, 字节]
+---
+**判断垃圾**：引用计数（循环引用问题）→ 主流是**可达性分析**（GC Roots：栈引用、静态变量、常量、JNI 等）。
+
+**收集器演进**：
+- CMS（1.8 前主流）：并发标记清除，低停顿但内存碎片 + 并发失败风险，1.14 已移除
+- **G1（1.9+ 默认）**：把堆划成 ~2048 个等大 Region，逻辑分代物理不分代；优先回收「垃圾占比高 + 回收收益大」的 Region（Garbage First 得名）；通过 `-XX:MaxGCPauseMillis`（默认 200ms）的可预测停顿模型反向决定每次回收多少个 Region；并发标记（SATB）+ 复制整理，无碎片
+- ZGC/Shenandoah：着色指针/读屏障实现亚毫秒级停顿，大堆低延迟场景
+
+**调优思路**：先看 GC 日志（`-Xlog:gc*`）分清是 Young GC 频繁（Survivor 小/对象存活短）还是 Mixed/Full GC（堆不足或晋升快），再对症调参，不要盲调。

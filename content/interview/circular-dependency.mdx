@@ -1,0 +1,18 @@
+---
+question: Spring 怎么解决循环依赖？为什么需要三级缓存？
+category: Spring
+difficulty: 难
+tags: [循环依赖, 三级缓存]
+companies: [字节, 阿里]
+---
+**三级缓存**：
+
+1. singletonObjects：成品单例
+2. earlySingletonObjects：提前曝光的半成品（构造完未初始化）
+3. singletonFactories：ObjectFactory 工厂
+
+**流程**：A 实例化后先把「获取早期引用的工厂」放入三级缓存 → A 填充属性发现依赖 B → 创建 B → B 注入 A 时从三级缓存工厂拿到 A 的早期引用（若 A 需要 AOP，工厂在此刻提前生成代理）→ B 完成 → A 继续完成。
+
+**为什么三级而不是两级**：正常情况二级足够；第三级存工厂是为了**把「是否生成代理」的决策延迟到真正发生循环依赖时**，保证没有循环依赖时代理仍在初始化后（postProcessor）统一生成，符合 Bean 生命周期语义。
+
+**解决不了的场景**：构造器循环依赖（对象都没建出来）、prototype 作用域、@Async 代理导致的 NPE。

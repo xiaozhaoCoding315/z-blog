@@ -1,0 +1,18 @@
+---
+question: synchronized 和 ReentrantLock 的区别？各自适用场景？
+category: Java 并发
+difficulty: 中
+tags: [锁, 并发]
+companies: [字节, 拼多多]
+---
+| 维度 | synchronized | ReentrantLock |
+| --- | --- | --- |
+| 实现 | JVM 内置（monitorenter/exit） | JDK 层（AQS） |
+| 释放 | 异常自动释放 | 必须 finally 手动 unlock |
+| 公平锁 | 仅非公平 | 可选公平/非公平 |
+| 条件变量 | 一个（wait/notify） | 多个 Condition 精准唤醒 |
+| 可中断/超时 | 不支持 | `lockInterruptibly` / `tryLock(timeout)` |
+
+**synchronized 的进化**：JDK 1.6 后有偏向锁→轻量级锁（CAS 自旋）→重量级锁的升级过程，常规竞争下性能已与 ReentrantLock 接近，且不会忘记释放锁。
+
+**选型**：简单互斥优先 synchronized；需要 tryLock 超时、可中断、公平性或多条件队列时用 ReentrantLock。

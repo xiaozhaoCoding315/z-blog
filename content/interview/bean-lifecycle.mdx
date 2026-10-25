@@ -1,0 +1,17 @@
+---
+question: Spring Bean 的生命周期？
+category: Spring
+difficulty: 中
+tags: [Bean, 生命周期]
+companies: [美团, 字节]
+---
+**四阶段记忆法**：
+
+1. **实例化**：反射调用构造器生成对象（还不是完整 Bean）
+2. **属性填充**：依赖注入（@Autowired 发生在这里）
+3. **初始化**：Aware 回调 → BeanPostProcessor 前置 → `@PostConstruct`/InitializingBean/init-method → 后置处理器（**AOP 代理通常在这一步生成**）
+4. **销毁**：容器关闭时 `@PreDestroy`/DisposableBean
+
+**高频追问**：
+- BeanPostProcessor 的 postProcessAfterInitialization 返回代理对象，这就是 AOP 的接入点
+- 单例默认随容器存活；prototype 容器只负责创建，销毁回调不执行

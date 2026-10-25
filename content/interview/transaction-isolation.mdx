@@ -1,0 +1,17 @@
+---
+question: 事务隔离级别有哪些？InnoDB 的 MVCC 是怎么实现的？
+category: MySQL
+difficulty: 中
+tags: [事务, MVCC]
+companies: [美团, 字节]
+---
+**四级隔离与问题**：读未提交（脏读）→ 读已提交（不可重复读）→ **可重复读（InnoDB 默认，且通过间隙锁基本解决幻读）** → 串行化。
+
+**MVCC 三要素**：
+1. 每行隐藏列：`trx_id`（最后修改事务）、`roll_pointer`（指向 undo log 版本链）
+2. **ReadView**：创建时活跃事务列表，判断某个版本对当前事务是否可见（trx_id < min_id 可见；trx_id > max_id 不可见；在列表中不可见→沿版本链找）
+3. undo log 版本链
+
+**RC vs RR 的本质区别**：RC 每次快照读都生成新 ReadView（能看到别人已提交的），RR 只在第一次读生成（整个事务复用）——同一份数据结构，只差 ReadView 的生成时机，这是面试最爱的追问点。
+
+**当前读 vs 快照读**：select...for update / update 是当前读，读最新版本并加锁。

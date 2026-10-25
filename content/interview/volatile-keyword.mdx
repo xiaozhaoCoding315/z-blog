@@ -1,0 +1,14 @@
+---
+question: volatile 的作用和原理？它能保证线程安全吗？
+category: Java 并发
+difficulty: 易
+tags: [JMM, volatile]
+---
+**两个语义**：
+
+1. **可见性**：写 volatile 变量立即刷回主内存并使其他 CPU 缓存行失效（MESI 协议），读时强制从主内存加载。
+2. **禁止指令重排**：编译器和 CPU 层面插入内存屏障。经典应用是 DCL 单例中防止「对象未初始化完就被引用」——`new` 实际是分配内存→初始化→赋引用三步，可能重排为 1→3→2。
+
+**不保证原子性**：`i++` 是读-改-写三步操作，volatile 挡不住并发交错。需要原子性用 AtomicInteger（CAS）或加锁。
+
+**底层**：HotSpot 中 volatile 写汇编为 `lock addl $0,(rsp)`，前缀 lock 触发缓存一致性。

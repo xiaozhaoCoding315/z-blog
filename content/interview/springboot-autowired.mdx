@@ -1,0 +1,12 @@
+---
+question: Spring Boot 自动装配的原理？
+category: Spring
+difficulty: 中
+tags: [SpringBoot, 自动装配]
+companies: [美团, 拼多多]
+---
+**一句话**：`@SpringBootApplication` → `@EnableAutoConfiguration` → `@Import(AutoConfigurationImportSelector)` 读取所有依赖 jar 中 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`（2.7+ 格式，老版本是 spring.factories）里的配置类，按 **条件注解**（`@ConditionalOnClass`、`@ConditionalOnMissingBean`、`@ConditionalOnProperty` 等）过滤后注册到容器。
+
+**以 starter 为例**：引入 `redis-starter` → 自动配置类检测到 RedisOperations 类存在 → 装配 RedisTemplate，用户零配置即可注入使用；`@ConditionalOnMissingBean` 保证用户自定义的 Bean 优先。
+
+**自定义 starter 三要素**：自动配置类 + 条件注解 + imports 文件声明，再论 META-INF 里的 `spring-configuration-metadata` 让 IDE 识别配置提示。

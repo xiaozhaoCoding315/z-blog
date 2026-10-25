@@ -1,0 +1,14 @@
+---
+question: 谈谈你对 Spring IOC 和 AOP 的理解？
+category: Spring
+difficulty: 易
+tags: [IOC, AOP]
+companies: [所有大厂]
+---
+**IOC（控制反转）**：对象的创建与依赖管理从代码（new）反转给容器。DI 是其实现方式。价值：解耦（面向接口）、统一生命周期管理、可测试性（Mock 注入）。核心容器体系：BeanFactory（基础）→ ApplicationContext（加事件/国际化/自动刷新）。
+
+**AOP（面向切面）**：把日志、事务、权限等横切逻辑从业务代码抽离，通过动态代理织入：
+- JDK 动态代理：基于接口，`Proxy.newProxyInstance`
+- CGLIB：子类继承，无接口也可（final 类/方法不行）
+
+**两者协作的经典例子**：`@Transactional` 就是 AOP 环绕通知——开启事务 → 执行业务方法 → 按异常与否 commit/rollback，业务代码零侵入。注意自调用不走代理导致事务失效，是高频追问点。

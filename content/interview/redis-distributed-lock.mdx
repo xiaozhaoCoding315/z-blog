@@ -1,0 +1,15 @@
+---
+question: Redis 分布式锁怎么实现？有哪些坑？
+category: Redis
+difficulty: 中
+tags: [分布式锁]
+companies: [字节, 美团]
+---
+**基础实现**：`SET key uniqueValue NX PX 30000`——原子地「不存在才设置 + 过期时间」；解锁用 Lua 脚本（先 GET 比对是自己的锁再 DEL，保证判断与删除原子性）。
+
+**经典三坑**：
+1. **锁过期但业务没跑完** → 别人拿到锁，自己删锁时误删他人的 → value 存唯一标识 + Lua 校验；或看门狗续期（Redisson 的 watchdog）
+2. **主从切换丢锁**：主节点写入锁后未同步就宕机，从晋升后锁消失 → RedLock 争议较大；强一致要求高就直接用 ZooKeeper/etcd
+3. **可重入**：同线程重复加锁死锁 → Redisson 用 hash 结构（field 存线程标识，value 存次数）实现可重入
+
+**工程结论**：大多数场景 Redisson 的 watchdog + 看门狗续期够用；对锁绝对正确的业务（资金）用数据库乐观锁/etcd 兜底。

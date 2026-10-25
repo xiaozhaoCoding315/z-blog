@@ -1,0 +1,15 @@
+---
+question: ConcurrentHashMap 是如何保证线程安全的？
+category: Java 集合
+difficulty: 中
+tags: [ConcurrentHashMap, 并发]
+companies: [阿里, 美团]
+---
+**JDK 1.8 抛弃了分段锁，改为 `CAS + synchronized` 锁单个桶头节点。**
+
+- **put**：桶为空用 CAS 写入失败自旋重试；桶不为空 synchronized 锁住头节点后操作链表/红黑树。锁粒度从「段」（1.7）细化到「桶」，并发度大幅提升。
+- **get 不加锁**：Node 的 val 与 next 用 `volatile` 修饰，保证可见性。
+- **size**：维护 `baseCount + CounterCell[]` 分散计数（类似 LongAdder），避免计数热点。
+- **扩容**：支持多线程协助扩容——每个线程认领一段桶区间（transferIndex）迁移，get 期间通过 ForwardingNode 保证可读。
+
+**为什么 key/value 不允许 null**：并发下 `get(key) == null` 无法区分「不存在」还是「值是 null」，二义性无法用 containsKey 消除（检查与获取之间可能被并发修改）。

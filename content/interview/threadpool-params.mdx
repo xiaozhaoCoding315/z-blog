@@ -1,0 +1,19 @@
+---
+question: 线程池的核心参数有哪些？任务提交后的执行流程？
+category: Java 并发
+difficulty: 中
+tags: [线程池, ThreadPoolExecutor]
+companies: [美团, 阿里]
+---
+**七个参数**：corePoolSize、maximumPoolSize、keepAliveTime + unit、workQueue、threadFactory、rejectedExecutionHandler。
+
+**提交任务流程（容易答反的点）**：
+
+1. 线程数 < core → 创建核心线程执行
+2. 核心满 → 进队列
+3. **队列满** → 才创建非核心线程（直到 max）
+4. 队列和 max 都满 → 触发拒绝策略
+
+**四种拒绝策略**：AbortPolicy（抛异常，默认）、CallerRuns（提交者自己跑，天然反压）、Discard、DiscardOldest。
+
+**参数怎么定**：CPU 密集 ≈ 核数 + 1；IO 密集 ≈ 核数 × (1 + 等待/计算比)。更可靠的是压测调优。**为什么不用 Executors 快捷方法**：newFixedThreadPool 队列无界可能 OOM，newCachedThreadPool 最大线程数 Integer.MAX_VALUE 可能创建海量线程——阿里规约要求手动 new ThreadPoolExecutor。
