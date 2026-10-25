@@ -55,6 +55,8 @@ curl -fsSL https://get.docker.com | sh
 
 ## 2. 首次部署
 
+**方式 A：服务器直接构建（内存 ≥ 4G 推荐）**
+
 ```bash
 # 用普通用户登录
 ssh deploy@服务器IP
@@ -87,19 +89,54 @@ docker compose up -d --build
 docker compose logs -f app
 ```
 
+**方式 B：本地构建镜像上传（2C2G 服务器必用，实测有效）**
+
+2G 内存即使加了 swap，`next build` 也会把整台服务器拖进 swap 风暴（SSH 失联、其它服务卡死）。**在小内存服务器上永远不要执行 `--build`**，改用：
+
+```bash
+# 1. 本地（开发机）构建并导出镜像
+docker compose build app
+docker save blog-app:latest | gzip > /tmp/blog-app.tar.gz   # 约 74MB
+
+# 2. 上传（5Mbps 带宽约 2-3 分钟）
+scp /tmp/blog-app.tar.gz root@服务器IP:/tmp/
+
+# 3. 服务器导入并启动（不构建）
+ssh root@服务器IP
+cd /opt/blog   # 源码目录，.env 已按上面说明配好
+docker load < /tmp/blog-app.tar.gz && rm /tmp/blog-app.tar.gz
+docker compose up -d --no-build
+```
+
+> 注意：`/tmp` 重启会清空，镜像包别长期放那里；服务器上已 `docker load` 过的镜像不受影响。
+
 浏览器打开 `http://服务器IP` —— 完成 🎉
 
 容器启动时自动执行：建表（幂等）→ 按 SHA-256 哈希增量同步文章 → 向量化 + AI 摘要。
 
+**别忘了安全组**：阿里云控制台 → ECS → 安全组 → 入方向添加：自定义 TCP / 80 / 0.0.0.0/0。
+
 ## 3. 日常更新
+
+**方式 A（服务器内存充足）：**
 
 ```bash
 cd ~/blog
 git pull
-docker compose up -d --build   # 只重建变更的文章，秒级完成
+docker compose up -d --build
 ```
 
-写了新文章 → push → 服务器 pull + up，入口脚本自动向量化新文章。
+**方式 B（2C2G，配合上面的本地构建流程）：**
+
+```bash
+# 本地
+git push && docker compose build app && docker save blog-app:latest | gzip > /tmp/blog-app.tar.gz
+scp /tmp/blog-app.tar.gz root@服务器IP:/tmp/
+# 服务器
+cd /opt/blog && git pull && docker load < /tmp/blog-app.tar.gz && docker compose up -d --no-build
+```
+
+写了新文章 → 部署新镜像 → 容器重启时入口脚本自动向量化新增文章（未变更的文章按哈希跳过，秒级）。
 
 ## 4. Giscus 评论（可选）
 
