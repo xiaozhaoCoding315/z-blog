@@ -10,7 +10,9 @@
     "blog:sync": "tsx scripts/sync.ts",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "new": "node scripts/new-post.mjs",
+    "deploy": "sh scripts/deploy.sh"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.77",

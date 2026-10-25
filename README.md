@@ -54,7 +54,23 @@ npm run dev
 
 > 配置了 `AI_API_KEY` 后重新运行 `npm run blog:sync [-- --force]` 可生成向量与 AI 摘要。
 
-## 写新文章
+## 写新文章并发布（两条命令）
+
+```bash
+# 1. 生成文章模板（自动填日期，给出预览地址）
+npm run new -- "我的新文章标题" my-new-post
+
+# 2. 写完 content/posts/my-new-post.mdx 后，本地预览（可选）
+npm run dev   # 打开 http://localhost:3000/blog/my-new-post
+
+# 3. 一键发布上线（本地构建镜像→上传→滚动更新，新文章自动同步+向量化）
+npm run deploy
+```
+
+发布脚本：`scripts/deploy.sh`（可用 `DEPLOY_HOST`/`DEPLOY_DIR` 环境变量改目标）。
+文章模板：`scripts/new-post.mjs`。
+
+### 手动建文章
 
 在 `content/posts/` 新建 `xxx.mdx`：
 
