@@ -21,7 +21,11 @@ const dateSchema = z
 export const postMetaSchema = z.object({
   title: z.string().min(1),
   date: dateSchema,
-  description: z.string().optional(),
+  // YAML 中 `description:` 留空会解析为 null，这里一并放行（null 视为未写，AI 摘要兜底）
+  description: z
+    .string()
+    .nullish()
+    .transform((v) => (v && v.trim() ? v : undefined)),
   tags: z.array(z.string()).default([]),
   pinned: z.boolean().default(false),
   draft: z.boolean().default(false),
