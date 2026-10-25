@@ -1,0 +1,14 @@
+---
+question: "== 和 equals 的区别？为什么重写 equals 必须重写 hashCode？"
+category: Java 基础
+difficulty: 易
+tags: [equals, hashCode]
+companies: [所有大厂]
+---
+**== 比较引用地址，equals 默认也是比较地址（Object 实现），重写后按内容比较。**
+
+**必须成对重写的原因**：HashMap/HashSet 先用 hashCode 定位桶，再用 equals 判断相等。只重写 equals 不重写 hashCode → 两个"相等"的对象 hash 不同 → 落到不同桶 → HashSet 出现重复、Map 取不到值。
+
+**约定**：equals 相等 → hashCode 必须相等；hashCode 相等 equals 未必相等（哈希冲突）。String、Integer 等都重写了两者。
+
+**追问点**：为什么 hashCode 不用对象地址？——地址唯一性好但无分布性，做桶下标冲突率 100%。

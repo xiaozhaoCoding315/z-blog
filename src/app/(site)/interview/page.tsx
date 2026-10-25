@@ -4,8 +4,9 @@ import { InterviewBrowser } from "@/components/interview/interview-browser";
 import { Reveal } from "@/components/site/reveal";
 
 export const metadata: Metadata = {
-  title: "面试",
-  description: "Java 后端 + Agent 方向面试题库：分类刷题、掌握度追踪与 AI 面试官追问。",
+  title: "面试题库",
+  description:
+    "Java 后端 + Agent 方向大型面试题库：八股文与场景设计题，分类刷题、掌握度追踪、AI 面试官追问。",
 };
 
 export default function InterviewPage() {
@@ -16,16 +17,41 @@ export default function InterviewPage() {
     difficulty: q.difficulty,
     tags: q.tags,
   }));
+  const categories = new Set(items.map((i) => i.category)).size;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
+    <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
       <header className="mb-10">
-        <h1 className="font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">
-          面试题库
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Java 后端 · Agent / LLM 应用 · 共 {items.length} 题 —— 先想再看答案，让 AI 面试官帮你深挖
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">
+              面试题库
+            </h1>
+            <p className="mt-2 max-w-xl text-muted-foreground">
+              八股文 · 场景设计 · 深挖追问 —— 先想再看答案，让 AI 面试官拷打你的每一个回答
+            </p>
+          </div>
+          <dl className="flex gap-6">
+            <div className="text-center">
+              <dd className="text-gradient font-heading text-3xl font-extrabold">
+                {items.length}
+              </dd>
+              <dt className="mt-0.5 text-[11px] text-muted-foreground">道题</dt>
+            </div>
+            <div className="text-center">
+              <dd className="text-gradient font-heading text-3xl font-extrabold">
+                {categories}
+              </dd>
+              <dt className="mt-0.5 text-[11px] text-muted-foreground">个分类</dt>
+            </div>
+            <div className="text-center">
+              <dd className="text-gradient font-heading text-3xl font-extrabold">
+                ∞
+              </dd>
+              <dt className="mt-0.5 text-[11px] text-muted-foreground">次追问</dt>
+            </div>
+          </dl>
+        </div>
       </header>
 
       <Reveal>

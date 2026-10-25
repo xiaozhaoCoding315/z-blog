@@ -1,0 +1,17 @@
+---
+question: 五种 IO 模型是什么？BIO/NIO/AIO 分别对应哪些场景？
+category: 操作系统
+difficulty: 中
+tags: [IO模型]
+companies: [美团, 字节]
+---
+**五种**（以 read 为例）：
+1. 阻塞 IO（BIO）：线程阻塞等数据+拷贝
+2. 非阻塞 IO：轮询（忙等浪费 CPU）
+3. **IO 多路复用**：select/poll/epoll 一个线程监听多个 fd——Redis/Nginx/Netty 的基石
+4. 信号驱动 IO：SIGIO 通知，少用
+5. 异步 IO（AIO）：内核完成数据拷贝后回调——Linux io_uring 之前实用性差
+
+**关键区分**：多路复用仍是同步 IO（数据就绪后用户线程自己拷贝）；AIO 连拷贝都由内核完成。
+
+**Java 对应**：BIO（ServerSocket）→ NIO（Channel + Selector，Netty 封装）→ AIO（Windows IOCP 实现，Linux 上仍旧是模拟）。**Linux 世界的事实标准是 epoll + Netty**。

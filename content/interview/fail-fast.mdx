@@ -1,0 +1,14 @@
+---
+question: 什么是 fail-fast？ConcurrentModificationException 是怎么触发的？
+category: Java 集合
+difficulty: 易
+tags: [fail-fast]
+---
+**机制**：迭代器创建时记录 modCount，每次 next() 检查 modCount 是否被修改（add/remove 会改），变了立即抛 CME——尽早暴露并发修改错误而不是产生诡异结果。
+
+**遍历时删除的正确姿势**：
+1. `iterator.remove()`（会同步更新 expectedModCount）
+2. JDK8+ `list.removeIf(x -> ...)`（内部安全）
+3. **并发场景用 CopyOnWriteArrayList**（写时复制，遍历的是快照，天然不抛）
+
+**追问**：for-each 里直接 list.remove 会怎样——下一次 next 抛 CME；删倒数第二个元素是个著名例外（hasNext 提前返回 false 不触发检查）。

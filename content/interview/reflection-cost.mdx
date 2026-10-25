@@ -1,0 +1,13 @@
+---
+question: 反射的原理和代价？哪些框架重度依赖它？
+category: Java 基础
+difficulty: 中
+tags: [反射]
+---
+**原理**：运行期通过 Class 对象获取元信息（构造器/方法/字段），`Method.invoke` 早期是 native 调用，JIT 优化后第一步做 access check，性能损耗主要在参数装箱、方法查找与安全检查——单次调用比直接调用慢数倍，但**不是数量级差距**。
+
+**谁在用**：Spring IOC（反射实例化 Bean）、MyBatis（映射）、Jackson（字段读写）、动态代理（JDK Proxy）。
+
+**优化手段**：缓存 Method/Field 对象、setAccessible(true) 跳过检查、MethodHandle/LambdaMetafactory（高性能反射替代）。
+
+**追问**：反射能绕过 private 吗——setAccessible(true) 可以，但 JDK9+ 模块化后对未开放模块有限制。

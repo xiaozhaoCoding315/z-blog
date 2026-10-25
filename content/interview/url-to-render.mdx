@@ -1,0 +1,15 @@
+---
+question: 从输入 URL 到页面展示，中间发生了什么？
+category: 计算机网络
+difficulty: 中
+tags: [综合]
+companies: [所有大厂]
+---
+**万能框架题，按层展开**：
+1. **URL 解析** → DNS 递归/迭代查询（浏览器缓存→OS→本地 DNS→根→权威），hosts 劫持点
+2. **TCP 建连**（三次握手）+ TLS 握手（HTTPS）
+3. **HTTP 请求**：经过 CDN（命中直接回）→ 负载均衡 → 网关 → 服务端
+4. **服务端**：路由→中间件→业务（查 Redis/DB）→ 返回（强缓存 Cache-Control / 协商缓存 ETag 304）
+5. **浏览器渲染**：HTML 解析成 DOM → CSSOM → **渲染树** → 布局 Layout → 绘制 Paint → 合成 Composite；遇 JS 阻塞解析（defer/async）；图片懒加载
+
+**加分**：每一层都能被深挖——DNS 用 UDP 还是 TCP（都有：区域传输 TCP）、渲染优化（重排重绘、GPU 合成层）。这道题是面试官的"钓鱼题"，考察知识体系。

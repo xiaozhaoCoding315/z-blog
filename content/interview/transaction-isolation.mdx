@@ -9,7 +9,7 @@ companies: [美团, 字节]
 
 **MVCC 三要素**：
 1. 每行隐藏列：`trx_id`（最后修改事务）、`roll_pointer`（指向 undo log 版本链）
-2. **ReadView**：创建时活跃事务列表，判断某个版本对当前事务是否可见（trx_id < min_id 可见；trx_id > max_id 不可见；在列表中不可见→沿版本链找）
+2. **ReadView**：创建时活跃事务列表，判断某个版本对当前事务是否可见（trx_id 小于 min_id 可见；trx_id 大于 max_id 不可见；在列表中不可见→沿版本链找）
 3. undo log 版本链
 
 **RC vs RR 的本质区别**：RC 每次快照读都生成新 ReadView（能看到别人已提交的），RR 只在第一次读生成（整个事务复用）——同一份数据结构，只差 ReadView 的生成时机，这是面试最爱的追问点。

@@ -1,0 +1,14 @@
+---
+question: Kafka 为什么这么快？
+category: 消息队列
+difficulty: 中
+tags: [Kafka]
+companies: [字节]
+---
+**四个关键词**：
+1. **顺序写**：log 追加写磁盘（顺序写可达几百 MB/s，比随机写快几个量级）
+2. **页缓存 + 零拷贝**：消费者读热数据直接走 OS page cache，sendfile 从页缓存直达网卡，不经过用户态拷贝
+3. **批量 + 压缩**：生产者攒批（linger.ms + batch.size）、消息批量压缩，摊薄网络与 IO 开销
+4. **分区并行**：topic 分多分区，读写负载均衡到多 broker 多磁盘
+
+**追问**：零拷贝的两种实现——sendfile（Kafka 消费）与 mmap（RocketMQ CommitLog）；traditional 路径 4 次拷贝 → sendfile 2 次。

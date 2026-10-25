@@ -1,0 +1,15 @@
+---
+question: Spring 事务的传播行为有哪些？常用的几个怎么理解？
+category: Spring
+difficulty: 中
+tags: [事务]
+companies: [美团, 字节]
+---
+**七个传播行为**，重点记四个：
+
+- **REQUIRED**（默认）：有事务加入，没有就新建
+- **REQUIRES_NEW**：**挂起当前事务**，开独立新事务——日志记录不受主事务回滚影响的经典用法（注意内层需要独立连接）
+- **NESTED**：嵌套事务，savepoint 保存点——内层回滚到保存点，外层可选择继续；外层回滚必带内层。与 REQUIRES_NEW 的区别：NESTED 是父子关系（同一物理事务+保存点），NEW 是完全独立
+- **SUPPORTS**：有就加入没有就非事务跑
+
+**陷阱**：NESTED 只对 JDBC 生效（JPA 不支持）；传播行为失效和事务失效场景一起问。

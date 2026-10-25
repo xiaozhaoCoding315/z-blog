@@ -1,0 +1,14 @@
+---
+question: RDB 和 AOF 的原理与取舍？混合持久化是什么？
+category: Redis
+difficulty: 中
+tags: [持久化]
+companies: [美团, 字节]
+---
+**RDB**：定时全量快照（fork 子进程 + COW 写时复制页）。文件小恢复快；可能丢最后一次快照后的数据。
+
+**AOF**：追加写命令。三种刷盘策略：always（最安全最慢）、**everysec（默认，最多丢 1 秒）**、no（交给 OS）。文件大恢复慢 → **AOF 重写**（bgrewriteaof 按当前数据生成最小命令集）。
+
+**混合持久化（4.0+，推荐）**：AOF 重写时前半段写 RDB 格式全量 + 后半段追加 AOF 增量——恢复快 + 丢失少，两全。
+
+**追问**：fork 时 COW 极端情况（写量大）导致内存翻倍风险——maxmemory 留 50% 余量给 COW。

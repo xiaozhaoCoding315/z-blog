@@ -1,0 +1,19 @@
+---
+question: 一条 SQL 很慢，你怎么分析和优化？
+category: MySQL
+difficulty: 中
+tags: [慢查询, EXPLAIN]
+companies: [所有大厂]
+---
+**标准流程**：
+1. 慢查询日志定位 SQL
+2. **EXPLAIN 看执行计划**，重点字段：
+   - type：至少 range，出现 ALL（全表扫描）就要警惕
+   - key/possible_keys：是否命中索引
+   - rows：扫描行数
+   - Extra：Using filesort（排序没走索引）、Using temporary（临时表）
+3. 优化手段：加/改联合索引（最左前缀、区分度高的列在前）、覆盖索引避免回表、避免索引失效写法
+
+**索引失效八股**：函数/运算包裹列、隐式类型转换（字符串列传数字）、前导模糊 like '%x'、OR 连接非索引列、违反最左前缀。
+
+**深挖**：优化器为什么可能不选你建的索引——统计信息过期（analyze table）、回表成本估算过高、数据量小时全扫更快。

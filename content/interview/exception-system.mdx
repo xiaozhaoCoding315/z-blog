@@ -1,0 +1,14 @@
+---
+question: 谈谈 Java 异常体系？受检异常和非受检异常怎么选？
+category: Java 基础
+difficulty: 易
+tags: [异常]
+---
+**体系**：Throwable → Error（JVM 级，不该捕获：OOM/StackOverflow）+ Exception → 受检异常（IOException/SQLException，强制 try 或 throws）+ RuntimeException（NPE/数组越界，非受检）。
+
+**选型实践**：
+- 可预期可恢复（文件不存在）→ 受检异常，调用方必须处理
+- 编程错误（参数非法）→ 非受检， RuntimeException
+- 业务失败 → 阿里规约推荐自定义 BusinessException extends RuntimeException，避免调用链层层 throws 污染签名
+
+**finally 陷阱**：finally 中 return 会吞掉 try 的 return 和异常；try-with-resources 自动关闭实现 AutoCloseable 的资源，优先使用。

@@ -1,0 +1,20 @@
+---
+question: 举一个 MySQL 死锁的例子？怎么避免？
+category: MySQL
+difficulty: 难
+tags: [锁, 死锁]
+companies: [字节]
+---
+**经典案例**：两个事务并发 `UPDATE ... WHERE non_index_col = x`——非索引条件升级为**锁全表记录**（InnoDB 行锁基于索引，没索引就锁全部），互相等待对方释放 → 死锁。
+
+**常见场景**：
+- 唯一索引插入冲突：两个事务同时 insert 相同键，一个报 Duplicate 后转 update，与另一事务的 insert 间隙锁互等
+- 并发按不同顺序更新多行
+
+**预防**：
+1. **更新条件必须走索引**（缩小锁范围）
+2. 多行更新按固定顺序（如按 id 排序）
+3. 事务尽量短小、避免事务内交互等待
+4. innodb_lock_wait_timeout 调小 + 业务重试（死锁被回滚的一方可安全重试）
+
+**排查**：`SHOW ENGINE INNODB STATUS` 的 LATEST DETECTED DEADLOCK 段。

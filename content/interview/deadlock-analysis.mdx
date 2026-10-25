@@ -1,0 +1,16 @@
+---
+question: 死锁的四个必要条件？线上怎么排查和预防？
+category: Java 并发
+difficulty: 中
+tags: [死锁]
+companies: [所有大厂]
+---
+**四条件**（缺一不可）：互斥、持有并等待、不可剥夺、循环等待。
+
+**排查**：`jstack <pid>` 直接输出 "Found one Java-level deadlock" 及持有/等待链；或 jconsole/arthas。
+
+**预防**：
+1. **固定加锁顺序**（按账户 ID 排序再加锁）——破坏循环等待，最常用
+2. tryLock(timeout) 拿不到就放弃并释放已持有的——破坏持有等待
+3. 缩小锁范围、锁内不做耗时操作
+4. 数据库死锁同理：事务短、按序更新、索引避免间隙锁扩大

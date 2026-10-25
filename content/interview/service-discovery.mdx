@@ -1,0 +1,17 @@
+---
+question: 服务注册与发现的原理？Nacos 和 Eureka 的区别？
+category: 分布式 & 微服务
+difficulty: 中
+tags: [注册中心]
+companies: [阿里]
+---
+**流程**：服务启动注册元数据（IP/端口/权重）→ 心跳续约 → 消费者拉取+订阅变更通知 → 调用方本地负载均衡（Ribbon/LoadBalancer）。
+
+**一致性模型差异**：
+- **Eureka：AP**——对等复制、自我保护机制（大量心跳丢失时不剔除实例，宁可给脏数据也不雪崩）
+- **Nacos：可切换**——临时实例走 AP（Distro 协议心跳），持久实例走 CP（Raft）；还集成配置中心
+- ZooKeeper/Consul：CP——选举期间不可用
+
+**健康检查**：客户端心跳（临时）vs 服务端主动探测（HTTP/TCP，持久实例）。
+
+**实践**：K8s 体系直接用 Service/DNS；Spring Cloud Alibaba 选 Nacos 一站式。

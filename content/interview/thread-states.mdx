@@ -1,0 +1,15 @@
+---
+question: 线程有哪几种状态？怎么转换的？
+category: Java 并发
+difficulty: 易
+tags: [线程]
+---
+**六态**（Thread.State）：
+- **NEW**：new 出来还没 start
+- **RUNNABLE**：就绪/运行（Java 把就绪和运行合并，含 OS 层的 Running/Ready）；**IO 阻塞在 Java 层也是 RUNNABLE**（BIO 不改变 Java 状态，经典陷阱）
+- **BLOCKED**：竞争 synchronized 锁失败
+- **WAITING**：wait()/join()/LockSupport.park()，无限期等待唤醒
+- **TIMED_WAITING**：sleep(ms)/wait(ms)/parkNanos
+- **TERMINATED**：run 结束
+
+**高频追问**：sleep vs wait——sleep 是 Thread 静态方法不释放锁；wait 是 Object 方法必须持锁调用并释放锁，用于线程协作。

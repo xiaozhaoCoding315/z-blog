@@ -1,0 +1,20 @@
+---
+question: Redis 有哪些数据结构？各自的底层实现和典型场景？
+category: Redis
+difficulty: 中
+tags: [数据结构]
+companies: [所有大厂]
+---
+**五大数据类型与底层**：
+
+| 类型 | 底层编码 | 典型场景 |
+| --- | --- | --- |
+| String | SDS（预分配+长度字段，二进制安全） | 缓存对象、计数器、分布式锁 |
+| Hash | listpack / hashtable | 购物车、对象字段存储 |
+| List | listpack / quicklist（3.2+） | 消息队列、时间线 |
+| Set | intset / hashtable | 去重、抽奖、共同关注（交集） |
+| ZSet | listpack / **跳表+哈希** | 排行榜、延迟队列 |
+
+**ZSet 为什么用跳表不用红黑树**：范围查询 zrange 天然 O(logN) 定位+链表顺序扫，实现简单内存可控；哈希表并存保证 O(1) 查分数。
+
+**进阶结构**：Bitmap（签到）、HyperLogLog（亿级 UV 0.81% 误差）、GEO（附近的人）、Stream（消息队列）。

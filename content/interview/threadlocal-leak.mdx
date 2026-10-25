@@ -1,0 +1,14 @@
+---
+question: ThreadLocal 的原理？为什么会内存泄漏？
+category: Java 并发
+difficulty: 中
+tags: [ThreadLocal, 内存泄漏]
+companies: [美团, 字节]
+---
+**结构**：每个 Thread 持有 ThreadLocalMap，key 是 ThreadLocal 的**弱引用**，value 是强引用。
+
+**泄漏链路**：ThreadLocal 外部引用断开 → key 被 GC 回收 → Entry 变成 (null, value) → 若线程不死（**线程池正是长命的**）→ value 永远不可达但被 Map 持有 → 泄漏。
+
+**正确姿势**：用完必须 `remove()`（finally 里）；ThreadLocal 修饰为 static final（避免重复创建）；InheritableThreadLocal 传子线程、TransmittableThreadLocal 解决线程池透传（阿里 TTL）。
+
+**场景**：用户上下文透传、SimpleDateFormat 缓存、数据库连接绑定。

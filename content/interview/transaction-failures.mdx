@@ -1,0 +1,19 @@
+---
+question: Spring 事务在哪些场景会失效？
+category: Spring
+difficulty: 中
+tags: [事务, 失效场景]
+companies: [字节, 美团, 拼多多]
+---
+**高频失效八大场景**（本质都是"AOP 代理没生效"或"异常没到达代理"）：
+
+1. **同类自调用**——this.method() 不走代理（最常见！解法：注入自身/AopContext/拆类）
+2. 方法不是 public
+3. 异常被 try-catch 吞了
+4. 抛的是受检异常但没配置 rollbackFor（默认只回滚 RuntimeException/Error）
+5. 类没被 Spring 管理（new 出来的）
+6. 多线程调用——事务绑定 ThreadLocal 连接，子线程不在同一事务
+7. 数据库引擎不支持（MyISAM）
+8. 传播行为配置成 NOT_SUPPORTED
+
+**答题技巧**：先说"失效本质是代理机制被绕过"，再列场景，最后说排查方法（开事务日志 `@EnableTransactionManagement` debug 日志）。

@@ -1,0 +1,16 @@
+---
+question: String 为什么设计成不可变？StringBuilder 和 StringBuffer 的区别？
+category: Java 基础
+difficulty: 易
+tags: [String, 不可变]
+companies: [美团, 字节]
+---
+**不可变的实现**：final 类（禁止继承破坏不可变性）、private final 数组（JDK9 后是 byte[]）、不提供修改方法。
+
+**四大好处**：
+1. **字符串常量池**得以实现——相同字面量共享一份，省内存
+2. **线程安全**：天然共享无需同步
+3. **hashCode 可缓存**：String 大量用作 HashMap 的 key，缓存 hash 避免重复计算
+4. **安全性**：路径、类名、URL 参数不会被中途篡改
+
+**三者选型**：循环拼接用 StringBuilder（非线程安全、快）；多线程共享拼接场景用 StringBuffer（方法加 synchronized，现已罕见）；直接 + 拼接在循环中每次都 new 对象，编译器无法优化成单 builder。

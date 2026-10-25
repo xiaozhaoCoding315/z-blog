@@ -1,0 +1,17 @@
+---
+question: 什么是热 key、大 key？分别有什么危害和处理办法？
+category: Redis
+difficulty: 中
+tags: [热key, 大key]
+companies: [美团, 字节]
+---
+**热 key**（访问集中到单个 key）：打爆单分片 CPU/带宽，集群扩容也没用。
+- 发现：redis-cli --hotkeys、客户端采样上报、proxy 统计
+- 处理：**本地缓存兜底**（Caffeine 缓存热点，TTL 短）、key 打散多副本（key_1..key_N 随机读）、读写分离扛读
+
+**大 key**（value 过大：String >10KB、集合元素过万，业内经验值）：
+- 危害：操作慢查询阻塞单线程、网卡打满、主从同步延迟、删除卡顿
+- 发现：--bigkeys、RDB 离线分析
+- 处理：**拆分**（大 hash 按字段 hash 拆）、压缩、能不放 Redis 就不放（对象存储）；删除用 **UNLINK**（异步）不用 DEL；4.0+ lazy-free
+
+**面试加分**：说出"热 key 的本质是流量不均匀，扩容解决不了"这句洞察。

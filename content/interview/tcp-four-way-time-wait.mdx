@@ -1,0 +1,14 @@
+---
+question: 为什么挥手要四次？TIME_WAIT 为什么要等 2MSL？
+category: 计算机网络
+difficulty: 中
+tags: [TCP, TIME_WAIT]
+companies: [字节, 美团]
+---
+**四次原因**：TCP 全双工，两个方向独立关闭。收到 FIN 只说明对方不再发，自己可能还有数据要发 → ACK 先回，等自己发完再 FIN——中间的"半关闭"状态必须四步。
+
+**TIME_WAIT = 2MSL 的两个理由**：
+1. 保证最后一个 ACK 丢失时能重收对方重传的 FIN 并再 ACK（MSL 往返）
+2. 让本连接所有报文在网络中自然消亡，避免污染相同四元组的新连接
+
+**线上问题**：**主动关闭方**（大量短连接的客户端/重启的服务器）堆积 TIME_WAIT——解法：连接池/长连接复用（治本）、tcp_tw_reuse（仅出站）、扩端口范围。**千万别 net.ipv4.tcp_tw_recycle**（NAT 环境灾难，已从内核移除）。

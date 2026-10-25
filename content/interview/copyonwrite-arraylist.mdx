@@ -1,0 +1,13 @@
+---
+question: CopyOnWriteArrayList 的原理和适用场景？
+category: Java 集合
+difficulty: 中
+tags: [并发容器]
+---
+**写时复制**：每次 add/set 都复制整个数组生成新数组（加锁），读完全无锁——读的是旧数组快照，与写互不阻塞。
+
+**适用**：**读多写极少**且能容忍短暂旧数据——监听器列表、配置表、黑名单。
+
+**不适用**：写频繁（每次复制 O(n) + GC 压力）或需要强一致读。
+
+**配套**：CopyOnWriteArraySet 同理。JDK 21+ 的 ImmutableCollections 配合 replace 方案是更现代的替代。

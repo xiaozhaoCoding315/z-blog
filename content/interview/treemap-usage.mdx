@@ -1,0 +1,14 @@
+---
+question: TreeMap 的底层和使用场景？
+category: Java 集合
+difficulty: 中
+tags: [TreeMap, 红黑树]
+---
+**红黑树**：自平衡二叉搜索树，增删查 O(log n)，通过变色+旋转维持「最长路径不超过最短两倍」的弱平衡——比 AVL 插删成本更低，工程首选。
+
+**TreeMap 的独特能力**（HashMap 给不了的）：
+- 按 key 有序遍历
+- **范围查询**：headMap/tailMap/subMap——如「分数在 [80,90) 的所有人」
+- floorKey/ceilingKey 找最近邻
+
+**场景**：排行榜（TreeMap 分数→用户）、时间轴索引、一致性哈希环（ceilingKey 找顺时针节点）。

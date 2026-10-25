@@ -1,0 +1,14 @@
+---
+question: 什么是 CAS？ABA 问题怎么解决？
+category: Java 并发
+difficulty: 中
+tags: [CAS, 原子类]
+---
+**CAS**：CompareAndSwap，CPU 原子指令（lock cmpxchg），比较内存值与期望值相同才写入新值；失败自旋重试。无锁编程的基础，Atomic 系列、AQS 抢锁、LongAdder 全靠它。
+
+**三大问题**：
+1. **ABA**：值 A→B→A，CAS 误以为没变过 → **AtomicStampedReference 加版本号**；实际业务中引用类型影响大，数值型基本无害
+2. 自旋开销：竞争激烈时空转 → LongAdder 分段累加
+3. 只能保证单变量 → AtomicReference 包对象或加锁
+
+**追问**：Integer 缓存池（-128~127）导致 `==` 判断的坑与 CAS 无关但常一起考。

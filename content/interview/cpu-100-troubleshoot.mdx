@@ -1,0 +1,19 @@
+---
+question: 线上服务 CPU 100% 怎么排查？内存泄漏怎么定位？
+category: JVM
+difficulty: 难
+tags: [排查, 调优]
+companies: [美团, 字节, 阿里]
+---
+**CPU 100% 三板斧**：
+1. `top` 找到进程 → `top -Hp <pid>` 找到线程 tid
+2. `printf '%x' tid` 转十六进制
+3. `jstack <pid> | grep -A 20 <hex>` 看线程栈——通常是死循环/正则回溯/GC 线程满负荷（内存不足的表征）
+（一键化：arthas `thread -n 3` 直接列最忙线程）
+
+**内存泄漏定位**：
+1. `-XX:+HeapDumpOnOutOfMemoryError` 拿快照 或 jmap -dump
+2. MAT 看支配树/Dominator Tree，找最大对象 → GC Roots 引用链 → 定位泄漏源
+3. 常见根因：静态集合只进不出、ThreadLocal 不 remove、监听器未注销、连接未关闭、缓存无淘汰
+
+**答题结构**：现象→工具→命令→常见原因，条理比背命令更重要。

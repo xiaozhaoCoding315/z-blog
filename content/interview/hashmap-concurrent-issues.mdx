@@ -1,0 +1,15 @@
+---
+question: HashMap 在并发下会出什么问题？JDK 1.7 的死循环是怎么形成的？
+category: Java 集合
+difficulty: 中
+tags: [HashMap, 并发]
+companies: [美团]
+---
+**并发问题清单**：
+- **JDK 1.7 死循环**：扩容时头插法在多线程下形成环形链表，后续 get 死循环 CPU 100%
+- JDK 1.8 改尾插修复了环，但仍会**丢数据**（并发 put 覆盖）和 **size 不准**
+- 并发下树化过程也可能异常
+
+**正确做法**：ConcurrentHashMap；或者 Collections.synchronizedList 这类包装（性能差，已不推荐）。
+
+**追问**：为什么 1.7 用头插？——认为后插入的数据更可能被访问（LRU 思想），但牺牲了并发安全。

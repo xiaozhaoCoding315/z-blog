@@ -1,0 +1,19 @@
+---
+question: Redis 的过期删除策略和内存淘汰策略？
+category: Redis
+difficulty: 中
+tags: [过期, 淘汰]
+companies: [美团]
+---
+**过期删除（对已过期的 key）** = **惰性删除 + 定期删除**：
+- 惰性：访问时检查，过期即删
+- 定期：每 100ms 随机抽 20 个带 TTL 的 key，过期比例超 25% 继续抽（限制时长防卡死）
+- 兜底：过期未删的 key 在持久化/主从复制时按逻辑处理
+
+**内存淘汰（maxmemory 满时）**，8 种策略：
+- noeviction：默认，写请求报错
+- allkeys-lru / **volatile-lru**（只淘汰带 TTL 的）：缓存场景首选 LRU
+- lfu（4.0+）：按访问频率，防"偶发批量扫描把热点挤掉"——更推荐
+- random / ttl（快过期的先走）
+
+**实践**：缓存场景 allkeys-lfu + maxmemory 设物理内存 50-70%。

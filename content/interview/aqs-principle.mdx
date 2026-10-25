@@ -1,0 +1,14 @@
+---
+question: AQS 是什么？ReentrantLock 怎么基于它实现？
+category: Java 并发
+difficulty: 难
+tags: [AQS, 锁]
+companies: [字节, 阿里]
+---
+**AQS（抽象队列同步器）**= 一个 volatile int state（同步资源）+ CLF 双向队列（等待线程包装成 Node 排队，park 挂起）。
+
+**模板方法模式**：AQS 定义入队/出队/挂起/唤醒骨架，子类只需实现 tryAcquire/tryRelease（独占）或 tryAcquireShared（共享）——怎么算"获取成功"由子类定义。
+
+**ReentrantLock 的实现**：state 0→1 抢锁、记录持有线程；重入就是 state++；公平锁 tryAcquire 先 hasQueuedPredecessors 检查队列，非公平直接 CAS 抢。
+
+**全家桶**：Semaphore（state=许可数）、CountDownLatch（state=count，共享模式）、ReentrantReadWriteLock（state 高 16 位读/低 16 位写）全是 AQS 子类——**懂 AQS 一通百通**。

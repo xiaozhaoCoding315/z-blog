@@ -1,0 +1,15 @@
+---
+question: 深分页 limit 100000,10 为什么慢？怎么优化？
+category: MySQL
+difficulty: 中
+tags: [分页, 优化]
+companies: [美团, 字节]
+---
+**慢因**：`LIMIT 100000,10` 要取出前 100010 行（二级索引还要回表 100010 次）再丢弃前 10 万行。
+
+**三种优化**：
+1. **游标/续传分页**：`WHERE id > 上一页最大id LIMIT 10`——利用索引直接定位，最好；要求排序字段有序且唯一（加 id 兜底）
+2. **延迟关联**：`SELECT t.* FROM t JOIN (SELECT id FROM t ORDER BY x LIMIT 100000,10) tmp ON t.id=tmp.id`——子查询走覆盖索引不回表，只回表 10 次
+3. 产品侧限制：禁跳页（只许上一页/下一页）——ES/信息流的通用做法
+
+**延伸**：count 总数也很慢时——用近似值（explain rows）或游标方案干脆不显示总数。

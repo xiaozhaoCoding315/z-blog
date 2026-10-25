@@ -1,0 +1,14 @@
+---
+question: 分布式 ID 有哪些方案？雪花算法的时钟回拨问题？
+category: 分布式 & 微服务
+difficulty: 中
+tags: [分布式ID]
+companies: [美团, 字节]
+---
+**方案对比**：
+1. UUID：无序（B+ 树页分裂）、太长——不适合主键
+2. **雪花 Snowflake**：64bit = 1 符号 + 41 时间戳 + **10 机器ID** + 12 序列 → 趋势递增、本地生成无网络开销；**时钟回拨**问题（NTP 校时往回跳 → 重复 ID）→ 美团 Leaf 拒绝服务等待追平 / 回拨小则自旋 / 序列号借位
+3. 号段模式（Leaf-segment）：DB 批量发号 + 双 buffer 预取，DB 挂了还能撑一段
+4. Redis INCR：简单但强依赖 Redis
+
+**实践**：Leaf（号段+雪花双模式）或 uid-generator；机器 ID 分配用 ZooKeeper/DB 注册。

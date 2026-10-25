@@ -1,0 +1,14 @@
+---
+question: 泛型的类型擦除是什么？带来了哪些限制？
+category: Java 基础
+difficulty: 中
+tags: [泛型]
+---
+**擦除**：泛型只存在于编译期（编译器做类型检查后擦为原始类型 List），运行时无泛型信息——所以 `list instanceof List` 泛型版编译不过、不能 `new T()`、不能 `T.class`。
+
+**带来的限制与解法**：
+- 泛型类静态方法不能引用类泛型参数
+- 获取泛型：通过**带泛型的父类/接口**的 getGenericSuperclass 反射拿到（框架里 TypeReference/TypeToken 的原理，Jackson/Fastjson 的类型保留全靠它）
+- 桥方法：子类实现泛型接口后编译器生成保持多态
+
+**追问**：List 加不同泛型的 Class 对象是同一个（都是 List.class）。

@@ -1,0 +1,15 @@
+---
+question: 什么是双亲委派？为什么要打破它，怎么打破？
+category: JVM
+difficulty: 难
+tags: [类加载器, 双亲委派]
+companies: [阿里, 字节]
+---
+**模型**：Application → Extension/Platform → Bootstrap，逐层向上委派加载，上层加载不了再向下——**保证核心类（java.lang.String）只会被 Bootstrap 加载**：唯一性防篡改 + 避免重复加载。
+
+**打破的场景与手段**（重写 loadClass 的类加载逻辑）：
+1. **热部署**：Tomcat 每个 webapp 独立 WebAppClassLoader，先自己加载（隔离应用、共享容器类）
+2. **SPI**：JDBC 的 Driver 在核心库，实现类在应用层——Thread.contextClassLoader 打破「父加载器看不见子加载器」的困境
+3. **模块化/热更新**：OSGi、Arthas retransform
+
+**追问**：JDK9 模块化后委派变成「按模块授权」而非严格三层。

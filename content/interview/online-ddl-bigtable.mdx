@@ -1,0 +1,15 @@
+---
+question: 千万级大表怎么安全地加字段/加索引？
+category: MySQL
+difficulty: 中
+tags: [DDL, 运维]
+companies: [美团]
+---
+**为什么不能直接 ALTER**：8.0 前加字段要锁表重建（分钟级），线上不可接受；8.0 INSTANT ADD COLUMN 秒级（加在末尾），但加索引仍是 INPLACE（不锁写但耗资源）。
+
+**方案**：
+1. MySQL 8.0：优先 INSTANT/INPLACE，`ALGORITHM=INSTANT` 显式要求，不支持则报错而非默默锁表
+2. **gh-ost / pt-online-schema-change**：建影子表 + 增量同步（gh-ost 用 binlog 无触发器）+ 原子 rename——5.7 时代标准方案，掌握原理（限速、可暂停）
+3. 低峰执行 + 主从轮转
+
+**追问**：为什么大表 DDL 要控制速率——同步延迟会传导给从库，业务读旧数据。

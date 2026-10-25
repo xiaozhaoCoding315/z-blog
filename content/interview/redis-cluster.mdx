@@ -1,0 +1,18 @@
+---
+question: Redis 集群方案有哪些？Redis Cluster 的原理？
+category: Redis
+difficulty: 难
+tags: [集群, 高可用]
+companies: [阿里, 字节]
+---
+**三种方案**：
+1. **主从+哨兵**：主从复制 + 哨兵监控自动故障转移。容量不变，只是高可用
+2. **Redis Cluster**：官方分片方案，16384 个 slot 按 CRC16(key)%16384 分布到多主；**节点间 gossip 通信**；半数以上主节点判定某主失联 + 从库当选
+3. 客户端分片/代理层（codis/twemproxy）：历史方案
+
+**Cluster 关键细节**：
+- **MOVED/ASK 重定向**：请求错节点返回 MOVED（客户端缓存 slot 映射）；迁移中返回 ASK（临时指向新节点）
+- **多 key 操作限制**：mget/事务要求 key 同 slot → hash tag `{user1}:a {user1}:b` 强制同槽
+- 至少 3 主 3 从；**不具备强一致**（异步复制，故障切换可能丢最新写入）
+
+**实践口径**：单库低于 10GB 用主从+哨兵；更大规模或写瓶颈才上 Cluster。

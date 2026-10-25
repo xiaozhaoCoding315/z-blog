@@ -1,0 +1,17 @@
+---
+question: TCP 粘包/拆包是什么原因？怎么解决？
+category: 计算机网络
+difficulty: 中
+tags: [TCP, 粘包]
+companies: [美团]
+---
+**根因**：TCP 是**字节流**协议，没有消息边界——发送端 Nagle 合并小包、接收端缓冲区一次读到多个消息（粘）或半个消息（拆）。**"粘包"本质是应用层没有定义消息边界，不是 TCP 的 bug**。
+
+**四种解决方案**：
+1. **固定长度**：简单浪费
+2. **分隔符**：
+（Redis RESP 协议）——内容需转义
+3. **长度前缀（最通用）**：header 定长含 body 长度（HTTP Content-Length、RPC 协议、Netty LengthFieldBasedFrameDecoder）
+4. 更上层协议：JSON 按 {} 匹配（低效易错）
+
+**实践**：自研 RPC/IM 协议标配「magic + version + type + length + body」。

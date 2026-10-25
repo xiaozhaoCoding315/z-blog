@@ -1,0 +1,13 @@
+---
+question: CountDownLatch 和 CyclicBarrier 的区别？
+category: Java 并发
+difficulty: 易
+tags: [JUC]
+---
+**CountDownLatch**：一次性。countDown() 减计数，await() 等到 0 放行。**主线程等多个子任务**（并行调用 N 个下游后汇总）。不可重置。
+
+**CyclicBarrier**：可重用。各线程 await() 到齐 parties 个互相放行（是"互相等"，没有外部计数）。适合同步点语义——**多线程分段计算后合并**，还能传 barrierAction 在放开时由最后到达的线程执行合并。
+
+**补充 Phaser**：动态注册/多阶段，更灵活也更重。
+
+**实践**：CountDownLatch 底层 AQS 共享模式；CompletableFuture.allOf 是更现代的编排选择。
