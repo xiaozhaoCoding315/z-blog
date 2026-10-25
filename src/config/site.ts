@@ -18,7 +18,7 @@ export const siteConfig = {
     email: "mailto:me@example.com",
   },
   links: {
-    github: "https://github.com/zbwyyds-666",
+    github: "https://github.com/xiaozhaoCoding315",
     // rss 会在 /feed.xml 自动生成
   },
   nav: [

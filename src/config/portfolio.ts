@@ -39,6 +39,7 @@ export const projects: Project[] = [
       "GLM / DeepSeek / DashScope",
     ],
     link: "http://60.205.0.224:8000",
+    repo: "https://github.com/xiaozhaoCoding315/Nova-Agent",
     status: "进行中",
   },
   {
@@ -46,6 +47,7 @@ export const projects: Project[] = [
     description:
       "你正在看的这个站点：Next.js 全栈 + MDX 内容系统 + 向量语义搜索 + AI 问答助手 + Docker 一键部署。",
     stack: ["Next.js", "PostgreSQL", "pgvector", "AI SDK", "Docker"],
+    repo: "https://github.com/xiaozhaoCoding315/z-blog",
     status: "维护中",
   },
   {
@@ -53,6 +55,7 @@ export const projects: Project[] = [
     description:
       "前后端分离的智能批改平台：教师发布作业、AI 辅助评分、实时批注反馈，含完整 RBAC 权限体系。",
     stack: ["Spring Boot", "MyBatis-Plus", "Sa-Token", "WebSocket", "Vue 3"],
+    repo: "https://github.com/xiaozhaoCoding315/AI_TeachPlatform",
     status: "已完成",
   },
 ];
