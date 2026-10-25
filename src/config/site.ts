@@ -26,9 +26,13 @@ export const siteConfig = {
     { title: "博客", href: "/blog" },
     { title: "归档", href: "/archives" },
     { title: "项目", href: "/projects" },
-    { title: "统计", href: "/stats" },
+    { title: "留言板", href: "/guestbook" },
     { title: "友链", href: "/friends" },
     { title: "关于", href: "/about" },
+  ],
+  footerNav: [
+    { title: "统计", href: "/stats" },
+    { title: "留言板", href: "/guestbook" },
   ],
   footer: {
     icp: "", // 备案号（有域名备案后填写）

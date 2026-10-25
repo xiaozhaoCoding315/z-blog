@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Cpu, Database, Mail, Server, Sparkles, Terminal } from "lucide-react";
 import { GithubIcon } from "@/components/icons/github";
 import { siteConfig } from "@/config/site";
+import { now } from "@/config/portfolio";
+import { Reveal } from "@/components/site/reveal";
 import { GithubHeatmap } from "@/components/about/github-heatmap";
 
 export const metadata: Metadata = {
@@ -64,6 +66,45 @@ export default function AboutPage() {
           </div>
         </div>
       </header>
+
+      <section className="mt-12">
+        <h2 className="mb-5 font-heading text-xl font-bold tracking-tight">
+          现在 Now
+        </h2>
+        <Reveal>
+          <div className="glass rounded-xl p-6">
+            <div className="grid gap-6 sm:grid-cols-2">
+              {[
+                { title: "正在学", items: now.learning },
+                { title: "正在做", items: now.building },
+                { title: "正在读", items: now.reading },
+              ].map((group) => (
+                <div key={group.title}>
+                  <p className="mb-2 text-sm font-semibold text-foreground">{group.title}</p>
+                  <ul className="space-y-1.5">
+                    {group.items.map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/70" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              <div>
+                <p className="mb-2 text-sm font-semibold text-foreground">正在听</p>
+                <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/70" />
+                  {now.listening}
+                </p>
+              </div>
+            </div>
+            <p className="mt-5 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
+              更新于 {now.updatedAt} ·「现在」页灵感来自 nownownow.com，记录比履历更真实的状态
+            </p>
+          </div>
+        </Reveal>
+      </section>
 
       <section className="mt-12">
         <h2 className="mb-5 font-heading text-xl font-bold tracking-tight">

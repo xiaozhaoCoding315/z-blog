@@ -4,8 +4,11 @@ import { siteConfig } from "@/config/site";
 import { getAllPosts, getTags } from "@/content";
 import { PostCard, toCardData } from "@/components/blog/post-card";
 import { TypeRotate } from "@/components/home/type-rotate";
-import { OpenChatButton } from "@/components/chat/open-chat-button";
+import { Starfield } from "@/components/home/starfield";
+import { CountUp } from "@/components/home/count-up";
+import { Reveal, StaggerGrid, StaggerItem } from "@/components/site/reveal";
 import { UpTimeDays } from "@/components/site/runtime-info";
+import { OpenChatButton } from "@/components/chat/open-chat-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,7 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
 
 const stack = [
   "Next.js 16",
@@ -32,117 +34,165 @@ export default function HomePage() {
   const posts = getAllPosts();
   const tags = getTags();
   const pinned = posts.filter((p) => p.meta.pinned).slice(0, 2);
-  const latest = posts
-    .filter((p) => !p.meta.pinned)
-    .slice(0, 4);
+  const latest = posts.filter((p) => !p.meta.pinned).slice(0, 4);
 
   return (
     <div className="w-full">
-      {/* ============ Hero ============ */}
+      {/* ============ Hero：星空 + 光晕 + 品牌字标 ============ */}
       <section className="bg-noise relative overflow-hidden">
+        <Starfield />
         <div className="bg-grid absolute inset-0 [mask-image:radial-gradient(ellipse_70%_60%_at_50%_40%,black,transparent)]" />
-        <div className="glow-orb animate-float-slow left-[-10%] top-[-15%] size-[480px]" style={{ background: "var(--glow-1)" }} />
+        <div
+          className="glow-orb animate-float-slow left-[-10%] top-[-15%] size-[480px]"
+          style={{ background: "var(--glow-1)" }}
+        />
         <div
           className="glow-orb animate-float-slow right-[-8%] top-[20%] size-[380px]"
           style={{ background: "var(--glow-2)", animationDelay: "-7s" }}
         />
 
-        <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 pb-20 pt-24 text-center sm:px-6 sm:pt-32">
-          <span className="glass mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs text-muted-foreground">
-            <Sparkles className="size-3.5 text-primary" />
-            热爱编程 · 乐于折腾 · 持续构建
-          </span>
-
-          <h1 className="max-w-3xl font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl">
-            你好，我是 {siteConfig.author.name}
-            <br />
-            一个 <TypeRotate words={["热爱编程的程序员", "喜欢造轮子的工程师", "把想法写进代码的人", "边踩坑边记录的人"]} />
-          </h1>
-
-          <p className="mt-6 max-w-xl text-balance leading-relaxed text-muted-foreground sm:text-lg">
-            {siteConfig.author.bio}
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg" className="rounded-full px-6">
-              <Link href="/blog">
-                浏览博客 <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="rounded-full px-6"
-            >
-              <Link href="/about">了解我</Link>
-            </Button>
-            <OpenChatButton />
-          </div>
-
-          {/* 站点统计 */}
-          <dl className="mt-14 grid w-full max-w-2xl grid-cols-3 divide-x divide-border/60 rounded-2xl border border-border/60 bg-card/40 backdrop-blur">
-            {[
-              { label: "文章", value: posts.length },
-              { label: "标签", value: tags.length },
-              { label: "运行天数", value: <UpTimeDays /> },
-            ].map((item) => (
-              <div key={item.label} className="flex flex-col items-center gap-1 py-5">
-                <dd className="font-heading text-3xl font-extrabold tracking-tight">
-                  {item.value}
-                </dd>
-                <dt className="text-xs text-muted-foreground">{item.label}</dt>
+        <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 pb-20 pt-20 text-center sm:px-6 sm:pt-28">
+          {/* Z 字标：个人品牌符号 */}
+          <Reveal>
+            <div className="group relative mb-8">
+              <div className="absolute -inset-3 rounded-3xl bg-gradient-to-br from-[oklch(0.62_0.23_285)] to-[oklch(0.72_0.16_215)] opacity-40 blur-xl transition-opacity duration-500 group-hover:opacity-70" />
+              <div className="glass relative flex size-20 items-center justify-center rounded-3xl">
+                <span className="text-gradient font-heading text-5xl font-black leading-none">
+                  Z
+                </span>
               </div>
-            ))}
-          </dl>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.08}>
+            <span className="glass mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs text-muted-foreground">
+              <Sparkles className="size-3.5 text-primary" />
+              热爱编程 · 乐于折腾 · 持续构建
+            </span>
+          </Reveal>
+
+          <Reveal delay={0.14}>
+            <h1 className="max-w-3xl font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl">
+              你好，我是 {siteConfig.author.name}
+              <br />
+              一个{" "}
+              <TypeRotate
+                words={[
+                  "热爱编程的程序员",
+                  "喜欢造轮子的工程师",
+                  "把想法写进代码的人",
+                  "边踩坑边记录的人",
+                ]}
+              />
+            </h1>
+          </Reveal>
+
+          <Reveal delay={0.2}>
+            <p className="mt-6 max-w-xl text-balance leading-relaxed text-muted-foreground sm:text-lg">
+              {siteConfig.author.bio}
+            </p>
+          </Reveal>
+
+          <Reveal delay={0.26}>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Button asChild size="lg" className="rounded-full px-6">
+                <Link href="/blog">
+                  浏览博客 <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="rounded-full px-6"
+              >
+                <Link href="/about">了解我</Link>
+              </Button>
+              <OpenChatButton />
+            </div>
+          </Reveal>
+
+          {/* 站点统计（数字滚动） */}
+          <Reveal delay={0.32} className="mt-14 w-full max-w-2xl">
+            <dl className="grid grid-cols-3 divide-x divide-border/60 rounded-2xl border border-border/60 bg-card/40 backdrop-blur">
+              <div className="flex flex-col items-center gap-1 py-5">
+                <dd className="font-heading text-3xl font-extrabold tracking-tight">
+                  <CountUp to={posts.length} />
+                </dd>
+                <dt className="text-xs text-muted-foreground">文章</dt>
+              </div>
+              <div className="flex flex-col items-center gap-1 py-5">
+                <dd className="font-heading text-3xl font-extrabold tracking-tight">
+                  <CountUp to={tags.length} />
+                </dd>
+                <dt className="text-xs text-muted-foreground">标签</dt>
+              </div>
+              <div className="flex flex-col items-center gap-1 py-5">
+                <dd className="font-heading text-3xl font-extrabold tracking-tight">
+                  <UpTimeDays />
+                </dd>
+                <dt className="text-xs text-muted-foreground">运行天数</dt>
+              </div>
+            </dl>
+          </Reveal>
         </div>
       </section>
 
       {/* ============ 精选 ============ */}
       {pinned.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
-          <SectionHeading title="精选文章" hint="值得从这开始" />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <Reveal>
+            <SectionHeading title="精选文章" hint="值得从这开始" />
+          </Reveal>
+          <StaggerGrid className="grid gap-4 sm:grid-cols-2">
             {pinned.map((post) => (
-              <PostCard key={post.slug} post={toCardData(post)} variant="featured" />
+              <StaggerItem key={post.slug}>
+                <PostCard post={toCardData(post)} variant="featured" />
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerGrid>
         </section>
       )}
 
       {/* ============ 最新文章 ============ */}
       <section className="mx-auto max-w-6xl px-4 pt-10 sm:px-6">
-        <SectionHeading title="最新文章" hint="刚出炉的" href="/blog" />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <Reveal>
+          <SectionHeading title="最新文章" hint="刚出炉的" href="/blog" />
+        </Reveal>
+        <StaggerGrid className="grid gap-4 sm:grid-cols-2">
           {latest.map((post) => (
-            <PostCard key={post.slug} post={toCardData(post)} />
+            <StaggerItem key={post.slug}>
+              <PostCard post={toCardData(post)} />
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerGrid>
       </section>
 
       {/* ============ 技术栈 ============ */}
       <section className="mx-auto max-w-6xl px-4 pt-16 sm:px-6">
-        <Card className="glass overflow-hidden">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">本站由这些技术驱动</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {stack.map((tech) => (
-                <span
-                  key={tech}
-                  className="rounded-full border border-border/70 bg-secondary/50 px-3 py-1 font-mono text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-                >
-                  {tech}
-                </span>
-              ))}
-            </div>
-            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              这个站点是我一行一行亲手搭起来的：写样式、写服务端、自己折腾部署，它跟着我的学习曲线一起迭代。
-              右下角的 AI 助手读过站里的每一篇文章，有任何问题可以直接问它。
-            </p>
-          </CardContent>
-        </Card>
+        <Reveal>
+          <Card className="glass overflow-hidden">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">本站由这些技术驱动</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {stack.map((tech) => (
+                  <span
+                    key={tech}
+                    className="rounded-full border border-border/70 bg-secondary/50 px-3 py-1 font-mono text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                  >
+                    {tech}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+                这个站点是我一行一行亲手搭起来的：写样式、写服务端、自己折腾部署，它跟着我的学习曲线一起迭代。
+                右下角的 AI 助手读过站里的每一篇文章，有任何问题可以直接问它。
+              </p>
+            </CardContent>
+          </Card>
+        </Reveal>
       </section>
     </div>
   );

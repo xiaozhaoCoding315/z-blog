@@ -116,7 +116,7 @@ export function TerminalPalette({
             "  search                                             打开搜索（⌘K）",
             "  ai                                                 唤起 AI 助手",
             "  theme [dark|light]                                 切换主题",
-            "  whoami / uptime / ls / clear / exit                杂项",
+            "  whoami / uptime / ls / date / echo / neofetch / clear / exit   杂项",
           ].join("\n")
         );
         break;
@@ -221,6 +221,34 @@ export function TerminalPalette({
       case "hi":
         print("output", `你好！我是 ${siteConfig.author.name} 的终端。输入 help 看看我能做什么。`);
         break;
+      case "date":
+        print("output", new Date().toLocaleString("zh-CN", { hour12: false }));
+        break;
+      case "echo":
+        print("output", arg || "");
+        break;
+      case "neofetch": {
+        const start = new Date(siteConfig.startedAt).getTime();
+        const days = Number.isNaN(start)
+          ? "?"
+          : Math.max(1, Math.ceil((Date.now() - start) / 86400000));
+        print(
+          "hint",
+          [
+            `      ▄▄▄▄▄▄▄     guest@${siteConfig.name}`,
+            `    ▄█████████▄   ─────────────────────`,
+            `   ███████████    OS: Z·BlogOS (web)`,
+            `   ███████████    Host: 阿里云 ECS`,
+            `    ▀█████████▀   Kernel: Next.js 16`,
+            `      ▀▀▀▀▀▀▀     Shell: zsh (fake)`,
+            `                   Uptime: ${days} days`,
+            `                   Posts: ${posts.length} 篇`,
+            `                   Theme: ${resolvedTheme ?? "dark"}`,
+            `                   AI: 已接入（问它试试）`,
+          ].join("\n")
+        );
+        break;
+      }
       default:
         print("error", `command not found: ${cmd}（输入 help 查看可用命令）`);
     }

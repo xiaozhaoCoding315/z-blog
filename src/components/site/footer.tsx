@@ -26,7 +26,7 @@ export function Footer() {
           <div>
             <h3 className="mb-3 text-sm font-semibold">导航</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              {siteConfig.nav.map((item) => (
+              {[...siteConfig.nav, ...siteConfig.footerNav].map((item) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}

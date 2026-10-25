@@ -75,4 +75,12 @@ export async function ensureSchema() {
       count integer NOT NULL DEFAULT 0
     )
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS guestbook (
+      id bigserial PRIMARY KEY,
+      name text NOT NULL,
+      message text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
 }

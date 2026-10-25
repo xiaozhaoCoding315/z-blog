@@ -65,5 +65,17 @@ export const likes = pgTable("likes", {
   count: integer("count").notNull().default(0),
 });
 
+/**
+ * guestbook：留言板
+ */
+export const guestbook = pgTable("guestbook", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  name: text("name").notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export type PostRow = typeof posts.$inferSelect;
 export type ChunkRow = typeof chunks.$inferSelect;
