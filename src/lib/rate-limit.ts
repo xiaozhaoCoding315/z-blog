@@ -1,8 +1,17 @@
 /**
  * 极简内存限频（单实例部署足够；容器重启即清零，可接受）。
+ * 状态挂在 globalThis 上：Turbopack/webpack 会把模块内联成多份副本，
+ * 模块级变量在副本间不共享，而 globalThis 在同进程内唯一。
  */
 
-const buckets = new Map<string, number[]>();
+interface RateLimitState {
+  buckets: Map<string, number[]>;
+  cleanup?: ReturnType<typeof setInterval>;
+}
+
+const g = globalThis as typeof globalThis & { __rateLimitState?: RateLimitState };
+const state: RateLimitState = (g.__rateLimitState ??= { buckets: new Map() });
+const buckets = state.buckets;
 
 export function getClientIp(request: Request): string {
   return (
@@ -34,9 +43,9 @@ export function rateLimit(
   return true;
 }
 
-/** 定期清理过期桶，防内存缓慢增长 */
-if (typeof setInterval !== "undefined") {
-  const timer = setInterval(() => {
+/** 定期清理过期桶，防内存缓慢增长（同进程只启动一次） */
+if (typeof setInterval !== "undefined" && !state.cleanup) {
+  state.cleanup = setInterval(() => {
     const now = Date.now();
     for (const [key, list] of buckets) {
       const alive = list.filter((t) => now - t < 10 * 60_000);
@@ -45,5 +54,5 @@ if (typeof setInterval !== "undefined") {
     }
   }, 10 * 60_000);
   // Node 环境下不阻止进程退出
-  (timer as unknown as { unref?: () => void }).unref?.();
+  (state.cleanup as unknown as { unref?: () => void }).unref?.();
 }

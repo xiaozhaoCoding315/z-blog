@@ -3,8 +3,11 @@ import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { guestbook } from "@/db/schema";
 
-/** 简单内存限频：同一 IP 60 秒只能留一条（重启清零，足够拦住误触） */
-const lastPostAt = new Map<string, number>();
+/** 简单内存限频：同一 IP 60 秒只能留一条（globalThis 防模块多副本） */
+const gb = globalThis as typeof globalThis & {
+  __gbLastPost?: Map<string, number>;
+};
+const lastPostAt: Map<string, number> = (gb.__gbLastPost ??= new Map());
 const RATE_LIMIT_MS = 60_000;
 
 export async function GET() {
