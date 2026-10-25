@@ -5,12 +5,12 @@ difficulty: 中
 tags: [流式, SSE]
 companies: [美团, 字节]
 ---
-**全链路流式**：LLM API 返回 SSE（chunk 流）→ 服务端逐 chunk 转发 → 浏览器 EventSource/fetch ReadableStream 增量渲染——**TTFT（首字时间）从 5s 降到 1s 内，体验质变**。
+**为什么必须流式**：完整生成要 10 秒+，用户盯空白页必流失；流式把**首字时间压进 1 秒**——从"卡死"变"正在打字"。
 
-**SSE vs WebSocket**：
-- **SSE**：单向（服务端→客户端）、HTTP 原生、自动重连、文本帧——**LLM 对话场景首选**（本站就是）
-- WebSocket：双向、二进制、需要心跳与升级协议——多轮实时协同（语音、协同编辑）才需要
+**全链路**：LLM API 以 SSE 逐 chunk 吐字 → 服务端**逐 chunk 转发**（别攒齐！）→ 浏览器 fetch ReadableStream 逐块读、增量渲染。
 
-**前端要点**：fetch + ReadableStream 手动解析（EventSource 不支持 POST/自定义头）、渲染节流（rAF 批量追加而非逐字符 setState）、Markdown 边流边渲染的兼容（未闭合代码块容错）。
+**SSE vs WebSocket**：SSE 单向下行、跑在 HTTP 上、**自带断线重连**——LLM 对话的天选协议（ChatGPT、本站都用）；WebSocket 双向二进制、要握手升级+心跳——语音对话、协同编辑才需要。
 
-**后端要点**：反向代理别缓冲（nginx `X-Accel-Buffering: no`）、超时与断线重连策略、finish 信号与错误中断的区分。
+**前端三个坑**：EventSource 不支持 POST/自定义头（用 fetch 手撸解析）；逐字 setState 卡顿（rAF 批量追加）；流中半截 Markdown 要容错（代码块没闭合）。
+
+**后端两个坑**：Nginx 默认缓冲——加 `X-Accel-Buffering: no` 否则流式失效；要区分正常结束与中断信号。

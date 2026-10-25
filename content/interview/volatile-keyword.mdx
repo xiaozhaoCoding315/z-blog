@@ -4,11 +4,23 @@ category: Java 并发
 difficulty: 易
 tags: [JMM, volatile]
 ---
-**两个语义**：
+**volatile 干两件事**：可见性 + 禁止重排序。
 
-1. **可见性**：写 volatile 变量立即刷回主内存并使其他 CPU 缓存行失效（MESI 协议），读时强制从主内存加载。
-2. **禁止指令重排**：编译器和 CPU 层面插入内存屏障。经典应用是 DCL 单例中防止「对象未初始化完就被引用」——`new` 实际是分配内存→初始化→赋引用三步，可能重排为 1→3→2。
+**可见性是什么问题**：每个 CPU 有自己的高速缓存，线程 A 改了变量可能只写在自己的缓存里，线程 B 读的还是旧值——两人看到的"现实"不一样。volatile 的规则是：我改了，立刻刷到主内存并让其他 CPU 的副本作废；我读，强制去主内存拿最新版。
 
-**不保证原子性**：`i++` 是读-改-写三步操作，volatile 挡不住并发交错。需要原子性用 AtomicInteger（CAS）或加锁。
+**经典例子**：一个 boolean stop 标志位控制线程停止，不加 volatile 时线程可能永远读不到修改（JIT 甚至把它优化成一直读寄存器），加上才保证看得见。
 
-**底层**：HotSpot 中 volatile 写汇编为 `lock addl $0,(rsp)`，前缀 lock 触发缓存一致性。
+**禁止重排最有名的应用——双重检查锁单例**：
+
+```java
+if (instance == null) {              // 第一次检查
+    synchronized (Singleton.class) {
+        if (instance == null)
+            instance = new Singleton();  // 这行是三步操作！
+    }
+}
+```
+
+`new Singleton()` 实际是：分配内存 → 初始化对象 → 把地址给 instance。CPU 可能重排成 1→3→2：别的线程看到 instance 不为 null 拿去用，可对象还没初始化完——拿到个半成品。volatile 禁止这个重排。
+
+**但它不保证原子性**：`count++` 是"读-加-写"三步，十个线程同时 ++ 会丢更新。要原子性用 AtomicInteger（底层 CAS）或加锁。**记住：volatile 管"看得到、不乱序"，不管"一起动"**。

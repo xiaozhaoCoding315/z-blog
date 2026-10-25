@@ -5,11 +5,14 @@ difficulty: 难
 tags: [类加载器, 双亲委派]
 companies: [阿里, 字节]
 ---
-**模型**：Application → Extension/Platform → Bootstrap，逐层向上委派加载，上层加载不了再向下——**保证核心类（java.lang.String）只会被 Bootstrap 加载**：唯一性防篡改 + 避免重复加载。
+**双亲委派是"请示上级"的加载流程**：应用类加载器收到加载请求，先不自己干——递归往上交给扩展类加载器，扩展类再交给启动类加载器（Bootstrap）；**上级说"我载不了"才轮到自己**载。
 
-**打破的场景与手段**（重写 loadClass 的类加载逻辑）：
-1. **热部署**：Tomcat 每个 webapp 独立 WebAppClassLoader，先自己加载（隔离应用、共享容器类）
-2. **SPI**：JDBC 的 Driver 在核心库，实现类在应用层——Thread.contextClassLoader 打破「父加载器看不见子加载器」的困境
-3. **模块化/热更新**：OSGi、Arthas retransform
+**为什么这么设计**，两个词：**安全 + 唯一**。你自己写个 `java.lang.String`，委派机制保证加载到的永远是 JDK 里那份真的——不然核心类被人替换，整个 JVM 就被劫持了；同时同一个类不会被重复加载。
 
-**追问**：JDK9 模块化后委派变成「按模块授权」而非严格三层。
+**那为什么有人要打破它**（打破 = 重写 loadClass 改变委派顺序）：
+
+1. **Tomcat**：一个容器跑几十个 webapp，各带不同版本的依赖包。它让 WebApp 类加载器**优先自己加载应用类**，实现应用间隔离（A 应用用 Spring 4、B 应用用 Spring 5 互不干扰）
+2. **JDBC 的 SPI 困境**：DriverManager 在核心库（由顶级加载器载入），但 MySQL 驱动 jar 在你的应用里（子加载器的地盘）——父加载器"看不见"子加载器的类。解法是 Thread.contextClassLoader 反向借子加载器之手加载
+3. 热部署（Arthas、OSGi）：类的生命周期需要自己管理
+
+**答这题的层次感**：先讲"是什么为什么"（安全唯一），再讲"什么时候需要打破"（隔离/可见性/热替换）——证明你理解的是设计权衡，不是背课文。

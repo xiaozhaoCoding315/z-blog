@@ -5,15 +5,20 @@ difficulty: 中
 tags: [事务, 失效场景]
 companies: [字节, 美团, 拼多多]
 ---
-**高频失效八大场景**（本质都是"AOP 代理没生效"或"异常没到达代理"）：
+这题不用死记八个，**先抓住本质：事务是代理对象包出来的功能——凡是绕过代理、或让异常到不了代理的事，都会失效**。按这个逻辑推：
 
-1. **同类自调用**——this.method() 不走代理（最常见！解法：注入自身/AopContext/拆类）
-2. 方法不是 public
-3. 异常被 try-catch 吞了
-4. 抛的是受检异常但没配置 rollbackFor（默认只回滚 RuntimeException/Error）
-5. 类没被 Spring 管理（new 出来的）
-6. 多线程调用——事务绑定 ThreadLocal 连接，子线程不在同一事务
-7. 数据库引擎不支持（MyISAM）
-8. 传播行为配置成 NOT_SUPPORTED
+**第一类：绕过代理**
+1. **同类自调用**（最经典）：this.updateOrder()——this 是裸对象，不是代理，事务那层壳根本没经过。解法：注入自己 / 拆到另一个类
+2. 方法不是 public：代理只增强 public 方法
+3. 对象是 new 出来的而不是容器管理的
 
-**答题技巧**：先说"失效本质是代理机制被绕过"，再列场景，最后说排查方法（开事务日志 `@EnableTransactionManagement` debug 日志）。
+**第二类：异常到不了代理**
+4. 异常被 try-catch 吞了——代理在"门外"等异常，你门内消化了
+5. 抛了受检异常但没配 rollbackFor——**默认只回滚 RuntimeException 和 Error**！IOException 不回滚，坑过无数人。规矩：@Transactional(rollbackFor = Exception.class)
+
+**第三类：环境不支持**
+6. 多线程里调——事务绑定在 ThreadLocal 的连接上，新线程拿不到同一个事务
+7. 数据库引擎不支持事务（MyISAM）
+8. 传播行为配成 NOT_SUPPORTED（故意挂起事务）
+
+**排查技巧**：开 Spring 事务 debug 日志，看方法进出时有没有 "Creating new transaction / Acquired Connection"——没有就是压根没进事务。

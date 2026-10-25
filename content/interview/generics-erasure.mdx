@@ -4,11 +4,20 @@ category: Java 基础
 difficulty: 中
 tags: [泛型]
 ---
-**擦除**：泛型只存在于编译期（编译器做类型检查后擦为原始类型 List），运行时无泛型信息——所以 `list instanceof List` 泛型版编译不过、不能 `new T()`、不能 `T.class`。
+**一句话**：泛型只是编译器的"检查员"，检查完你的代码就走了——**编译后的字节码里根本没有泛型信息**，List 加什么尖括号，运行时都是裸的 List。这就叫类型擦除。
 
-**带来的限制与解法**：
-- 泛型类静态方法不能引用类泛型参数
-- 获取泛型：通过**带泛型的父类/接口**的 getGenericSuperclass 反射拿到（框架里 TypeReference/TypeToken 的原理，Jackson/Fastjson 的类型保留全靠它）
-- 桥方法：子类实现泛型接口后编译器生成保持多态
+**为什么这么设计**：兼容。Java 5 出泛型时，满世界的旧代码用的都是裸 List，擦除保证新旧字节码能混着跑。
 
-**追问**：List 加不同泛型的 Class 对象是同一个（都是 List.class）。
+**擦除带来什么怪现象**（都体验过才算懂）：
+
+```java
+List<String> a = new ArrayList<>();
+List<Integer> b = new ArrayList<>();
+a.getClass() == b.getClass();  // true！运行时哥俩是同一个类
+
+// 不能 new T()、不能 T.class、不能对泛型参数用 instanceof
+```
+
+**框架怎么绕**：Jackson/Fastjson 你传 `new TypeReference<List<User>>(){}` 能拿到泛型——原理是**匿名子类会记住带泛型的父类信息**（这个信息存在类的元数据里，没被擦），用 `getGenericSuperclass()` 反射挖出来。这招值得会。
+
+**追问**：既然擦了，那运行时怎么保证往 `List<Integer>` 里塞字符串会失败？——塞不进去是编译期挡的；真用反射塞进去，读取时 ClassCastException 照样炸给你看。

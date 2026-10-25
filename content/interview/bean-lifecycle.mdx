@@ -5,13 +5,14 @@ difficulty: 中
 tags: [Bean, 生命周期]
 companies: [美团, 字节]
 ---
-**四阶段记忆法**：
+别背十几步流水账，**用"造一个完整 Bean 的四幕剧"讲**：
 
-1. **实例化**：反射调用构造器生成对象（还不是完整 Bean）
-2. **属性填充**：依赖注入（@Autowired 发生在这里）
-3. **初始化**：Aware 回调 → BeanPostProcessor 前置 → `@PostConstruct`/InitializingBean/init-method → 后置处理器（**AOP 代理通常在这一步生成**）
-4. **销毁**：容器关闭时 `@PreDestroy`/DisposableBean
+**第一幕·实例化**：反射调构造器 new 出对象——此时只是个"毛坯"，依赖还没注入。
 
-**高频追问**：
-- BeanPostProcessor 的 postProcessAfterInitialization 返回代理对象，这就是 AOP 的接入点
-- 单例默认随容器存活；prototype 容器只负责创建，销毁回调不执行
+**第二幕·属性填充**：@Autowired 的依赖在这里被塞进来（所以字段注入发生在构造器之后——这也是"构造器里用注入字段是 null"的原因）。
+
+**第三幕·初始化**：按顺序过四道工序——Aware 回调（告诉你 Bean 名字/容器是谁）→ BeanPostProcessor 前置处理 → 你的初始化代码（@PostConstruct）→ 后置处理。**AOP 代理就在最后这道后置工序里诞生**：后置处理器发现这 Bean 需要切面，返回一个包了壳的代理对象——从此容器里放的是代理不是裸对象。
+
+**第四幕·销毁**：容器关闭时调 @PreDestroy 做清理。
+
+**面试点睛句**："Bean 生命周期里最重要的不是记忆步骤顺序，而是知道 **BeanPostProcessor 是 Spring 留给框架的扩展点**——AOP、注解解析全在这层做手脚。"说出这句，你和背题的人就区分开了。

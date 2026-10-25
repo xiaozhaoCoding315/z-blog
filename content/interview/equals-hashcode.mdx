@@ -5,10 +5,12 @@ difficulty: 易
 tags: [equals, hashCode]
 companies: [所有大厂]
 ---
-**== 比较引用地址，equals 默认也是比较地址（Object 实现），重写后按内容比较。**
+前半问送分：**== 比的是两个变量装的是不是同一个东西（内存地址），equals 默认也是比地址，但可以重写成比内容**。比如两个 `new String("a")` 用 == 是 false（两个对象），equals 是 true（内容一样）。
 
-**必须成对重写的原因**：HashMap/HashSet 先用 hashCode 定位桶，再用 equals 判断相等。只重写 equals 不重写 hashCode → 两个"相等"的对象 hash 不同 → 落到不同桶 → HashSet 出现重复、Map 取不到值。
+后半问是重点，用个例子秒懂：HashSet 去重的流程是**两步**——先算 hashCode 决定放进哪个桶，再在这个桶里用 equals 判断是不是重复。
 
-**约定**：equals 相等 → hashCode 必须相等；hashCode 相等 equals 未必相等（哈希冲突）。String、Integer 等都重写了两者。
+假设你写了个 Person 类，重写了 equals（年龄相同就算同一个人）但没重写 hashCode：两个 18 岁的张三，equals 说"是同一个人"，可它俩继承自 Object 的 hashCode 是按地址算的——**落进了两个不同的桶**。HashSet 根本没机会用你的 equals，重复元素就这么混进去了。
 
-**追问点**：为什么 hashCode 不用对象地址？——地址唯一性好但无分布性，做桶下标冲突率 100%。
+**记忆口诀**：hash 定位桶，equals 验明正身——俩必须配套。约定是：equals 相等则 hashCode 必须相等（反过来不要求，因为哈希会冲突）。
+
+**追问预备**：String 为什么适合做 HashMap 的 key？——不可变（hash 稳定）+ 重写了 equals/hashCode。

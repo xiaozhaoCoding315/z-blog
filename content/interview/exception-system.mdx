@@ -4,11 +4,13 @@ category: Java 基础
 difficulty: 易
 tags: [异常]
 ---
-**体系**：Throwable → Error（JVM 级，不该捕获：OOM/StackOverflow）+ Exception → 受检异常（IOException/SQLException，强制 try 或 throws）+ RuntimeException（NPE/数组越界，非受检）。
+**先画树**：Throwable 是老祖宗，两大分支——Error 和 Exception。
 
-**选型实践**：
-- 可预期可恢复（文件不存在）→ 受检异常，调用方必须处理
-- 编程错误（参数非法）→ 非受检， RuntimeException
-- 业务失败 → 阿里规约推荐自定义 BusinessException extends RuntimeException，避免调用链层层 throws 污染签名
+- **Error**：JVM 自己出问题了（内存爆了 OOM、栈溢出），你捕获也没用，让它死
+- **Exception** 里又分两支：
+  - **受检异常**（IOException 这种）：编译器强制你 try-catch 或 throws，不处理编译不过。语义是"这种错是可预期的，你必须表态怎么办"
+  - **非受检异常**（RuntimeException，比如空指针、数组越界）：编译器不管，语义是"这是你代码写错了，改代码去，别用 try 兜"
 
-**finally 陷阱**：finally 中 return 会吞掉 try 的 return 和异常；try-with-resources 自动关闭实现 AutoCloseable 的资源，优先使用。
+**实际项目怎么选**：业务异常（余额不足、库存不够）推荐自定义 `BusinessException extends RuntimeException`——不强制每一层方法签名都 throws，全局异常处理器统一接住返回错误码。这是阿里规约推荐的做法，答出来很加分。
+
+**finally 的坑**：finally 里写 return 会把 try 里的返回值和异常都吞掉——所以 finally 只该做清理。资源关闭优先 try-with-resources，自动调用 close 还不会漏。

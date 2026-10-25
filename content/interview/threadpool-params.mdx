@@ -5,15 +5,16 @@ difficulty: 中
 tags: [线程池, ThreadPoolExecutor]
 companies: [美团, 阿里]
 ---
-**七个参数**：corePoolSize、maximumPoolSize、keepAliveTime + unit、workQueue、threadFactory、rejectedExecutionHandler。
+**七个参数用人话过一遍**：核心线程数（正式工）、最大线程数（正式工+临时工上限）、空闲回收时间（临时工多久没活就走）、任务队列（待办清单）、线程工厂（招人的 HR）、拒绝策略（实在干不完怎么办）。
 
-**提交任务流程（容易答反的点）**：
+**执行流程有个反直觉的点，90% 的人第一次都答反**：
 
-1. 线程数少于 core → 创建核心线程执行
-2. 核心满 → 进队列
-3. **队列满** → 才创建非核心线程（直到 max）
-4. 队列和 max 都满 → 触发拒绝策略
+> 任务来了 → 正式工没满？招正式工干 → 满了？**先塞进待办清单排队** → 队列也满了？才招临时工 → 临时工也到上限了？触发拒绝策略
 
-**四种拒绝策略**：AbortPolicy（抛异常，默认）、CallerRuns（提交者自己跑，天然反压）、Discard、DiscardOldest。
+注意：**队列满了才扩人，不是人满了才排队**。就像公司：正式工都在忙时，新活先压在待办里，待办堆爆了才想起招临时工。
 
-**参数怎么定**：CPU 密集 ≈ 核数 + 1；IO 密集 ≈ 核数 × (1 + 等待/计算比)。更可靠的是压测调优。**为什么不用 Executors 快捷方法**：newFixedThreadPool 队列无界可能 OOM，newCachedThreadPool 最大线程数 Integer.MAX_VALUE 可能创建海量线程——阿里规约要求手动 new ThreadPoolExecutor。
+**四种拒绝策略**：AbortPolicy 抛异常（默认）、CallerRuns 让提交任务的人自己干（天然反压，下游快不动了上游就别发那么快）、Discard 悄悄丢、DiscardOldest 丢最老的。
+
+**为什么禁用 Executors 快捷方法**：newFixedThreadPool 的队列**无界**——任务堆积直接 OOM；newCachedThreadPool 最大线程数是 21 亿——来多少任务开多少线程直接打挂系统。所以阿里规约要求手动 new ThreadPoolExecutor，每个参数自己负责。
+
+**参数怎么定**：CPU 密集型（纯计算）≈ 核数+1；IO 密集型（大量调接口查库）可以开多些，经验公式 核数×(1+等待时间/计算时间)——最终还是要压测说了算。

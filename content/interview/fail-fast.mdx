@@ -4,11 +4,23 @@ category: Java 集合
 difficulty: 易
 tags: [fail-fast]
 ---
-**机制**：迭代器创建时记录 modCount，每次 next() 检查 modCount 是否被修改（add/remove 会改），变了立即抛 CME——尽早暴露并发修改错误而不是产生诡异结果。
+这题每个人都踩过坑：一边 for-each 一边 remove，程序当场抛 ConcurrentModificationException——这就是 fail-fast 在工作。
 
-**遍历时删除的正确姿势**：
-1. `iterator.remove()`（会同步更新 expectedModCount）
-2. JDK8+ `list.removeIf(x -> ...)`（内部安全）
-3. **并发场景用 CopyOnWriteArrayList**（写时复制，遍历的是快照，天然不抛）
+**它是怎么发现的？**（原理一句话就懂）ArrayList 里有个修改次数的计数器 modCount。你创建迭代器时，它偷偷记住当前的次数；之后每次取下一个元素前对一下账："集合被改过的次数和我记的一样吗？"不一样说明**有人在我遍历期间动了集合**，立刻抛异常——宁可崩溃也不让你拿到错乱的数据，这就是 fail-fast（快速失败）的思想。
 
-**追问**：for-each 里直接 list.remove 会怎样——下一次 next 抛 CME；删倒数第二个元素是个著名例外（hasNext 提前返回 false 不触发检查）。
+**那遍历时想删除怎么办？** 三种正路：
+
+```java
+// 1. 迭代器自己的 remove（会同步更新账本，安全）
+Iterator<String> it = list.iterator();
+while (it.hasNext()) {
+    if (it.next().isEmpty()) it.remove();
+}
+
+// 2. JDK8+ 一行搞定（内部就是安全版迭代器）
+list.removeIf(String::isEmpty);
+
+// 3. 并发场景：用写时复制的 CopyOnWriteArrayList
+```
+
+**一个冷知识**：删"倒数第二个元素"时不会抛异常——因为删除后游标恰好和 size 相等，hasNext 返回 false，对账环节被跳过了。面试聊到这个细节会显得你真踩过坑。

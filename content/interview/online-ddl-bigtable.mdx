@@ -5,11 +5,17 @@ difficulty: 中
 tags: [DDL, 运维]
 companies: [美团]
 ---
-**为什么不能直接 ALTER**：8.0 前加字段要锁表重建（分钟级），线上不可接受；8.0 INSTANT ADD COLUMN 秒级（加在末尾），但加索引仍是 INPLACE（不锁写但耗资源）。
+**为什么不能直接 ALTER**：MySQL 5.7 加字段默认要**锁表重建整张表**——千万行的表卡住几十分钟，线上写入全部排队，等于事故。
 
-**方案**：
-1. MySQL 8.0：优先 INSTANT/INPLACE，`ALGORITHM=INSTANT` 显式要求，不支持则报错而非默默锁表
-2. **gh-ost / pt-online-schema-change**：建影子表 + 增量同步（gh-ost 用 binlog 无触发器）+ 原子 rename——5.7 时代标准方案，掌握原理（限速、可暂停）
-3. 低峰执行 + 主从轮转
+**方案按版本选**：
 
-**追问**：为什么大表 DDL 要控制速率——同步延迟会传导给从库，业务读旧数据。
+**MySQL 8.0（先看这个）**：加字段（加在末尾）已支持 **INSTANT**——只改元数据，秒回；加索引是 INPLACE——不锁写但要扫全表耗资源。稳妥姿势：`ALTER TABLE t ADD COLUMN c int, ALGORITHM=INSTANT;` 显式声明——**如果这个版本不支持 INSTANT，会直接报错而不是偷偷锁表**，把选择权留给你。
+
+**MySQL 5.7 / 保守场景：gh-ost 或 pt-online-schema-change**。原理像"影印换页"：
+1. 建一张结构已改好的**影子表**
+2. 把存量数据分批拷过去，同时**偷偷同步增量**（gh-ost 是解析 binlog，pt-osc 用触发器）
+3. 校验一致后，一瞬间的 rename 原子切换
+
+**全程业务无感**，还能限速（发现从库延迟就自动放慢）、能随时暂停。
+
+**运维细节加分**：低峰执行；先在从库演练；磁盘留够（影子表 + binlog 空间）。

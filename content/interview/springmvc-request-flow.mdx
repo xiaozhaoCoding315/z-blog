@@ -4,12 +4,11 @@ category: Spring
 difficulty: 中
 tags: [SpringMVC]
 ---
-**流程**：DispatcherServlet 接收 → HandlerMapping 找 Handler（含拦截器链）→ HandlerAdapter 执行 Controller → 返回 ModelAndView → ViewResolver 解析视图 / @ResponseBody 走 HttpMessageConverter（Jackson 序列化）→ 渲染响应。
+**流程当故事讲**：请求进来，**DispatcherServlet（大堂总管）**接客 → 问 **HandlerMapping（前台查号台）**："这个 URL 归谁管？"拿到对应的 Controller 方法和拦截器链 → 交给 **HandlerAdapter（翻译官）**去真正调用（参数解析、数据绑定都是它做）→ Controller 返回结果 → @ResponseBody 的话走 HttpMessageConverter 把对象序列化成 JSON；返回视图名则找 ViewResolver 渲染。
 
-**过滤器 vs 拦截器**：
-- 过滤器是 **Servlet 规范**，拦截器是 **Spring 机制**
-- 执行顺序：Filter pre → Interceptor preHandle → Controller → Interceptor postHandle → Filter post
-- 过滤器能拿到原始请求/响应流，拦截器能拿到 Handler 信息（哪个方法、参数）
-- 选型：编码/跨域/CORS/XSS 过滤用 Filter；登录态/权限/日志埋点用 Interceptor
+**过滤器 vs 拦截器**（必考对比）：
 
-**追问**：拦截器 postHandle 在异常时不执行，afterCompletion 总执行（清理资源的正确位置）。
+- **过滤器是 Servlet 亲儿子**：在请求进 Spring 之前就工作，拿得到原始的请求流——所以编码、CORS、XSS 过滤必须它做
+- **拦截器是 Spring 的员工**：知道你调的是哪个 Controller 哪个方法——登录校验、权限、日志埋点用它更顺手
+
+**执行顺序记这条链**：Filter 前 → 拦截器 preHandle → Controller → 拦截器 postHandle → Filter 后。**坑点**：Controller 抛异常时 postHandle 不执行，afterCompletion 永远执行——所以清理资源要放 afterCompletion。

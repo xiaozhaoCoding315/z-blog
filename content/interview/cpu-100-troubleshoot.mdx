@@ -5,15 +5,23 @@ difficulty: 难
 tags: [排查, 调优]
 companies: [美团, 字节, 阿里]
 ---
-**CPU 100% 三板斧**：
-1. `top` 找到进程 → `top -Hp <pid>` 找到线程 tid
-2. `printf '%x' tid` 转十六进制
-3. `jstack <pid> | grep -A 20 <hex>` 看线程栈——通常是死循环/正则回溯/GC 线程满负荷（内存不足的表征）
-（一键化：arthas `thread -n 3` 直接列最忙线程）
+这题考的是"三板斧"肌肉记忆，现场背命令就行：
 
-**内存泄漏定位**：
-1. `-XX:+HeapDumpOnOutOfMemoryError` 拿快照 或 jmap -dump
-2. MAT 看支配树/Dominator Tree，找最大对象 → GC Roots 引用链 → 定位泄漏源
-3. 常见根因：静态集合只进不出、ThreadLocal 不 remove、监听器未注销、连接未关闭、缓存无淘汰
+**CPU 100% 排查线**：
 
-**答题结构**：现象→工具→命令→常见原因，条理比背命令更重要。
+```bash
+top                  # 1. 找到吃 CPU 的 Java 进程号
+top -Hp <pid>        # 2. 进程里哪个线程吃的（拿到线程 tid）
+printf '%x' <tid>    # 3. 线程号转十六进制（jstack 里显示的是十六进制）
+jstack <pid> | grep -A 20 <hex-tid>   # 4. 看这个线程在干嘛
+```
+
+jstack 一看，无非几种结果：栈里是个 while 循环（代码死循环）、正则匹配（灾难回溯）、或者 **GC 线程满负荷**——第三种最常见，本质是内存不够 GC 疯狂回收（此时该去查内存而不是 CPU）。（用 Arthas 的话 `thread -n 3` 一条命令列最忙的 3 个线程。）
+
+**内存泄漏定位线**：
+
+1. 启动时加 `-XX:+HeapDumpOnOutOfMemoryError`——OOM 瞬间自动拍"内存快照"（事前准备）；或线上 jmap -dump 手动拍
+2. 快照扔进 **MAT**（Eclipse Memory Analyzer），看支配树找占内存最大的对象，顺着 GC Roots 引用链查"谁拽着它不放"
+3. 对着代码找罪魁：静态 Map 只进不出？ThreadLocal 没 remove？监听器没注销？缓存没设上限和过期？
+
+**答题节奏**：现象 → 工具 → 命令 → 常见根因，一条线讲下来，比背一堆零散命令强。

@@ -4,12 +4,15 @@ category: Java 并发
 difficulty: 易
 tags: [线程]
 ---
-**六态**（Thread.State）：
-- **NEW**：new 出来还没 start
-- **RUNNABLE**：就绪/运行（Java 把就绪和运行合并，含 OS 层的 Running/Ready）；**IO 阻塞在 Java 层也是 RUNNABLE**（BIO 不改变 Java 状态，经典陷阱）
-- **BLOCKED**：竞争 synchronized 锁失败
-- **WAITING**：wait()/join()/LockSupport.park()，无限期等待唤醒
-- **TIMED_WAITING**：sleep(ms)/wait(ms)/parkNanos
-- **TERMINATED**：run 结束
+六种状态，用一个"打工人的一天"串起来记：
 
-**高频追问**：sleep vs wait——sleep 是 Thread 静态方法不释放锁；wait 是 Object 方法必须持锁调用并释放锁，用于线程协作。
+- **NEW**：刚入职，还没办开工手续（new 完没 start）
+- **RUNNABLE**：干活中或随时能干活（Java 把"就绪"和"运行中"合在一起了）
+- **BLOCKED**：在门口排队等会议室（抢 synchronized 锁没抢到）
+- **WAITING**：无限期等通知（wait()、join()——等同事叫我）
+- **TIMED_WAITING**：带闹钟的等待（sleep(3秒)、wait(5秒)）
+- **TERMINATED**：下班了（run 跑完）
+
+**一个埋在 RUNNABLE 里的坑**（说出来很加分）：线程做**阻塞 IO（比如读 socket）时，Java 层状态还是 RUNNABLE**——因为在操作系统层面它在等网卡，Java 没给这类等待单设状态。所以"看到全是 RUNNABLE 但服务没响应"时，别以为它在忙，用 jstack 看栈才知道它卡在哪个 read 上。
+
+**必考对比**：sleep vs wait——sleep 是"我定时睡会儿，会议室我锁着不放"（不释放锁）；wait 是"我把会议室让出来等你喊我"（必须先持锁才能调，且释放锁）。一个占着资源休息，一个让出资源等待。

@@ -4,10 +4,17 @@ category: Java 基础
 difficulty: 中
 tags: [反射]
 ---
-**原理**：运行期通过 Class 对象获取元信息（构造器/方法/字段），`Method.invoke` 早期是 native 调用，JIT 优化后第一步做 access check，性能损耗主要在参数装箱、方法查找与安全检查——单次调用比直接调用慢数倍，但**不是数量级差距**。
+**反射就是"运行时拆开类看说明书"**：拿到 Class 对象后，你能查它有哪些方法字段、调用私有方法、动态实例化——本来编译期定死的事，全变成运行时现场决定。
 
-**谁在用**：Spring IOC（反射实例化 Bean）、MyBatis（映射）、Jackson（字段读写）、动态代理（JDK Proxy）。
+**它慢在哪**：普通调用是编译期绑定的直路；反射要现查方法表、做安全检查、参数还要装箱——单次比直接调用慢几倍到几十倍。
 
-**优化手段**：缓存 Method/Field 对象、setAccessible(true) 跳过检查、MethodHandle/LambdaMetafactory（高性能反射替代）。
+**但别夸大**：JIT 会优化热点反射，一次方法调用的耗时是纳秒级，慢几倍也只是"几纳秒变几十纳秒"。**真正的问题通常不是性能，而是绕过了编译期检查**——方法名拼错要到运行时才炸，重构工具也追不到它。
 
-**追问**：反射能绕过 private 吗——setAccessible(true) 可以，但 JDK9+ 模块化后对未开放模块有限制。
+**谁在用**（你天天在受益）：
+- Spring IOC：`Class.forName("com.x.UserService")` 反射 new 出 Bean
+- MyBatis：数据库字段反射塞进你的实体类
+- Jackson：反射遍历字段做 JSON 序列化
+
+**优化手段**：缓存 Method/Field 对象别重复查、setAccessible(true) 跳过检查、极致性能用 MethodHandle。
+
+**一句话**：反射是框架的魔法来源，业务代码里少用——除非你也在造框架。

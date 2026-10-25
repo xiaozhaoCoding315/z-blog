@@ -5,10 +5,12 @@ difficulty: 中
 tags: [ThreadLocal, 内存泄漏]
 companies: [美团, 字节]
 ---
-**结构**：每个 Thread 持有 ThreadLocalMap，key 是 ThreadLocal 的**弱引用**，value 是强引用。
+**ThreadLocal 是"每个线程一份私房钱"**：同一个 ThreadLocal 变量，每个线程存取的值互不干扰。常用来传登录用户信息（一个请求一个线程，控制器里存的用户，Service 里直接取）、缓存 SimpleDateFormat（它线程不安全）。
 
-**泄漏链路**：ThreadLocal 外部引用断开 → key 被 GC 回收 → Entry 变成 (null, value) → 若线程不死（**线程池正是长命的**）→ value 永远不可达但被 Map 持有 → 泄漏。
+**数据实际存在哪**：不在 ThreadLocal 对象里！每个 Thread 自带一个 Map，key 是 ThreadLocal 对象（**弱引用**），value 是你存的值（强引用）。
 
-**正确姿势**：用完必须 `remove()`（finally 里）；ThreadLocal 修饰为 static final（避免重复创建）；InheritableThreadLocal 传子线程、TransmittableThreadLocal 解决线程池透传（阿里 TTL）。
+**为什么会泄漏**（画出来就懂了）：外部代码用完 ThreadLocal 变量，引用断开 → 下次 GC 把这个弱引用 key 回收 → Map 里剩下一条 (null → value) 的孤儿条目 → **线程不死它就不清**。普通线程跑完就死无所谓；**线程池的线程是"永生的"**，孤儿 value 越积越多——这就是泄漏。
 
-**场景**：用户上下文透传、SimpleDateFormat 缓存、数据库连接绑定。
+**正确姿势**：用完在 finally 里 `threadLocal.remove()`，一了百了。另外把 ThreadLocal 声明成 static final，避免重复创建。
+
+**追问预备**：子线程拿不到父线程的 ThreadLocal 值（要用 InheritableThreadLocal）；线程池场景连它也不靠谱，要阿里的 TransmittableThreadLocal。

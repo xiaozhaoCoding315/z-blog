@@ -1,11 +1,16 @@
 ---
-question: Spring Boot 相比 Spring 解决了什么问题？ starter 的本质？
+question: Spring Boot 相比 Spring 解决了什么问题？starter 的本质？
 category: Spring
 difficulty: 易
 tags: [SpringBoot]
 ---
-**解决的问题**：Spring 时代的「配置地狱」——Spring Boot = Spring + 约定优于配置（自动装配）+ 内嵌容器（jar 直接跑）+ 生产级特性（actuator 健康检查/指标）。
+**Spring 时代的痛**：功能是强，但配置写到怀疑人生——接个 Redis 要引一堆依赖、写一堆 Bean 定义、配一堆属性，web.xml 一大坨。项目一大，配置代码比业务代码还多。
 
-**starter 本质**：一个**空 jar + 依赖聚合（传递引入所有相关库）+ 自动配置模块**。引入 redis-starter 等于引入了客户端依赖 + RedisAutoConfiguration（条件装配出 RedisTemplate）。
+**Spring Boot 的三板斧**：
+1. **自动装配**：引 starter 就自动配好合理默认值（原理上一题讲过）
+2. **内嵌容器**：Tomcat 直接打进 jar，`java -jar` 就跑——不需要外面装 Tomcat 部署 war，容器化部署顺手多了
+3. **生产级配套**：Actuator 健康检查/指标暴露、统一配置文件 application.yml
 
-**关键机制**：@ConditionalOnXxx 条件注解决定装配与否；application.yml 的配置属性通过 @ConfigurationProperties 绑定——这就是"约定"：配置名即属性路径。
+**starter 的本质**：一个"**依赖大礼包 + 自动配置**"。redis-starter 拆开看就是：把 redis 客户端相关的 jar 全部传递引入（你不用一个个挑版本，版本兼容官方背书）+ 附赠自动配置类（条件装配出 RedisTemplate）。**"引一个 starter = 零配置获得一个功能"**，这就是它让 Spring 起死回生的原因。
+
+**一句话定位**：Spring 是引擎，Spring Boot 是装好方向盘座椅和导航、插上钥匙就能开的整车。

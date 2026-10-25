@@ -5,10 +5,17 @@ difficulty: 难
 tags: [AQS, 锁]
 companies: [字节, 阿里]
 ---
-**AQS（抽象队列同步器）**= 一个 volatile int state（同步资源）+ CLF 双向队列（等待线程包装成 Node 排队，park 挂起）。
+**AQS（抽象队列同步器）**可以理解成 JDK 造好的"排队叫号机"——JUC 里一半的同步工具都是基于它攒出来的。
 
-**模板方法模式**：AQS 定义入队/出队/挂起/唤醒骨架，子类只需实现 tryAcquire/tryRelease（独占）或 tryAcquireShared（共享）——怎么算"获取成功"由子类定义。
+**两个核心零件**：
+1. **一个 state 变量**（volatile int）：代表"资源还剩多少"。对 ReentrantLock，0 是没人锁、1 是锁了、2 是重入了一次；对 Semaphore 就是剩余许可证数
+2. **一个等待队列**（CLH 双向链表）：抢不到资源的线程包装成节点排队，park 挂起；前面的用完资源 unpark 唤醒下一个
 
-**ReentrantLock 的实现**：state 0→1 抢锁、记录持有线程；重入就是 state++；公平锁 tryAcquire 先 hasQueuedPredecessors 检查队列，非公平直接 CAS 抢。
+**设计聪明在"模板方法"**：AQS 把排队、挂起、唤醒这些脏活全包了，子类只需回答一个问题——"什么算抢到资源？"也就是实现 tryAcquire/tryRelease。怎么定义"抢到"，各家自己说了算：
 
-**全家桶**：Semaphore（state=许可数）、CountDownLatch（state=count，共享模式）、ReentrantReadWriteLock（state 高 16 位读/低 16 位写）全是 AQS 子类——**懂 AQS 一通百通**。
+- **ReentrantLock**：CAS 把 state 从 0 改 1 算抢到，顺便记下自己是哪个线程；发现自己就是持锁线程，state+1 完事（重入）；公平版本抢之前先问一句"队列里有人排着吗"（hasQueuedPredecessors），非公平版直接抢
+- **Semaphore**：state 减 1 后还大于等于 0 就算抢到
+- **CountDownLatch**：state 减到 0，把排队等着的全部放行
+- **读写锁**：state 拆两半——高 16 位记读次数、低 16 位记写次数，实现读共享写互斥
+
+**答这题的杀手锏**：说"JUC 的锁和同步器五花八门，但骨架都是 AQS 这一挂排队机，差别只是 state 的含义和抢法"——一句话证明你懂的是体系不是碎片。

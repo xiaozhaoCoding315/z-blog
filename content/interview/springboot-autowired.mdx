@@ -5,8 +5,16 @@ difficulty: 中
 tags: [SpringBoot, 自动装配]
 companies: [美团, 拼多多]
 ---
-**一句话**：`@SpringBootApplication` → `@EnableAutoConfiguration` → `@Import(AutoConfigurationImportSelector)` 读取所有依赖 jar 中 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`（2.7+ 格式，老版本是 spring.factories）里的配置类，按 **条件注解**（`@ConditionalOnClass`、`@ConditionalOnMissingBean`、`@ConditionalOnProperty` 等）过滤后注册到容器。
+**一句话**：自动装配 = "按条件批量导入配置类"。
 
-**以 starter 为例**：引入 `redis-starter` → 自动配置类检测到 RedisOperations 类存在 → 装配 RedisTemplate，用户零配置即可注入使用；`@ConditionalOnMissingBean` 保证用户自定义的 Bean 优先。
+**流程拆开看**：@SpringBootApplication 里藏着 @EnableAutoConfiguration → 它导入一个 Selector → 这个 Selector 去读**所有 jar 包里固定位置的一个清单文件**（2.7+ 是 `META-INF/spring/...AutoConfiguration.imports`），拿到一串候选配置类 → 逐个过**条件注解的安检**（@ConditionalOnClass 类路径有这个类吗？@ConditionalOnMissingBean 用户自己配了吗？@ConditionalOnProperty 配置开关开了吗？）→ 通过安检的才注册进容器。
 
-**自定义 starter 三要素**：自动配置类 + 条件注解 + imports 文件声明，再论 META-INF 里的 `spring-configuration-metadata` 让 IDE 识别配置提示。
+**用 Redis 串一遍**：你引入 redis-starter，啥都没配，为什么 RedisTemplate 直接能注入？
+
+1. starter 的 jar 里带着自动配置类 RedisAutoConfiguration
+2. 它头上的 @ConditionalOnClass(RedisOperations.class) 检查通过——因为你引了 redis 客户端依赖
+3. @ConditionalOnMissingBean 发现你没自己配 RedisTemplate → 容器注册默认的
+
+**"约定优于配置"的本质**就藏在这：配置文件里写 `spring.redis.host`，自动配置类用 @ConfigurationProperties 把它绑到属性上——**你写一行配置 = 开了一个条件开关**。
+
+**加分收尾**：自己写 starter 也一样——一个自动配置类 + 条件注解 + 清单文件，三件套。

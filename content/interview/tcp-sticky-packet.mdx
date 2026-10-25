@@ -5,13 +5,14 @@ difficulty: 中
 tags: [TCP, 粘包]
 companies: [美团]
 ---
-**根因**：TCP 是**字节流**协议，没有消息边界——发送端 Nagle 合并小包、接收端缓冲区一次读到多个消息（粘）或半个消息（拆）。**"粘包"本质是应用层没有定义消息边界，不是 TCP 的 bug**。
+**先纠正概念**：TCP 是**字节流**协议，只管把字节按序送到，**根本不知道"消息"边界在哪**——"粘包"不是 TCP 的 bug，是应用层没定义边界却怪人家。
 
-**四种解决方案**：
-1. **固定长度**：简单浪费
-2. **分隔符**：
-（Redis RESP 协议）——内容需转义
-3. **长度前缀（最通用）**：header 定长含 body 长度（HTTP Content-Length、RPC 协议、Netty LengthFieldBasedFrameDecoder）
-4. 更上层协议：JSON 按 {} 匹配（低效易错）
+**现象怎么来的**：发送方三次 write 被内核合并成一个段（接收方一次读到两条——粘）；一次 write 太大被拆段（读到半条——拆）。
 
-**实践**：自研 RPC/IM 协议标配「magic + version + type + length + body」。
+**四种定界方案**：
+1. 固定长度——简单但浪费
+2. 分隔符（Redis 协议用换行）——内容要转义
+3. **长度前缀（工业标准）**：消息头 4 字节写明 body 长度，先读头再按长读体——HTTP 的 Content-Length、RPC 框架、Netty 都这思路
+4. 上层格式配对（JSON 括号）——低效不推荐
+
+**自研协议标配**：magic + version + type + length + body。

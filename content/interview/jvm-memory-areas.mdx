@@ -5,14 +5,18 @@ difficulty: 中
 tags: [JVM, 内存模型]
 companies: [美团, 字节]
 ---
-**线程私有**：
-- **程序计数器**：当前字节码行号，唯一不会 OOM 的区域
-- **虚拟机栈**：栈帧（局部变量表/操作数栈），深度超限 StackOverflowError
-- **本地方法栈**：native 方法用
+**先分两类：线程私有的和线程共享的**。
 
-**线程共享**：
-- **堆**：对象实例与数组，GC 主战场，OOM 最多发区域
-- **方法区（元空间 Metaspace）**：类元信息、运行时常量池；1.8 起使用本地内存，动态生成大量类（CGLib）可能 Metaspace OOM
-- **直接内存**：NIO DirectBuffer 使用，不在堆内但也会 OOM
+**私有的（随线程生灭）**：
+- 程序计数器：记当前执行到哪行字节码，**唯一不会 OOM 的区域**
+- 虚拟机栈：每调一个方法压一个"栈帧"（存局部变量）。方法调用太深（比如无限递归）→ StackOverflowError
+- 本地方法栈：给 native 方法用的，同上
 
-**排障**：OOM 时先 `jmap -dump` 或加 `-XX:+HeapDumpOnOutOfMemoryError` 拿堆快照，再用 MAT/JProfiler 分析支配树找大对象来源。
+**共享的**：
+- **堆**：对象都住这，GC 主战场，OOM 高发区（`-Xmx` 控上限）
+- **方法区/元空间**（1.8 起用本地内存）：存类的元信息。**CGLib 之类动态生成大量类**时可能 Metaspace 溢出——热部署工具用久了崩，常见就是这个
+- 直接内存：NIO 的 DirectBuffer 用，堆外但也吃机器内存
+
+**排查思路要带上**：OOM 先 `-XX:+HeapDumpOnOutOfMemoryError` 拿快照 → MAT 分析大对象来源。堆 OOM 查对象泄漏；Metaspace OOM 查类加载器泄漏（动态代理没释放）。
+
+**一个实用判断**：StackOverflow 看栈（递归没出口）；堆 OOM 看快照（谁占着内存）；Metaspace OOM 看类加载（谁在疯狂造类）——三种 OOM 三条路。
