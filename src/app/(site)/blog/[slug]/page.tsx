@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { ReadingProgress } from "@/components/blog/reading-progress";
 import { TableOfContents } from "@/components/blog/toc";
 import { ViewCounter } from "@/components/blog/view-counter";
+import { LikeButton } from "@/components/blog/like-button";
 import { SummaryFallback } from "@/components/blog/summary-fallback";
 import { RelatedPosts } from "@/components/blog/related-posts";
 import { Giscus } from "@/components/blog/giscus";
@@ -91,6 +92,8 @@ export default async function PostPage({
               {post.readingText}
             </span>
             <ViewCounter slug={slug} />
+            <span className="text-muted-foreground/40">·</span>
+            <LikeButton slug={slug} />
           </div>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {post.meta.tags.map((tag) => (

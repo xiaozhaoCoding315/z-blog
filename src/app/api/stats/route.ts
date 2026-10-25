@@ -15,7 +15,7 @@ export async function GET() {
   };
 
   if (!db) {
-    return NextResponse.json({ ...base, db: false, posts: 0, chunks: 0, totalViews: 0, topPosts: [] });
+    return NextResponse.json({ ...base, db: false, posts: 0, chunks: 0, totalViews: 0, totalLikes: 0, topPosts: [] });
   }
 
   try {
@@ -23,10 +23,12 @@ export async function GET() {
       posts: number;
       chunks: number;
       total_views: number;
+      total_likes: number;
     }>(sql`SELECT
         (SELECT count(*) FROM posts)::int AS posts,
         (SELECT count(*) FROM chunks)::int AS chunks,
-        (SELECT coalesce(sum(count), 0) FROM views)::int AS total_views`);
+        (SELECT coalesce(sum(count), 0) FROM views)::int AS total_views,
+        (SELECT coalesce(sum(count), 0) FROM likes)::int AS total_likes`);
 
     const topPosts = await db.execute<{
       slug: string;
@@ -43,9 +45,10 @@ export async function GET() {
       posts: counts?.posts ?? 0,
       chunks: counts?.chunks ?? 0,
       totalViews: counts?.total_views ?? 0,
+      totalLikes: counts?.total_likes ?? 0,
       topPosts: topPosts.filter((row) => row.count > 0),
     });
   } catch {
-    return NextResponse.json({ ...base, db: false, posts: 0, chunks: 0, totalViews: 0, topPosts: [] });
+    return NextResponse.json({ ...base, db: false, posts: 0, chunks: 0, totalViews: 0, totalLikes: 0, topPosts: [] });
   }
 }

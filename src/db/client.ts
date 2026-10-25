@@ -69,4 +69,10 @@ export async function ensureSchema() {
       count integer NOT NULL DEFAULT 0
     )
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS likes (
+      slug text PRIMARY KEY,
+      count integer NOT NULL DEFAULT 0
+    )
+  `);
 }

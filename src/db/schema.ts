@@ -57,5 +57,13 @@ export const views = pgTable("views", {
   count: integer("count").notNull().default(0),
 });
 
+/**
+ * likes：点赞
+ */
+export const likes = pgTable("likes", {
+  slug: text("slug").primaryKey(),
+  count: integer("count").notNull().default(0),
+});
+
 export type PostRow = typeof posts.$inferSelect;
 export type ChunkRow = typeof chunks.$inferSelect;

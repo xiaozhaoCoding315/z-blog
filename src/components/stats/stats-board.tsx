@@ -7,6 +7,7 @@ import {
   Database,
   Eye,
   FileText,
+  Heart,
   Sparkles,
   VectorSquare,
 } from "lucide-react";
@@ -17,6 +18,7 @@ interface StatsData {
   posts: number;
   chunks: number;
   totalViews: number;
+  totalLikes: number;
   chatEnabled: boolean;
   embeddingEnabled: boolean;
   aiEnabled: boolean;
@@ -39,14 +41,15 @@ export function StatsBoard() {
 
   const cards = [
     { label: "文章", value: data?.posts, icon: FileText },
-    { label: "向量分块", value: data?.chunks, icon: VectorSquare },
     { label: "累计阅读", value: data?.totalViews, icon: Eye },
+    { label: "累计点赞", value: data?.totalLikes, icon: Heart },
+    { label: "向量分块", value: data?.chunks, icon: VectorSquare },
   ];
 
   return (
     <div className="space-y-10">
       {/* 概览卡片 */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {cards.map((card) => (
           <div key={card.label} className="glass card-hover rounded-xl p-5">
             <card.icon className="mb-3 size-5 text-primary" />

@@ -3,7 +3,9 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# 国内服务器走 npmmirror 加速；海外环境可构建时覆盖：--build-arg NPM_REGISTRY=https://registry.npmjs.org
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+RUN npm ci --registry=$NPM_REGISTRY
 
 FROM node:20-alpine AS builder
 WORKDIR /app

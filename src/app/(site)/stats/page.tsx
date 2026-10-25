@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTags } from "@/content";
+import { getAllPosts, getTags } from "@/content";
 import { StatsBoard } from "@/components/stats/stats-board";
 
 export const metadata: Metadata = {
@@ -8,8 +8,11 @@ export const metadata: Metadata = {
 };
 
 export default function StatsPage() {
+  const posts = getAllPosts();
   const tags = getTags();
   const max = tags[0]?.count ?? 1;
+  const totalChars = posts.reduce((sum, p) => sum + p.content.length, 0);
+  const wan = (totalChars / 10000).toFixed(1);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
@@ -18,7 +21,7 @@ export default function StatsPage() {
           统计
         </h1>
         <p className="mt-2 text-muted-foreground">
-          这个小站的一举一动，都记录在这里
+          共 {posts.length} 篇文章 · 约 {wan} 万字 · 这个小站的一举一动，都记录在这里
         </p>
       </header>
 
