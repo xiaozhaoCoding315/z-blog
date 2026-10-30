@@ -1,0 +1,245 @@
+---
+title: 200 道面试题，我是怎么组织和梳理的
+date: 2026-08-14
+description: 从零散笔记到可检索的题库：分类怎么定、单题结构怎么统一、以及为什么放弃"背答案"思路转向"场景化追问"。
+tags: [面试, 内容, 工程化, 学习]
+---
+
+博客里有个面试题库模块，现在有 200 道题，13 个分类。
+
+但这不是一开始就规划好的。最初只是我自己的零散笔记，慢慢地记多了，才想着"不如做成一个可以刷的系统"。
+
+这篇讲组织思路，以及重构了两轮之后才想明白的几件事。
+
+## 一题一文件
+
+先说存储形式。每道题是一个 MDX 文件：
+
+```mdx title="content/interview/cache-avalanche.mdx"
+---
+question: 缓存雪崩、击穿、穿透分别是什么？怎么防？
+category: Redis
+difficulty: 中
+tags: [缓存, 高可用]
+companies: [阿里, 美团]
+---
+
+## 一句话区别
+
+雪崩是「大面积同时失效」，击穿是「单个热点失效被打爆」，
+穿透是「查不存在的数据，请求直接打到 DB」。
+
+## 雪崩
+
+...
+```
+
+选择文件而不是数据库，理由和博客文章一样：
+
+- **Git 就是版本管理**——改了哪道题、什么时候改的，`git log` 一清二楚
+- **纯文本可 diff**——面试题经常需要微调措辞，diff 比看数据库字段友好得多
+- **可以批量处理**——写个脚本就能统一格式化、查重复
+
+缺点也很明显：**没有富查询能力**。"找出所有涉及 Redis 且难度为「难」的题"这种事，得靠启动时扫一遍目录。不过 200 个文件扫描也就几十毫秒，完全不是问题。
+
+## 结构：先想清楚"一道好题该有什么"
+
+一开始我的题目结构很随意，有的只有题干，有的带答案，有的还混着当时的面试反馈。
+
+重构时先定了 schema：
+
+```ts title="src/lib/interview-core.ts"
+const metaSchema = z.object({
+  question: z.string().min(1),                                    // 题干
+  category: z.string().min(1),                                    // 分类
+  difficulty: z.enum(["易", "中", "难"]).default("中"),             // 难度
+  tags: z.array(z.string()).default([]),                          // 细分标签
+  companies: z.array(z.string()).default([]),                     // 常考公司
+});
+```
+
+五个字段各有用途：
+
+| 字段 | 干什么用 |
+| --- | --- |
+| `question` | 题干，显示在列表里，也是搜索的主要目标 |
+| `category` | 一级分类，决定题目落在哪个板块 |
+| `difficulty` | 筛选用。相信我，你复习时只想看「难」的那些 |
+| `tags` | 细粒度索引。比 category 灵活，一道题可以多个 |
+| `companies` | 心理锚点。看到「字节常考」，注意力立刻不一样 |
+
+`companies` 这个字段可能有点意外。它不是为了"押题"，而是**帮我判断优先级**——同样一道题，标了常考的，我会更认真地准备。
+
+<Callout type="tip" title="字段设计的经验">
+每加一个字段前问自己：**这个字段会不会被用来筛选或排序？**
+如果答案是「不会，只是记录一下」，那它应该出现在正文里，而不是 frontmatter 里。
+我最初给分类做了三级（大类/子类/子子类），后来发现根本用不着，删到一级。
+</Callout>
+
+## 分类怎么定：13 个够不够
+
+我现在的分类：
+
+```
+Agent / LLM 应用   22 题      Java 基础      18 题
+系统设计 & 场景    29 题      Java 并发      16 题
+MySQL              16 题      Spring         14 题
+计算机网络         14 题      分布式 & 微服务 14 题
+操作系统           13 题      Redis          12 题
+Java 集合          11 题      JVM            11 题
+消息队列           10 题
+```
+
+分类定得好不好，标准只有一个：**你找东西的时候能不能一眼定位**。
+
+我踩过的两个坑：
+
+**坑一：分类太细。** 一开始我分了"MySQL 索引"、"MySQL 事务"、"MySQL 锁"三个独立分类。结果每类只有 3~4 题，列表看起来空荡荡的，反而不好找。合并成 `MySQL` 然后用 `tags` 区分更合理。
+
+**坑二：分类边界模糊。** "Redis 分布式锁"到底算 Redis 还是分布式？这种题我给主分类 `Redis`，tag 里加 `分布式锁`。**主分类看"你从哪个角度排查问题"，tag 看"涉及哪些技术"。**
+
+分类之间的数量要相对均衡。我最大的一类是"系统设计 & 场景"29 题，最小的是"消息队列"10 题。差 3 倍问题不大，但如果差到 10 倍（比如 100 题 vs 10 题），说明分类切法有问题。
+
+## 答案怎么组织：三段式
+
+这是重构里改动最大的部分。
+
+第一版的答案是我从各种资料里抄来的，风格混乱——有的是一句话结论，有的是长篇大论，有的是代码堆砌。
+
+现在统一成三段：
+
+```mdx
+## 一句话答案
+先给最精炼的结论，一句话。
+
+## 展开说
+为什么是这样？机制是什么？配图/代码。
+
+## 面试官可能追问什么
+列出 1-3 个常见的深挖方向。
+```
+
+**"一句话答案"放最前面**，是因为面试时你需要的是"能立刻说出口的那句话"。细节可以在追问时再补。
+
+**"追问什么"这一段**是我觉得最有价值的。因为面试的胜负往往不在主问题，而在追问环节。比如：
+
+> Q: HashMap 为什么容量是 2 的幂？
+>
+> 追问 1: 那扩容的时候为什么要 rehash？
+> 追问 2: 如果容量不是 2 的幂会怎样？
+> 追问 3: 1.8 为什么引入红黑树？阈值为什么是 8？
+
+准备好追问，才是真的理解。
+
+## 掌握度：为什么存在浏览器里
+
+题库有个"标记为已掌握"的功能。状态存在 `localStorage`，不上服务端。
+
+```ts title="src/components/interview/interview-browser.tsx"
+let cachedMastered: Set<string> | null = null;
+
+function readMastered(): Set<string> {
+  if (cachedMastered) return cachedMastered;
+  try {
+    cachedMastered = new Set(JSON.parse(localStorage.getItem(STORE_KEY) ?? "[]"));
+  } catch {
+    cachedMastered = new Set();
+  }
+  return cachedMastered;
+}
+```
+
+为什么不做服务端？因为**这个功能不值得引入登录系统**。
+
+一旦要存服务端，就要有用户体系、认证、权限……为了记录"哪些题我会了"，投入产出比太低。
+
+代价是：换设备、清缓存就没了。这个我认。
+
+<Callout type="warning" title="一个技术债">
+`localStorage` 方案有个我至今没解决的问题：**多设备不同步**。
+手机上标记了 50 题，电脑上还是 0。
+真正的解法是接 GitHub OAuth（反正评论已经在用 GitHub 了），存到数据库。
+这是个"知道该做但一直没做"的事。
+</Callout>
+
+## 一个技术细节：useSyncExternalStore 的坑
+
+`localStorage` 本身不是响应式的，改了不会触发重渲染。我用了 `useSyncExternalStore`：
+
+```tsx
+export function useMastered(): Set<string> {
+  return useSyncExternalStore(
+    (cb) => {
+      window.addEventListener("blog:mastered-changed", cb);
+      return () => window.removeEventListener("blog:mastered-changed", cb);
+    },
+    readMastered,
+    () => EMPTY_SET
+  );
+}
+```
+
+**这里有个必须注意的点**：`getSnapshot` 必须返回**稳定引用**。
+
+如果每次调用都 `new Set()`，React 会认为"每次都变了"，导致无限重渲染。所以上面用了模块级缓存，写入时才整体替换。
+
+```ts
+function writeMastered(set: Set<string>) {
+  cachedMastered = set;                            // 整体替换，不修改
+  localStorage.setItem(STORE_KEY, JSON.stringify([...set]));
+}
+```
+
+**永远不要修改缓存里的对象，要替换。** 这是 `useSyncExternalStore` 的基本要求。
+
+## 数据校验：写错字段名别静默失败
+
+200 个文件，手写 frontmatter，一定会出错。所以我加了 zod 校验：
+
+```ts title="src/lib/interview-core.ts"
+const parsed = metaSchema.safeParse(data);
+if (!parsed.success) {
+  console.warn(
+    `[interview] 题目 ${slug} frontmatter 不合法，已跳过：`,
+    parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+  );
+  continue;   // 跳过这道题，但不影响其它题
+}
+```
+
+关键是**跳过而不是崩溃**。一道题写错格式，不应该让整个题库打不开。
+
+而且是 `console.warn` 明确告诉你哪个文件、哪个字段、什么问题。这比运行时静默出现一个空列表好太多。
+
+## 反思：从"背"到"用"
+
+重构两轮之后，最大的观念转变是：
+
+**第一版的题库是"知识点集合"，第二版才开始像"面试模拟"。**
+
+差别在哪？第一版我关心的是"覆盖了多少知识点"。第二版我关心的是"被追问时能不能撑住"。
+
+具体体现：
+
+- 每道题都加了"追问方向"
+- 加了 AI 面试官功能（基于参考答案反问，模拟真实追问）
+- 难度标注更认真了——"难"是真的会被深挖的题，不是"看起来复杂"
+
+<Callout type="info" title="一个观察">
+面试题的价值不在「答案本身」，而在「答案的组织方式」。
+同一个知识点，能不能在 30 秒内讲清楚、能不能应对三层追问，
+这比知道 200 个知识点重要。
+</Callout>
+
+## 接下来
+
+列表里还有几件事：
+
+1. **掌握度上云端**——接 GitHub OAuth，多设备同步
+2. **按弱项推荐**——连续标记"不会"的题，优先推
+3. **导出成 PDF**——通勤时能看
+4. **补 Java 基础到 25 题**——现在 18 题偏少，这部分是面试必考
+
+第 1 条最想要。第 4 条最简单，就是写。
+
+如果你也在整理面试题，我的建议是：**先把结构定下来，再往里填内容。** 结构没定好之前写的东西，后面基本都要重写。

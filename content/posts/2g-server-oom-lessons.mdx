@@ -1,0 +1,203 @@
+---
+title: 我把 2G 内存的服务器从 OOM 里捞了出来
+date: 2026-07-15
+description: 一次真实的翻车：在 2C2G 的 ECS 上直接跑 next build，SSH 直接失联。记录排查过程、swap 的真实作用，以及最后为什么改成「本地构建 + 传镜像」。
+tags: [Docker, Linux, 部署, 运维]
+---
+
+先讲结论：**2G 内存的机器不要在上面跑 `next build`**。不是慢的问题，是会把整台机器拖死。
+
+这篇是我踩这个坑的全过程，包括当时的误判。
+
+## 事故现场
+
+那天晚上我把博客代码传到服务器，很自然地敲了：
+
+```bash
+cd /opt/blog
+docker compose up -d --build
+```
+
+然后去泡了杯茶。回来发现 SSH 连不上了。
+
+第一反应是网络问题，重连、换端口、用云控制台 VNC，折腾了十分钟才登进去。进去一看：
+
+```bash
+$ uptime
+load average: 47.62, 38.15, 22.03
+
+$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           1.7Gi       1.7Gi        12Mi        40Mi       112Mi        28Mi
+Swap:             0B          0B          0B
+```
+
+load 干到 47，swap 是 0，内存被吃干净了。`docker ps` 里 app 容器一直在 restart。
+
+## 为什么 next build 这么吃内存
+
+一开始我以为是自己代码有问题。后来明白这是 Next.js 构建的固有开销：
+
+- 打包器要同时在内存里持有模块图、AST、source map
+- Turbopack/SWC 会开多线程并行编译
+- 页面越多，静态生成阶段的并发 worker 越多
+
+我这站有 200 多个待生成页面（面试题库那 200 道题是静态生成的），构建峰值轻松上 1.5G。**而系统本身还要吃饭**，Docker daemon、Postgres、还有另一个项目 Nova Agent 都在跑。
+
+<Callout type="warning" title="最坑的地方">
+机器不是「构建失败」这么干脆。它是**把整台机器拖进 swap 风暴**，
+导致 SSH、其它容器全部卡死。你以为只是构建慢，其实是把线上服务一起搞挂了。
+</Callout>
+
+## 第一次尝试：加 swap（有用，但不够）
+
+网上搜到的标准答案是加 swap：
+
+```bash
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+验证：
+
+```bash
+$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           1.7Gi       808Mi        91Mi        40Mi       837Mi        696Mi
+Swap:          2.0Gi          0B       2.0Gi
+```
+
+swap 有了。但**swap 不等于内存**：它是把磁盘当内存用，速度差两个数量级。构建确实能跑完了，但耗时从「本机 1 分钟」变成「服务器 20 分钟」，而且期间机器基本没法用。
+
+更麻烦的是 SSD 写入量。构建一次 swap 换入换出几十 G，长期这么搞是在消耗磁盘寿命。
+
+## 真正的解法：换个地方构建
+
+想通了一件事：**服务器不需要负责构建，它只需要运行**。
+
+构建产物是 `output: "standalone"` 的独立目录，跟环境无关（只要架构一致）。那为什么要在服务器上构建？
+
+于是改成这个流程：
+
+```bash
+# 1. 本地（开发机）构建镜像
+docker compose build app
+
+# 2. 导出成压缩包
+docker save blog-app:latest | gzip > /tmp/blog-app.tar.gz
+
+# 3. 传到服务器
+scp /tmp/blog-app.tar.gz root@服务器IP:/tmp/
+
+# 4. 服务器导入并启动（完全不构建）
+ssh root@服务器IP
+cd /opt/blog
+docker load < /tmp/blog-app.tar.gz
+docker compose up -d --no-build
+```
+
+关键就是最后那个 `--no-build`。
+
+镜像 362MB，压缩后 79MB。以 5Mbps 上行算，传输大概 2 分半。**总耗时比在服务器上构建快 8 倍，而且服务器全程不卡。**
+
+## Dockfile 的几点讲究
+
+配合这个流程，Dockerfile 有几处是要专门为小机器设计的：
+
+```dockerfile title="Dockerfile（关键段落）"
+# 多阶段：deps → builder → runner
+# 最终镜像只包含 standalone 产物，不含源码和 node_modules
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+# 非 root 运行
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# 内容目录要带上：运行时 /api/sync 需要读 MDX
+COPY --from=builder --chown=nextjs:nodejs /app/content ./content
+
+USER nextjs
+ENTRYPOINT ["./entrypoint.sh"]
+```
+
+三个点值得说：
+
+**1. `standalone` 产物**。Next.js 会把运行所需的 node_modules 精简并打包进去，不用拷整个 `node_modules`。这一项省了 400MB+。
+
+**2. 内容目录必须单独 COPY**。我第一次漏了这行，结果容器起来后文章是空的——因为 standalone 产物里不含 `content/`。这个坑不写出来真的会重复踩。
+
+**3. alpine 基础镜像**。`node:20-alpine` 是 194MB，比 `node:20` 的 1.1GB 小了 80%。
+
+## 容器入口脚本：等就绪再同步
+
+还有一个细节。容器启动后不是立刻就能服务的，而内容同步又必须等服务就绪：
+
+```sh title="scripts/docker-entrypoint.sh"
+node server.js &
+SERVER_PID=$!
+
+# 轮询等待就绪（最多 60 秒）
+i=0
+while [ $i -lt 60 ]; do
+  if node -e "fetch('http://127.0.0.1:3000/api/chat').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+    break
+  fi
+  i=$((i + 1))
+  sleep 1
+done
+
+# 触发增量同步（幂等）
+curl -s -X POST -H "x-sync-secret: $SYNC_SECRET" http://127.0.0.1:3000/api/sync
+
+wait $SERVER_PID
+```
+
+用 `wait $SERVER_PID` 而不是 `exec`，是因为需要保留父进程来收尾。如果直接 `exec node server.js`，同步阶段的逻辑就没机会跑了。
+
+## 日志轮转，别忘了
+
+默认情况下 Docker 的 json-file 日志**无限增长**。我这种小磁盘（40G）跑一个月就能写满。
+
+```yaml title="docker-compose.yml"
+services:
+  app:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+```
+
+三个文件、每个 10MB，最多占 30MB。够查问题，也撑不爆磁盘。
+
+## 复盘：我一开始错在哪
+
+回头看我最初的两个误判：
+
+**误判一：以为「服务器上构建」是标准做法。** 大部分教程都这么教，因为大多数教程假设你有台像样的机器。2C2G 是个特殊约束，得用特殊办法。
+
+**误判二：以为 swap 是解法。** 它只是让事情「能跑完」，代价是极慢 + 磨磁盘。真解法是让服务器不干这活。
+
+现在我的部署流程是这样的：
+
+```bash
+# 本地一条命令搞定全部
+npm run deploy
+```
+
+它内部做的事：构建 → 导出 → 上传 → 服务器导入 → 滚动重启。全程服务器只负责最后一个动作。
+
+<Callout type="tip" title="如果你也是小内存机器">
+判断标准很简单：**如果你不敢在服务器上跑构建，就说明不该在服务器上构建。**
+把构建挪到本地或 CI，服务器只做 `docker load` + `up -d`，这是唯一干净的解法。
+</Callout>
+
+下一篇打算写写 `entrypoint` 里那个同步逻辑到底在干什么——为什么它能做到「重启只处理改动的文章」。

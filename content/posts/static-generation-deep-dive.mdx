@@ -1,0 +1,274 @@
+---
+title: 全站静态化踩坑记：PPR、动态 OG 图和那些不该动态的页面
+date: 2026-08-21
+description: 博客 235 个页面全部静态生成，但有几处必须"看着像静态、实际要动态"。记录 PPR、路由段配置和构建产物的实际行为。
+tags: [Next.js, 性能, 全站, 踩坑]
+---
+
+`next build` 跑完会打印一张路由表。我那 235 个页面，大部分标着 `○`（静态），少数是 `◐`（部分预渲染）和 `ƒ`（动态）。
+
+这张表值不值得盯着看？**非常值得。** 它就是你的站点的真实性能画像。
+
+这篇讲我在这张表上发现的问题。
+
+## 先看这张表
+
+现在的输出大致是这样：
+
+```
+Route (app)
+┌ ○ /
+├ ○ /about
+├ ○ /archives
+├ ○ /blog
+├   /blog/[slug]
+│ ├ ◐ /blog/[slug]
+│ ├ ○ /blog/hello-world
+│ └ ◐ [+2 more paths]
+├ ○ /changelog
+├ ○ /feed.xml
+├ ○ /interviews
+├   /interview/[slug]
+│ ├ ◐ /interview/[slug]
+│ └ ○ /interview/agent-evaluation
+├ ○ /projects
+├ ○ /stats
+├ ƒ /api/chat
+├ ƒ /api/stats
+...
+
+○  (Static)             prerendered as static content
+◐  (Partial Prerender)  prerendered as static HTML with dynamic server-streamed content
+ƒ  (Dynamic)            server-rendered on demand
+```
+
+三个符号的含义：
+
+- **`○` 静态**：构建时生成 HTML，之后不变。最快。
+- **`◐` 部分预渲染（PPR）**：外壳静态，局部动态流式补上。
+- **`ƒ` 动态**：每次请求都重新渲染。最慢。
+
+## 为什么文章页是 `◐` 而不是 `○`
+
+注意到 `[slug]` 那层是 `◐`，但具体文章（如 `/blog/hello-world`）是 `○`。
+
+这是因为我在文章页里显式写了：
+
+```tsx title="src/app/(site)/blog/[slug]/page.tsx"
+// 文章内容依赖 params 生成，禁用 instant shell 以换取完整首屏
+export const instant = false;
+```
+
+这个 `instant` 是 Next 16 的新配置。默认情况下，动态路由会走 PPR：先吐出静态外壳（导航栏、footer），然后流式填充正文。
+
+**对博客文章来说这不对。** 用户点进一篇文章，最想看的就是正文。先给个空壳、再慢慢填，体验上反而是退步的。
+
+所以我把 `instant` 关掉，让整页作为完整静态 HTML 输出。
+
+## 但 `[slug]` 那层为什么还是 `◐`
+
+这是我没完全想明白的地方。单篇都是 `○`，父路由却是 `◐`。
+
+查了文档，大概原因是：`[slug]` 作为**动态段**，Next 需要保留一份"兜底渲染"能力——如果有未在 `generateStaticParams` 里列出的 slug 被访问，它得能动态生成。
+
+```tsx title="src/app/(site)/blog/[slug]/page.tsx"
+export function generateStaticParams() {
+  return getAllPosts()
+    .filter((p) => !p.meta.draft)
+    .map((post) => ({ slug: post.slug }));
+}
+```
+
+因为开了 `dynamicParams` 的默认行为，未预生成的路径会在请求时兜底渲染。
+
+这其实是好事——新文章部署后、构建产物还没更新时，访问新链接不会 404。代价是那一个页面慢一点。
+
+<Callout type="tip" title="什么时候该关掉">
+如果你的内容**完全由构建时的 `generateStaticParams` 决定**，
+并且希望未知路径直接 404，可以设 `export const dynamicParams = false`。
+博客这种「内容可能随时增加」的场景，保持默认（true）更合适。
+</Callout>
+
+## 搜索参数：一个容易踩的雷
+
+`/blog` 页面有个搜索框和标签筛选。我一开始考虑过用 URL 查询参数：
+
+```
+/blog?tag=RAG
+/blog?q=部署
+```
+
+**千万别这么干。** 用了 `useSearchParams()` 的页面会变成动态渲染，因为查询参数是请求期数据。
+
+正确做法是把筛选状态放在客户端组件里：
+
+```tsx title="src/components/blog/blog-browser.tsx"
+"use client";
+
+export function BlogBrowser({ posts, allTags }: Props) {
+  const [query, setQuery] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return posts.filter((p) => {
+      if (activeTag && !p.tags.includes(activeTag)) return false;
+      if (!q) return true;
+      return (
+        p.title.toLowerCase().includes(q) ||
+        (p.description ?? "").toLowerCase().includes(q) ||
+        p.tags.some((t) => t.toLowerCase().includes(q))
+      );
+    });
+  }, [posts, query, activeTag]);
+
+  // ...
+}
+```
+
+页面本身是服务端组件，把数据传进来；筛选逻辑全在客户端。这样 `/blog` 保持 `○` 静态。
+
+**代价**：筛选状态不可分享（把 `/blog?tag=RAG` 发给别人不会带着筛选条件）。
+
+不过我后来意识到这是个真实的产品缺陷。搜索引擎也不会把 `?tag=RAG` 当成独立页面收录——等于丢了一批长尾入口。
+
+正确的解法是**独立的标签页** `/tags/[tag]`，把标签变成真正的静态路由。这个我列在待办里了。
+
+## 动态 OG 图：看起来该动态，其实该静态
+
+文章分享卡片的实现用了 `next/og` 动态生成：
+
+```tsx title="src/app/blog/[slug]/opengraph-image.tsx"
+export function generateStaticParams() {
+  return getAllPosts().map((post) => ({ slug: post.slug }));
+}
+
+export default async function PostOgImage({ params }) {
+  const { slug } = await params;
+  const post = getPostBySlug(slug);
+  // ...用 ImageResponse 渲染
+}
+```
+
+关键那行 `generateStaticParams`——它让 OG 图**在构建时生成**，而不是每次分享时现算。
+
+如果漏了这一行，每张图都要跑一次 `ImageResponse`（内部是无头渲染），几十毫秒起步，而且并发一高就卡。
+
+还有个更隐蔽的问题：**中文字体**。
+
+`ImageResponse` 默认字体不含中文，直接渲染中文标题会变成方块。我的解法是从 CDN 加载：
+
+```tsx title="src/app/blog/[slug]/opengraph-image.tsx"
+let fontCache: ArrayBuffer | null = null;
+
+async function loadCjkFont(): Promise<ArrayBuffer | null> {
+  if (fontCache) return fontCache;
+  try {
+    const res = await fetch(
+      "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.2.5/files/noto-sans-sc-chinese-simplified-700-normal.woff2"
+    );
+    if (res.ok) fontCache = await res.arrayBuffer();
+  } catch {
+    /* 网络不可用时降级 */
+  }
+  return fontCache;
+}
+```
+
+两个细节：
+
+1. **模块级缓存**。构建 235 个页面，字体只下载一次。
+2. **失败降级**。`catch` 里返回 null，渲染时用默认字体（中文会变方块，但至少构建不失败）。
+
+<Callout type="warning" title="构建依赖外部网络是有风险的">
+这段代码让 `next build` 依赖 `cdn.jsdelivr.net` 可达。
+如果你的构建环境在墙内、或者 CI 网络受限，构建会慢或者字体加载失败。
+更稳的做法是把字体文件放进 `public/` 或 `src/assets/`，构建时本地读取。
+</Callout>
+
+## sitemap 和 feed.xml：真的该静态
+
+```tsx title="src/app/sitemap.ts"
+export default function sitemap(): MetadataRoute.Sitemap {
+  const posts = getAllPosts().map((post) => ({
+    url: `${siteConfig.url}/blog/${post.slug}`,
+    lastModified: new Date(`${post.meta.date}T00:00:00+08:00`),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+  // ...
+}
+```
+
+这类文件内容只随构建变化，静态生成完全正确。
+
+但有个坑：**`siteConfig.url` 必须在构建时注入正确值**。
+
+```ts
+url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+```
+
+`NEXT_PUBLIC_*` 是**构建期内联**的。如果你在服务器上只改 `.env` 然后重启容器，`sitemap.xml` 里的地址还是 `localhost:3000`。
+
+必须重新构建镜像。这是 `NEXT_PUBLIC_` 前缀的经典陷阱，我在部署文档里专门标了这一点。
+
+## `/stats` 页面：一半静态一半动态
+
+`/stats` 是 `○` 静态，但页面里有实时数据（阅读量、点赞数）。
+
+我的做法是：**页面外壳静态，数据客户端拉取**。
+
+```tsx title="src/app/(site)/stats/page.tsx"
+export default function StatsPage() {
+  const posts = getAllPosts();     // 服务端：静态数据
+  const tags = getTags();
+  const totalChars = posts.reduce((sum, p) => sum + p.content.length, 0);
+
+  return (
+    <div>
+      <header>
+        <p>共 {posts.length} 篇文章 · 约 {(totalChars / 10000).toFixed(1)} 万字</p>
+      </header>
+      <StatsBoard />   {/* 客户端组件，自己 fetch /api/stats */}
+    </div>
+  );
+}
+```
+
+`StatsBoard` 是 `"use client"`，挂载后 `fetch("/api/stats")`。
+
+这样：
+- 页面骨架（标题、标签云、字数统计）是静态的，秒开
+- 实时数字后到，不强求 SSR
+
+**前提是 `/api/stats` 本身必须是动态的**——这正是我之前踩的那个 Cache Components 坑。静态页面 + 静态接口 = 数据永远不更新。
+
+## 我的判断标准
+
+经过这些折腾，现在遇到一个页面我会问三个问题：
+
+**1. 内容是否只随构建变化？**
+是 → 静态。文章、列表、归档、sitemap。
+
+**2. 内容是否随请求变化，但外壳固定？**
+是 → 拆开。外壳静态，变化部分客户端拉。
+
+**3. 内容是否连外壳都依赖请求？**
+是 → 动态。目前我只在 API 路由上这么干，页面没有。
+
+按这个标准，我现在只有 API 路由是 `ƒ`，所有页面都在 `○` 或 `◐`。
+
+## 一个反直觉的结论
+
+**大多数"需要动态"的判断，其实是懒。** 直觉上"这个数据会变，所以页面要动态"，但更常见的正确解法是"页面静态，数据异步"。
+
+静态页面的价值不只是快：
+
+- CDN 友好（可以扔到任何边缘节点）
+- 数据库挂了也能打开（外壳还在）
+- 爬虫友好（完整 HTML）
+- 服务器压力小（不需要每次渲染）
+
+代价是复杂度：要拆组件、要处理加载态、要接受"数据晚到"。
+
+但一旦习惯了这个模式，你会发现它反而是最清晰的架构——**每个组件只负责一件事，且职责明确**。

@@ -1,0 +1,243 @@
+---
+title: Next 16 的 Cache Components 把我坑了两次
+date: 2026-08-06
+description: 一个"实时看板"接口永远返回构建那一刻的数据，一个运行天数永远显示破折号。两个 bug 同源：预渲染期读时间是错误，但把数据放客户端又会让静态 HTML 变成空壳。
+tags: [Next.js, 全站, 缓存, 踩坑]
+---
+
+我的博客升级到 Next 16 之后，`next.config.ts` 里开了这两个开关：
+
+```ts title="next.config.ts"
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+  partialPrefetching: true,
+};
+```
+
+然后线上出现了两个 bug，**表面看毫不相关，根子上是同一件事**。
+
+## Bug 一：数据看板永远显示 0
+
+`/stats` 页面有个实时看板，显示累计阅读、点赞、向量分块数量。上线后一看：
+
+```
+累计阅读   0
+累计点赞   0
+向量分块   0
+```
+
+但数据库里明明有数据，`/api/views/hello-world` 单独访问也正常返回 `{"count":3}`。
+
+看 `/api/stats` 的响应头：
+
+```http
+HTTP/1.1 200
+x-nextjs-cache: HIT
+cache-control: s-maxage=31536000
+content-type: application/json
+```
+
+`s-maxage=31536000` 是一年。**这个接口被当成静态资源缓存了一整年。**
+
+### 为什么
+
+Next 16 的 Cache Components 改变了默认行为。文档里那句话我一开始没读懂：
+
+> When Cache Components is enabled, `GET` Route Handlers follow the same model as normal UI routes.
+> They run at request time by default, **can be prerendered when they don't access uncached or runtime data**.
+
+关键在于后半句：**如果处理器没有访问「请求期数据」，它就会被预渲染**。
+
+我原来的代码：
+
+```ts title="src/app/api/stats/route.ts（错误版本）"
+export async function GET() {
+  const db = getDb();
+  // 直接查库、直接返回
+  const [counts] = await db.execute(sql`SELECT ...`);
+  return NextResponse.json({ posts: counts.posts, ... });
+}
+```
+
+我在构建机器上确实连了数据库（构建时 `.env` 是存在的），所以查询**成功了**，返回了那一刻的真实数据。Next 认为"这个处理器没有依赖请求"，就把它固化成静态响应。
+
+于是线上永远返回 `next build` 执行那一秒的数据库状态。
+
+### 修复
+
+第一反应是加 `export const dynamic = "force-dynamic"`。这是 Next 15 及以前的标准做法。
+
+**但这次不管用。** 查迁移文档才发现：
+
+> ## `dynamic = "force-dynamic"`
+> **Remove the config.** With Cache Components, uncached data and Request-time APIs already run at request time.
+> Next.js prerenders any static or cached UI around them.
+
+文档明确要求「移除这个配置」，改用 `connection()`：
+
+```ts title="src/app/api/stats/route.ts（修复后）"
+import { connection } from "next/server";
+
+export async function GET() {
+  // 把渲染推迟到请求期，禁止构建期预渲染
+  await connection();
+
+  const db = getDb();
+  const [counts] = await db.execute(sql`SELECT ...`);
+  return NextResponse.json({ ... }, {
+    headers: { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0" },
+  });
+}
+```
+
+`connection()` 的语义是「从这里往下，必须等真实请求到达才能执行」。它就是给这种「处理器本身不读 cookies/headers，但绝对不能预渲染」的场景准备的。
+
+同一个 bug 还影响了好几个接口：`/api/views/[slug]`、`/api/likes/[slug]`、`/api/guestbook` 的 GET 全部中招。浏览量永远停在构建时的数字。
+
+<Callout type="warning" title="这个 bug 特别隐蔽">
+它**不会报错**。构建成功、页面能打开、接口能返回数据——只是数据永远是旧的。
+如果我不去查 `/stats` 页面为什么全是 0，可能几个月都发现不了。
+</Callout>
+
+## Bug 二：运行天数永远是破折号
+
+首页有个「已运行 N 天」的统计。我的实现是客户端计算的，因为不想让这个数字在构建时被固化：
+
+```tsx title="src/components/site/runtime-info.tsx（错误版本）"
+"use client";
+
+function useClientOnly<T>(getSnapshot: () => T, getServerSnapshot: () => T): T {
+  const subscribe = () => () => {};
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+export function UpTimeDays({ className }: { className?: string }) {
+  const start = new Date(siteConfig.startedAt).getTime();
+  const days = useClientOnly(
+    () => String(Math.ceil((Date.now() - start) / 86400000)),  // 客户端算
+    () => "—"                                                   // SSR 占位
+  );
+  return <span className={className}>{days}</span>;
+}
+```
+
+服务端快照返回 `"—"`。所以**静态 HTML 里永远是这个破折号**：
+
+```html
+已稳定运行 — 天
+```
+
+JS 加载后才变成数字。问题是：
+
+- 爬虫看到的是一句坏掉的文案
+- 禁用 JS 的访客永远看不到数字
+- 任何人「查看页面源代码」都会看到一个占位符
+
+这就是典型的「为了避开构建期固化，把结果降级成空壳」。
+
+### 为什么不能直接在服务端读 Date.now()
+
+试试就知道：
+
+```
+Error: Route "/": Next.js encountered the unstable value `Date.now()` while prerendering.
+This value can change between renders, so it must be either prerendered or computed later.
+Ways to fix this:
+  - [dynamic] Render at request time by adding a dynamic data access (e.g. `await connection()`)
+  - [cache] Prerender and cache the value with `"use cache"`
+  - [client] Render the value on the client with `"use client"`
+```
+
+三条建议里，第一条（`connection()`）会让整个首页变成动态渲染，失去静态生成的所有好处。为了一行天数把整页降级，不划算。
+
+### 正确解法：`use cache` + `cacheLife`
+
+第二条建议才是对的。把「读时间」这件事包进一个显式缓存的作用域：
+
+```ts title="src/lib/uptime-server.ts"
+import { cacheLife } from "next/cache";
+import { daysSince } from "@/lib/uptime";
+import { siteConfig } from "@/config/site";
+
+export async function getUptimeSnapshot() {
+  "use cache";
+  cacheLife("hours");   // 按小时粒度刷新，完全够用
+
+  const days = daysSince(siteConfig.startedAt);
+  return {
+    days,
+    daysText: days === null ? "—" : String(days),
+    startedAt: siteConfig.startedAt,
+    year: String(new Date().getFullYear()),
+  };
+}
+```
+
+然后在服务端组件里 await 它：
+
+```tsx title="src/app/(site)/page.tsx"
+export default async function HomePage() {
+  const uptime = await getUptimeSnapshot();
+
+  return (
+    <dd className="...">{uptime.daysText}</dd>   // 静态 HTML 里就是真实数字
+  );
+}
+```
+
+`cacheLife("hours")` 的含义是：这个值缓存起来，但每小时检查一次是否需要重算。对「已运行 N 天」这种数据，一天变一次都算多，按小时刷新绰绰有余。
+
+现在的静态 HTML：
+
+```html
+已稳定运行 <span>120</span> 天
+```
+
+真实数字，零 JS 依赖。
+
+<Callout type="tip" title="判断标准">
+**如果一个值在静态 HTML 里是占位符，那它就不是「功能」，是「待补全的坑」。**
+需要「客户端才有」固然是合理的，但它必须真的只能客户端有。
+「已运行天数」不是——它完全可以在服务端算，只是需要显式声明缓存策略。
+</Callout>
+
+## 这两个 bug 的共同点
+
+回头看，它们是同一个认知漏洞的两面：
+
+| | Bug 一 | Bug 二 |
+| --- | --- | --- |
+| 表现 | 数据永远旧 | 数据永远空 |
+| 原因 | 该动态的被静态化了 | 该静态的被推给了客户端 |
+| 本质 | 没搞清楚 Cache Components 的默认值 | 没搞清楚「哪些值必须动态」 |
+
+**Cache Components 的核心变化是「默认静态」。** 这和 Next 15 的「默认动态」是反过来的。
+
+迁移时最常见的两个错误：
+
+1. 忘了给必须动态的接口加 `connection()` → 数据冻结在构建时
+2. 遇到"不能预渲染"就直接推给客户端 → 静态 HTML 变成空壳
+
+正确姿势是**显式表达意图**：
+
+- 「这个必须每次读最新」→ `await connection()`
+- 「这个可以缓存，但要定时刷新」→ `"use cache"` + `cacheLife(...)`
+- 「这个真的只有浏览器知道」→ 客户端，并且接受占位符
+
+## 顺带说个查出来的历史问题
+
+排查过程中还发现另一个事：`cordis.patch.yml` 有 14 处编码损坏（中文值被截断、换行丢失），导致整个 YAML 解析失败。这意味着配置文件里那几项设置**一直没有生效**。
+
+这类问题和 Cache Components 无关，但性质一样：**沉默失败**。不报错，只是不工作。
+
+我现在养成了一个习惯：任何「配置文件」和「缓存策略」，都要有办法**验证它真的生效了**。数据库里的数字对不对、HTML 里的字符对不对——去实际看一眼，不要假设。
+
+## 小结
+
+给同样在迁移 Next 16 的人三条建议：
+
+1. **所有 GET 接口都要想一遍**：这个能预渲染吗？不能就加 `connection()`。
+2. **不要用客户端计算来规避预渲染限制**。先想清楚这个值到底属于哪一层。
+3. **上线后验证实际输出**，不是验证"没报错"。看响应头、看 HTML 源码、看数据库对比。
+
+这两个 bug 我都花了不少时间才定位，因为它们的表现都"太正常了"——页面能开、接口有返回、只是数据不对。最难查的 bug 往往不是崩溃，是沉默。

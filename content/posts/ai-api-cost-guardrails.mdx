@@ -1,0 +1,255 @@
+---
+title: AI 接口挂在公网上，我加了这些成本护栏
+date: 2026-08-09
+description: 一个公开可访问的 RAG 问答接口，等于把 API key 摆在门口。限频、全局预算、输出上限，缺一不可。
+tags: [安全, AI, 工程化, Node.js]
+---
+
+我的博客有个 AI 助手，任何人都能用。
+
+这意味着一件事：**任何人也能用我的 API key。**
+
+刚开始我完全没考虑这个问题。接口写完能跑通，就上线了。后来某天算了下账——如果有人写个脚本循环调用，一天能烧掉多少钱？
+
+这篇讲讲我后来补的几层护栏，以及几个踩过的坑。
+
+## 威胁模型：到底在防谁
+
+先想清楚对手是谁。个人博客的 AI 接口，实际面临三种情况：
+
+**1. 好奇的正常用户**——问几个问题就走了。这不是威胁。
+
+**2. 无脑爬虫/扫描器**——发现 `/api/chat` 能 POST，就试探性地打几百次。真实存在，而且很常见。
+
+**3. 有意的滥用者**——知道这是免费 LLM 代理，写脚本刷。概率低但不是零，而且成本全在你身上。
+
+对第 2、3 种，光靠"没人会这么干"是不行的。**公网接口必须假设有人会滥用。**
+
+## 第一层：按 IP 限频
+
+最基础的护栏。同一个 IP 每分钟最多 5 次提问：
+
+```ts title="src/lib/rate-limit.ts（思路）"
+const buckets = new Map<string, { count: number; resetAt: number }>();
+
+export function rateLimit(key: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  const bucket = buckets.get(key);
+
+  if (!bucket || now > bucket.resetAt) {
+    buckets.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (bucket.count >= limit) return false;
+
+  bucket.count++;
+  return true;
+}
+```
+
+用在 chat 接口里：
+
+```ts title="src/app/api/chat/route.ts"
+const ip = getClientIp(request);
+if (
+  !rateLimit(`chat:m:${ip}`, 5, 60_000) ||      // 每分钟 5 次
+  !rateLimit(`chat:d:${ip}`, 60, 86_400_000)    // 每天 60 次
+) {
+  return NextResponse.json(
+    { error: "提问太频繁啦，休息一下再来～" },
+    { status: 429 }
+  );
+}
+```
+
+两层限频：分钟级防突发，天级防持续消耗。
+
+## 坑一：限频状态被复制了多份
+
+这个坑值得单独说。
+
+我一开始把 `buckets` 定义在**模块顶层**：
+
+```ts
+const buckets = new Map<...>();  // ← 看起来没问题
+```
+
+理论上 Node.js 会缓存模块，所有请求共享同一个 Map。但实际上，**Next.js 打包后同一个模块可能有多份副本**：
+
+- server components 和 route handlers 可能在不同 bundle 里
+- 开发模式下的 HMR 会重新加载模块
+- 某些情况下客户端/服务端代码各有一份
+
+结果就是：限频计数被分散到多个 Map 里，实际限频阈值变成了 `5 × 副本数`。
+
+修复方法很土但有效——挂到 `globalThis` 上：
+
+```ts title="src/lib/rate-limit.ts"
+const g = globalThis as typeof globalThis & {
+  __rateLimitBuckets?: Map<string, Bucket>;
+};
+
+// 全局唯一实例，跨模块副本共享
+const buckets: Map<string, Bucket> = (g.__rateLimitBuckets ??= new Map());
+```
+
+`??=` 保证只在第一次赋值，之后所有副本拿到的都是同一个 Map。
+
+<Callout type="tip" title="这类坑的通用形态">
+**模块级状态在打包环境里不可靠。**
+任何"进程级单例"（缓存、连接池、限频计数器、锁）都应该挂 `globalThis`，
+而不是假设模块只被加载一次。
+</Callout>
+
+## 第二层：AI 调用本身的预算
+
+IP 限频有个根本缺陷：**攻击者换 IP 就行了**。
+
+住宅代理、云函数、Tor 出口——换个 IP 的成本远低于我烧掉的 token 成本。所以还需要一层**与来源无关**的护栏。
+
+我的做法是给回答本身加上硬边界：
+
+```ts title="src/app/api/chat/route.ts"
+const result = streamText({
+  model: chatModel,
+  system: systemPrompt,
+  messages: modelMessages,
+  maxOutputTokens: 800,   // ← 硬上限，防止模型长篇大论
+});
+```
+
+`maxOutputTokens` 不只是省钱。它同时限制了：
+
+- 单次响应时间（避免长任务占住连接）
+- 上下文膨胀（多轮对话不会无限累积）
+- 滥用者的"性价比"（一次调用榨不出太多内容）
+
+另一个手段是**限制检索范围**：
+
+```ts title="src/app/api/chat/route.ts"
+retrieved = await db.execute<RetrievedChunk>(
+  sql`SELECT c.post_slug, p.title, c.heading, c.content
+      FROM chunks c JOIN posts p ON p.slug = c.post_slug
+      ORDER BY c.embedding <=> ${vectorStr}::vector
+      LIMIT 6`     // ← 固定 6 块，不随文章总数增长
+);
+```
+
+`LIMIT 6` 意味着无论博客有 10 篇还是 1000 篇，单次请求的上下文大小是恒定的。这很重要——否则随着内容增长，每次问答的成本会线性上升。
+
+## 第三层：全局熔断（我还没做，但应该做）
+
+前面两层各有盲区：
+
+- IP 限频：换 IP 就绕过
+- 输出上限：控制单次成本，不控制次数
+
+真正需要的是一层**全局预算**：不管谁在调，今天总调用次数超过 N 就整体降级。
+
+大概长这样：
+
+```ts title="设想中的实现"
+// 全局日计数器
+const dailyCalls = (g.__dailyAiCalls ??= { count: 0, resetAt: nextMidnight() });
+
+if (Date.now() > dailyCalls.resetAt) {
+  dailyCalls.count = 0;
+  dailyCalls.resetAt = nextMidnight();
+}
+
+if (dailyCalls.count > 2000) {
+  // 达到预算上限：降级成"只检索不生成"
+  return NextResponse.json({
+    degraded: true,
+    message: "今日 AI 配额已用完，以下是相关文章：",
+    sources: retrieved,
+  });
+}
+```
+
+关键是**降级而不是报错**。用户问问题时，即使不能生成，至少能拿到相关文章列表，体验比一个 503 好得多。
+
+这个我列在待办里，优先级不低。
+
+## 认证：那个 `x-sync-secret`
+
+`/api/sync` 接口能触发全量向量化——这是个花钱的操作，当然不能公开。
+
+用的是一段共享密钥：
+
+```ts title="src/app/api/sync/route.ts"
+export async function POST(request: Request) {
+  const secret = process.env.SYNC_SECRET;
+
+  if (secret) {
+    if (request.headers.get("x-sync-secret") !== secret) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+  } else if (getClientIp(request) !== "local") {
+    // 没配密钥时，只允许容器内部调用
+    return NextResponse.json(
+      { error: "未配置 SYNC_SECRET，公网调用已拒绝" },
+      { status: 401 }
+    );
+  }
+  // ...
+}
+```
+
+这里有个设计细节：**`else if` 那个分支**。
+
+如果 `SYNC_SECRET` 没配置，很多人会图省事直接放行。但那是灾难——等于把"重建全站向量"的开关暴露在公网上，任何人打一下就能刷爆我的额度。
+
+我的做法是：没配密钥时**只信任来自本机 loopback 的请求**（容器 entrypoint 就是本机调用）。
+
+```ts
+} else if (getClientIp(request) !== "local") {
+```
+
+`getClientIp` 在没有 `x-forwarded-for` 头时返回 `"local"`，正好区分「容器内部调用」和「外部请求」。
+
+<Callout type="warning" title="默认值的方向很重要">
+「没配置就别拦」是安全的，「没配置就放行」是危险的。
+所有涉及认证的代码，**默认分支必须是拒绝**。
+</Callout>
+
+## 还在漏的地方
+
+诚实列一下我知道但还没解决的问题：
+
+**1. 语义搜索也在烧钱**
+
+每次搜索要调一次 embedding。我给了每分钟 20 次的限频，但没做全局预算。有人刷搜索同样能烧额度。
+
+**2. 没有按小时的成本监控**
+
+我不知道今天花了多少。理想情况应该有个简单的计数器，超过阈值就在日志里告警。
+
+**3. 前端没有真正的防抖**
+
+搜索框的 debounce 是 350ms：
+
+```ts title="src/components/search/search-palette.tsx"
+const delay = q.length >= 2 ? 350 : 0;
+```
+
+这个是给正常用户用的体验优化，不是安全措施。攻击者直接打 API。
+
+**4. 多轮对话没有上下文长度限制**
+
+`useChat` 会把完整历史都发给后端。理论上刷很多轮可以让单次请求的输入变得很大。
+
+## 小结
+
+公网 AI 接口的成本护栏，我目前的认知是这样的分层：
+
+```
+第 1 层  按 IP 限频        → 挡住无脑爬虫（换个 IP 就绕过）
+第 2 层  单次输出上限      → 控制单次成本（不管次数）
+第 3 层  全局日预算 + 降级  → 真正的成本兜底（还没做）
+第 4 层  监控告警          → 事后发现问题（还没做）
+```
+
+前两层是必需的，成本很低，我已经有了。第三层是真正的兜底，值得尽快补上。
+
+最核心的一条经验：**任何会花钱的公开接口，假设它一定会被滥用。** 不是"会不会"的问题，是"什么时候"的问题。加一层限频可能只花你半小时，但省下的是一整晚看到账单的惊吓。

@@ -1,0 +1,217 @@
+---
+title: 增量同步：为什么重启容器不用重新向量化所有文章
+date: 2026-07-27
+description: 每次部署都全量跑一遍 embedding 又慢又费钱。用 SHA-256 内容哈希做增量判断，让 99% 的文章直接被跳过。
+tags: [工程化, AI, 向量检索, PostgreSQL]
+---
+
+我的博客每次容器重启都会自动跑一次内容同步——切块、算 embedding、写进 pgvector。
+
+听起来很浪费对吧？实际上**大部分时候一次同步只花几百毫秒**，因为它几乎什么都没做。
+
+这篇讲这个跳过机制怎么设计的，以及我踩过的几个坑。
+
+## 问题：全量同步有多贵
+
+先算笔账。假设博客有 100 篇文章，每篇切成 8 块，一共 800 次 embedding 调用。
+
+用 `text-embedding-v3`，粗算每次调用 500 token，就是 40 万 token。价格约 ¥0.5/百万 token，所以一次全量同步大概 **¥0.2**。
+
+金额不算大，但问题在别处：
+
+- **慢**：800 次调用哪怕并发 10，也要几十秒
+- **不必要**：我改了一篇文章，凭什么要重算另外 99 篇的向量
+- **不可靠**：中间任何一次调用失败，整批就得重来
+
+而容器重启是高频动作。改了 `.env`、升级镜像、机器重启，都会触发。每次全量跑一遍显然是浪费。
+
+## 核心思路：内容哈希
+
+解法很朴素：**给每篇文章算一个指纹，指纹没变就不处理**。
+
+```ts title="src/lib/content-core.ts"
+export function contentHash(raw: string): string {
+  return createHash("sha256").update(raw).digest("hex");
+}
+```
+
+注意这里哈希的是**整个文件的原始文本**（包括 frontmatter），不只是正文。因为改个标题、加个标签，也应该触发重新处理。
+
+数据库里存这个哈希：
+
+```sql title="src/db/schema.ts"
+export const posts = pgTable("posts", {
+  slug: text("slug").primaryKey(),
+  title: text("title").notNull(),
+  contentHash: text("content_hash").notNull(),  // ← 指纹
+  summary: text("summary"),
+  summaryEmbedding: vector("summary_embedding", { dimensions: 1024 }),
+  syncedAt: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),
+});
+```
+
+同步时先全量读一遍数据库的现有记录，建个 map，然后逐篇比对：
+
+```ts title="src/lib/sync.ts（核心逻辑）"
+const fsPosts = listRawPosts().filter((p) => !p.meta.draft);
+const existing = await db.select().from(postsTable);
+const existingBySlug = new Map(existing.map((row) => [row.slug, row]));
+
+for (const post of fsPosts) {
+  processedSlugs.push(post.slug);
+  const prev = existingBySlug.get(post.slug);
+
+  // 哈希一致 → 直接跳过，一次 API 调用都不发
+  if (!options?.force && prev?.contentHash === post.hash) {
+    continue;
+  }
+
+  // ...以下是真正的同步逻辑
+}
+```
+
+就是这几行。`continue` 那一下，就是省钱的地方。
+
+## 逐篇写 DB，而不是最后批量写
+
+有个设计选择值得说：我是**每篇文章处理完就立刻写库**，而不是全部处理完再批量写。
+
+```ts title="src/lib/sync.ts（片段）"
+await db
+  .insert(postsTable)
+  .values({
+    slug: post.slug,
+    title: post.meta.title,
+    contentHash: post.hash,
+    summary,
+    suggestedTags: post.meta.tags,
+    summaryEmbedding,
+  })
+  .onConflictDoUpdate({
+    target: postsTable.slug,
+    set: {
+      title: post.meta.title,
+      contentHash: post.hash,
+      summary,
+      summaryEmbedding,
+      syncedAt: sql`now()`,
+    },
+  });
+```
+
+为什么不用批量？因为 embedding API 可能半路挂掉。
+
+假设第 50 篇的时候网络断了。批量写的话，前 49 篇的向量计算全白费，下次重来还得再算一遍。而逐篇写的话，前 49 篇的哈希已经更新了，**下次只从第 50 篇继续**。
+
+用 `onConflictDoUpdate`（PostgreSQL 的 upsert）保证重复执行是安全的。
+
+<Callout type="tip" title="幂等比性能重要">
+在这个场景里，「中断后能续上」比「少几次数据库往返」有价值得多。
+数据库往返是本地的、毫秒级；embedding 调用是网络的、秒级还可能失败。
+别为了省本地开销去冒远端调用白费的风险。
+</Callout>
+
+## 清理已删除的文章
+
+增量同步还有个反面问题：**文章从仓库里删了，数据库里还留着**。
+
+这个靠反向比对解决：
+
+```ts title="src/lib/sync.ts（结尾）"
+if (existing.length > 0 && processedSlugs.length > 0) {
+  const removed = await db
+    .delete(postsTable)
+    .where(notInArray(postsTable.slug, processedSlugs))
+    .returning({ slug: postsTable.slug });
+
+  for (const row of removed) {
+    console.log(`[sync] 移除文章：${row.slug}`);
+  }
+}
+```
+
+`notInArray(postsTable.slug, processedSlugs)` —— 找出数据库里有、但文件系统里没有的 slug，删掉。
+
+因为有外键约束 `ON DELETE CASCADE`，删 post 的时候相关的 chunks 会自动删掉，不用手动处理。
+
+## 坑一：哈希算错了，每次都重算
+
+我第一版踩的坑：把哈希算在了**解析后的 content** 上，而不是原始文件。
+
+```ts
+// 错误做法
+const { data, content } = matter(raw);
+const hash = contentHash(content);  // ← 只哈希了正文
+```
+
+看起来更「干净」，但结果是：改 frontmatter 里的 `date`、`tags` 完全不会触发更新。我一度以为同步逻辑坏了。
+
+正确做法是哈希整个原始文件：
+
+```ts
+// 正确
+const raw = fs.readFileSync(filepath, "utf-8");
+const hash = contentHash(raw);  // ← 整个文件
+```
+
+**判断"内容有没有变"应该用最原始的输入，不要用任何加工后的中间产物。**
+
+## 坑二：force 参数忘了透传
+
+改 schema 之后需要全量重建（因为向量维度变了）。我加了 `--force` 参数：
+
+```ts title="src/lib/sync.ts"
+if (!options?.force && prev?.contentHash === post.hash) {
+  continue;  // force=true 时这个 continue 不生效
+}
+```
+
+但第一次调用时忘了把 `force` 从 API 层传下去，结果 `curl ...?force=1` 打了半天没反应。后来加日志才看出来。
+
+现在通过 API 触发是这样：
+
+```bash
+curl -X POST -H "x-sync-secret: 你的密钥" \
+  "http://你的域名/api/sync?force=1"
+```
+
+## 坑三：草稿也会被同步
+
+`listRawPosts()` 返回所有文章，包括 `draft: true` 的。
+
+```ts title="src/lib/sync.ts"
+const fsPosts = listRawPosts().filter((p) => !p.meta.draft);
+```
+
+这个 `.filter()` 是我漏掉过的。后果是草稿被向量化了，**语义搜索能搜到还没发布的文章**——虽然文章页 404，但搜索结果里露出来了。
+
+现在过滤得很早，在进入同步循环之前就干掉了。
+
+## 实际效果
+
+现在改一篇文章再部署，容器日志是这样的：
+
+```
+[sync] 同步文章：my-new-post
+[sync]   摘要向量化完成
+[sync]   8 个分块已向量化
+[sync] 完成：101 篇（更新 1，跳过 100）
+```
+
+只处理了 1 篇。耗时大概 2 秒，成本几乎为零。
+
+而如果文章一篇没改：
+
+```
+[sync] 完成：101 篇（更新 0，跳过 101）
+```
+
+< 500ms 就结束了。
+
+<Callout type="info" title="这套思路能搬去哪">
+增量同步的通用模式：**内容指纹 + upsert + 反向清理**。
+任何「本地文件 → 远端索引」的同步场景都适用——文档站、知识库、日志归档，甚至 CDN 缓存失效。
+关键是想清楚：什么算「变了」、中断了怎么续、删掉的东西谁负责清。
+</Callout>
+
+下一篇想写写语义搜索的召回质量。我现在阈值定死在 0.3，中文短查询经常搜不到东西，这是个真问题。
