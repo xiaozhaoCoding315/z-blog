@@ -395,3 +395,73 @@
   color: var(--muted-foreground);
   background: var(--code-bg, oklch(0.19 0.016 285));
 }
+
+/* 标题 + 代码块连成一体时，圆角只保留外侧 */
+[data-rehype-pretty-code-title] + pre {
+  border-top-left-radius: 0;
+}
+
+/* ============ 文章排版增强 ============ */
+/* 标题锚点：hover 时在左侧显示 #，不打扰阅读 */
+.prose .heading-anchor {
+  position: relative;
+  text-decoration: none;
+  border-bottom: none;
+}
+.prose .heading-anchor::before {
+  content: "#";
+  position: absolute;
+  left: -0.85em;
+  color: var(--primary);
+  opacity: 0;
+  font-weight: 400;
+  transition: opacity 0.15s;
+}
+.prose .heading-anchor:hover::before {
+  opacity: 0.7;
+}
+
+/* 行内代码在标题里不要撑大行高 */
+.prose h2 code,
+.prose h3 code {
+  font-size: 0.85em;
+}
+
+/* 表格：横向滚动 + 表头粘性底色 */
+.prose table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.prose thead {
+  background: color-mix(in oklch, var(--muted) 60%, transparent);
+}
+.prose th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 有序列表序号配色统一 */
+.prose ol > li::marker {
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============ 详情页/时间线通用细节 ============ */
+/* 顶部细进度条所在的滚动容器 */
+html {
+  scroll-behavior: smooth;
+}
+
+/* 尊重系统的「减少动态效果」设置 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

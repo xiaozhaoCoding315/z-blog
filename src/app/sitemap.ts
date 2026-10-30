@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllPosts } from "@/content";
+import { getChangelog } from "@/config/changelog";
 import { siteConfig } from "@/config/site";
 
 
@@ -13,14 +14,31 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     }));
 
-  const staticPages = ["", "/blog", "/projects", "/friends", "/about"].map(
-    (path) => ({
-      url: `${siteConfig.url}${path}`,
-      lastModified: new Date(`${siteConfig.startedAt}T00:00:00+08:00`),
-      changeFrequency: "weekly" as const,
-      priority: path === "" ? 1 : 0.8,
-    })
-  );
+  const staticPages = [
+    "",
+    "/blog",
+    "/projects",
+    "/friends",
+    "/about",
+    "/archives",
+    "/stats",
+    "/guestbook",
+    "/interview",
+  ].map((path) => ({
+    url: `${siteConfig.url}${path}`,
+    lastModified: new Date(`${siteConfig.startedAt}T00:00:00+08:00`),
+    changeFrequency: "weekly" as const,
+    priority: path === "" ? 1 : 0.8,
+  }));
 
-  return [...staticPages, ...posts];
+  // 开发日志用最新一条的日期作为 lastModified
+  const latestChange = getChangelog()[0]?.date ?? siteConfig.startedAt;
+  const changelogPage = {
+    url: `${siteConfig.url}/changelog`,
+    lastModified: new Date(`${latestChange}T00:00:00+08:00`),
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  };
+
+  return [...staticPages, changelogPage, ...posts];
 }

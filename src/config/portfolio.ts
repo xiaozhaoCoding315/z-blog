@@ -77,7 +77,7 @@ export const friends: FriendLink[] = [
 
 /** Now 页面数据：我最近在做什么（nownownow.com 运动，改这里即可） */
 export const now = {
-  updatedAt: "2026-10-25",
+  updatedAt: "2026-10-30",
   learning: ["Agent 工程化（多智能体协作与验证）", "向量检索与 RAG 调优"],
   building: [
     "Nova Agent —— 可验证的工程 Agent（见项目页）",

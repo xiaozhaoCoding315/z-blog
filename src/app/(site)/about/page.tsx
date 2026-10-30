@@ -1,10 +1,22 @@
 import type { Metadata } from "next";
-import { Cpu, Database, Mail, Server, Sparkles, Terminal } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  Cpu,
+  Database,
+  GitCommitHorizontal,
+  Mail,
+  Server,
+  Sparkles,
+  Terminal,
+} from "lucide-react";
 import { GithubIcon } from "@/components/icons/github";
 import { siteConfig } from "@/config/site";
 import { now } from "@/config/portfolio";
+import { getChangelogStats } from "@/config/changelog";
 import { Reveal } from "@/components/site/reveal";
 import { GithubHeatmap } from "@/components/about/github-heatmap";
+import { getUptimeSnapshot } from "@/lib/uptime-server";
 
 export const metadata: Metadata = {
   title: "关于",
@@ -34,7 +46,9 @@ const skills = [
   },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const uptime = await getUptimeSnapshot();
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
       <header className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
@@ -48,7 +62,7 @@ export default function AboutPage() {
           <p className="mt-2 max-w-xl leading-relaxed text-muted-foreground">
             {siteConfig.author.bio}
           </p>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             <a
               href={siteConfig.links.github}
               target="_blank"
@@ -63,7 +77,21 @@ export default function AboutPage() {
             >
               <Mail className="size-3.5" /> 邮箱
             </a>
+            <Link
+              href="/changelog"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            >
+              <GitCommitHorizontal className="size-3.5" />
+              开发日志
+              <ArrowRight className="size-3" />
+            </Link>
           </div>
+
+          <p className="mt-4 font-mono text-[11px] text-muted-foreground">
+            这个站已经持续更新{" "}
+            <span className="tabular-nums text-foreground/80">{uptime.daysText}</span>{" "}
+            天 · 记下 {getChangelogStats().entries} 次迭代
+          </p>
         </div>
       </header>
 

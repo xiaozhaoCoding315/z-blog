@@ -53,14 +53,15 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* 桌面端导航 */}
-        <nav className="hidden items-center gap-1 md:flex">
+        {/* 桌面端导航：9 个菜单项在 md（768px）放不下，改为 lg 起显示，
+            中间宽度走移动端抽屉，避免挤压 logo 与右侧操作区 */}
+        <nav className="hidden items-center gap-0.5 lg:flex">
           {siteConfig.nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "relative rounded-md px-3 py-1.5 text-sm transition-colors",
+                "relative rounded-md px-2.5 py-1.5 text-[13px] transition-colors xl:px-3 xl:text-sm",
                 isActive(item.href)
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -68,7 +69,7 @@ export function Navbar() {
             >
               {item.title}
               {isActive(item.href) && (
-                <span className="absolute inset-x-3 -bottom-[3px] h-[2px] rounded-full bg-gradient-to-r from-[oklch(0.62_0.23_285)] to-[oklch(0.72_0.16_215)]" />
+                <span className="absolute inset-x-2.5 -bottom-[3px] h-[2px] rounded-full bg-gradient-to-r from-[oklch(0.62_0.23_285)] to-[oklch(0.72_0.16_215)] xl:inset-x-3" />
               )}
             </Link>
           ))}
@@ -105,7 +106,7 @@ export function Navbar() {
 
           {/* 移动端菜单 */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild className="md:hidden">
+            <SheetTrigger asChild className="lg:hidden">
               <Button variant="ghost" size="icon" aria-label="菜单">
                 <Menu className="size-5" />
               </Button>
@@ -115,7 +116,7 @@ export function Navbar() {
                 <SheetTitle className="text-left">{siteConfig.name}</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 px-4">
-                {siteConfig.nav.map((item) => (
+                {[...siteConfig.nav, ...siteConfig.footerNav].map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}

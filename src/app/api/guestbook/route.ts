@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { connection } from "next/server";
 import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { guestbook } from "@/db/schema";
+import { NO_STORE } from "@/app/api/_shared/no-store";
 
 /** 简单内存限频：同一 IP 60 秒只能留一条（globalThis 防模块多副本） */
 const gb = globalThis as typeof globalThis & {
@@ -11,8 +13,10 @@ const lastPostAt: Map<string, number> = (gb.__gbLastPost ??= new Map());
 const RATE_LIMIT_MS = 60_000;
 
 export async function GET() {
+  // 留言列表必须实时读取，不能被构建期预渲染
+  await connection();
   const db = getDb();
-  if (!db) return NextResponse.json({ items: [] });
+  if (!db) return NextResponse.json({ items: [] }, { headers: NO_STORE });
 
   try {
     const rows = await db
@@ -25,9 +29,9 @@ export async function GET() {
       .from(guestbook)
       .orderBy(desc(guestbook.id))
       .limit(50);
-    return NextResponse.json({ items: rows });
+    return NextResponse.json({ items: rows }, { headers: NO_STORE });
   } catch {
-    return NextResponse.json({ items: [] });
+    return NextResponse.json({ items: [] }, { headers: NO_STORE });
   }
 }
 

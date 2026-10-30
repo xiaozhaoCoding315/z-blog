@@ -9,8 +9,9 @@ export const siteConfig = {
   description:
     "一个热爱编程的程序员的技术博客：学习笔记、项目实践与踩坑复盘。",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-  // 站点建立日期，用于首页「运行天数」统计
-  startedAt: process.env.NEXT_PUBLIC_SITE_START_DATE ?? "2026-10-25",
+  // 站点建立日期：全站「运行天数」的唯一数据源（首页 / 页脚 / 终端 neofetch 均读这里）
+  // 2026-07-02 起算，至今约 120 天
+  startedAt: process.env.NEXT_PUBLIC_SITE_START_DATE ?? "2026-07-02",
   author: {
     name: "Z",
     avatar: "/images/avatar.png",
@@ -27,13 +28,14 @@ export const siteConfig = {
     { title: "面试", href: "/interview" },
     { title: "归档", href: "/archives" },
     { title: "项目", href: "/projects" },
+    { title: "开发日志", href: "/changelog" },
     { title: "留言板", href: "/guestbook" },
     { title: "友链", href: "/friends" },
     { title: "关于", href: "/about" },
   ],
   footerNav: [
     { title: "统计", href: "/stats" },
-    { title: "留言板", href: "/guestbook" },
+    { title: "开发日志", href: "/changelog" },
   ],
   footer: {
     icp: "", // 备案号（有域名备案后填写）

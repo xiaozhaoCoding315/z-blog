@@ -3,14 +3,16 @@ import Link from "next/link";
 import { CalendarDays, Clock3 } from "lucide-react";
 import { getAllPosts } from "@/content";
 import { siteConfig } from "@/config/site";
+import { getUptimeSnapshot } from "@/lib/uptime-server";
 
 export const metadata: Metadata = {
   title: "归档",
   description: "全部文章的时间线视图，按年份归档。",
 };
 
-export default function ArchivesPage() {
+export default async function ArchivesPage() {
   const posts = getAllPosts();
+  const uptime = await getUptimeSnapshot();
 
   // 按年份分组（保持置顶优先的传入顺序按日期排）
   const byYear = new Map<number, typeof posts>();
@@ -21,6 +23,10 @@ export default function ArchivesPage() {
   }
   const years = [...byYear.keys()].sort((a, b) => b - a);
   const total = posts.length;
+  const totalWords = posts.reduce(
+    (sum, p) => sum + p.content.replace(/\s+/g, "").length,
+    0
+  );
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
@@ -29,7 +35,9 @@ export default function ArchivesPage() {
           归档
         </h1>
         <p className="mt-2 text-muted-foreground">
-          共 {total} 篇文章 · 始于 {siteConfig.startedAt.slice(0, 4)} 年
+          共 {total} 篇文章 · 约 {(totalWords / 10000).toFixed(1)} 万字 · 始于{" "}
+          {siteConfig.startedAt}（已{" "}
+          <span className="tabular-nums">{uptime.daysText}</span> 天）
         </p>
       </header>
 

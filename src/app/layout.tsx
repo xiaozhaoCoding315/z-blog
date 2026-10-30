@@ -47,6 +47,27 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // 站点级结构化数据：让搜索引擎知道这是一个人在持续维护的技术博客
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: siteConfig.title,
+    description: siteConfig.description,
+    url: siteConfig.url,
+    inLanguage: "zh-CN",
+    author: {
+      "@type": "Person",
+      name: siteConfig.author.name,
+      url: siteConfig.url,
+      sameAs: [siteConfig.links.github],
+    },
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${siteConfig.url}/blog?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   return (
     <html
       lang="zh-CN"
@@ -66,6 +87,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           {children}
         </ThemeProvider>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </body>
     </html>
   );

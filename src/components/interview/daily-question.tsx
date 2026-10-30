@@ -1,25 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Sparkles } from "lucide-react";
+import { useSyncExternalStore } from "react";
 import type { InterviewItem } from "@/components/interview/interview-browser";
 
-/** 每日一题：按"当年第几天"轮换，浏览器端计算（SSR 不渲染，避免构建期时间固化） */
+const emptySubscribe = () => () => {};
+
+/**
+ * 每日一题：按「当年第几天」轮换。
+ *
+ * 日期在客户端计算（SSR 渲染 null），但用 useSyncExternalStore 而不是
+ * setState-in-effect —— 后者会在挂载后立刻触发一次额外渲染。
+ */
 export function DailyQuestion({ items }: { items: InterviewItem[] }) {
-  const [today, setToday] = useState<InterviewItem | null>(null);
-  const [dateStr, setDateStr] = useState("");
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
-  useEffect(() => {
-    const now = new Date();
-    const dayOfYear = Math.floor(
-      (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000
-    );
-    setToday(items[dayOfYear % items.length] ?? null);
-    setDateStr(now.toLocaleDateString("zh-CN", { month: "long", day: "numeric" }));
-  }, [items]);
+  if (!mounted || items.length === 0) return null;
 
+  const now = new Date();
+  const dayOfYear = Math.floor(
+    (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000
+  );
+  const today = items[dayOfYear % items.length];
   if (!today) return null;
+  const dateStr = now.toLocaleDateString("zh-CN", {
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <Link

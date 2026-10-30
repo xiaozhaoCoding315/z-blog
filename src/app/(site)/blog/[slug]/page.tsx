@@ -15,6 +15,7 @@ import { LikeButton } from "@/components/blog/like-button";
 import { SummaryFallback } from "@/components/blog/summary-fallback";
 import { RelatedPosts } from "@/components/blog/related-posts";
 import { Giscus } from "@/components/blog/giscus";
+import { ArticleTools } from "@/components/blog/article-tools";
 
 export function generateStaticParams() {
   return getAllPosts()
@@ -67,9 +68,13 @@ export default async function PostPage({
     .slice(0, 3)
     .map((p) => ({ slug: p.slug, title: p.meta.title }));
 
+  // 中文字数：正文去掉代码块后的字符数，比「字数」更能反映阅读量
+  const charCount = post.content.replace(/\s+/g, "").length;
+
   return (
     <>
       <ReadingProgress />
+      <ArticleTools />
       <article className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         {/* 文章头部 */}
         <header className="mx-auto max-w-3xl">
@@ -82,19 +87,26 @@ export default async function PostPage({
           <h1 className="mt-5 font-heading text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
             {post.meta.title}
           </h1>
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <CalendarDays className="size-4" />
-              <time dateTime={post.meta.date}>{post.meta.date}</time>
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Clock className="size-4" />
-              {post.readingText}
-            </span>
-            <ViewCounter slug={slug} />
-            <span className="text-muted-foreground/40">·</span>
+
+          {/* 元信息栏：左侧客观数据，右侧互动 */}
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-y border-border/50 py-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays className="size-3.5" />
+                <time dateTime={post.meta.date}>{post.meta.date}</time>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="size-3.5" />
+                {post.readingText}
+              </span>
+              <span className="inline-flex items-center gap-1.5 font-mono tabular-nums">
+                {charCount.toLocaleString()} 字
+              </span>
+              <ViewCounter slug={slug} />
+            </div>
             <LikeButton slug={slug} />
           </div>
+
           <div className="mt-3 flex flex-wrap gap-1.5">
             {post.meta.tags.map((tag) => (
               <Badge

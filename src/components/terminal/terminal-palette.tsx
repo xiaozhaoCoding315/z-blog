@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { AnimatePresence, motion } from "framer-motion";
 import { siteConfig } from "@/config/site";
+import { formatDays } from "@/lib/uptime";
 
 /**
  * 终端彩蛋：任意页面按 `（反引号）唤起一个仿终端，
@@ -182,10 +183,7 @@ export function TerminalPalette({
         print("output", `guest@${siteConfig.name.toLowerCase().replace(/[^a-z0-9]+/g, "")} —— 但你显然是来认识 ${siteConfig.author.name} 的`);
         break;
       case "uptime": {
-        const start = new Date(siteConfig.startedAt).getTime();
-        const days = Number.isNaN(start)
-          ? "?"
-          : Math.max(1, Math.ceil((Date.now() - start) / 86400000));
+        const days = formatDays(siteConfig.startedAt) ?? "?";
         print("output", `up ${days} days, 已写下 ${posts.length} 篇文章`);
         break;
       }
@@ -228,10 +226,7 @@ export function TerminalPalette({
         print("output", arg || "");
         break;
       case "neofetch": {
-        const start = new Date(siteConfig.startedAt).getTime();
-        const days = Number.isNaN(start)
-          ? "?"
-          : Math.max(1, Math.ceil((Date.now() - start) / 86400000));
+        const days = formatDays(siteConfig.startedAt) ?? "?";
         print(
           "hint",
           [

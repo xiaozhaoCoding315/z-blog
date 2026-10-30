@@ -1,31 +1,33 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { formatDays } from "@/lib/uptime";
 import { siteConfig } from "@/config/site";
+
+const emptySubscribe = () => () => {};
 
 /** 客户端独有值（SSR 用 fallback），避免 setState-in-effect */
 function useClientOnly<T>(getSnapshot: () => T, getServerSnapshot: () => T): T {
-  const subscribe = () => () => {};
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  return useSyncExternalStore(emptySubscribe, getSnapshot, getServerSnapshot);
 }
 
-/** 运行天数：客户端计算，避免构建时固化 */
+/**
+ * 运行天数（客户端）。
+ * 服务端已经能给出正确值时，优先用那个（见 lib/uptime-server.ts）；
+ * 这个组件用于必须在浏览器里跟随本地时间的场景（终端命令、页脚）。
+ */
 export function UpTimeDays({ className }: { className?: string }) {
-  const start = new Date(siteConfig.startedAt).getTime();
   const days = useClientOnly(
-    () =>
-      Number.isNaN(start)
-        ? "—"
-        : String(Math.max(1, Math.ceil((Date.now() - start) / 86400000))),
+    () => formatDays(siteConfig.startedAt),
     () => "—"
   );
   return <span className={className}>{days}</span>;
 }
 
-export function CurrentYear() {
-  const year = useClientOnly(
+export function CurrentYear({ year }: { year?: string }) {
+  const current = useClientOnly(
     () => String(new Date().getFullYear()),
-    () => siteConfig.startedAt.slice(0, 4)
+    () => year ?? siteConfig.startedAt.slice(0, 4)
   );
-  return <>{year}</>;
+  return <>{current}</>;
 }

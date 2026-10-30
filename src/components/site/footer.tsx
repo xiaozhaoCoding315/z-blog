@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Rss } from "lucide-react";
 import { GithubIcon } from "@/components/icons/github";
-import { CurrentYear, UpTimeDays } from "@/components/site/runtime-info";
+import { CurrentYear } from "@/components/site/runtime-info";
 import { TerminalLinkButton } from "@/components/terminal/terminal-link-button";
 import { siteConfig } from "@/config/site";
+import { getUptimeSnapshot } from "@/lib/uptime-server";
 
-export function Footer() {
+export async function Footer() {
+  const uptime = await getUptimeSnapshot();
+
   return (
     <footer className="relative mt-24 border-t border-border/60">
       <div className="pointer-events-none absolute inset-x-0 -top-px mx-auto h-px w-2/3 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
@@ -21,11 +24,14 @@ export function Footer() {
             <p className="text-sm leading-relaxed text-muted-foreground">
               {siteConfig.description}
             </p>
+            <p className="font-mono text-[11px] text-muted-foreground/70">
+              since {siteConfig.startedAt} · {uptime.daysText} days
+            </p>
           </div>
 
           <div>
             <h3 className="mb-3 text-sm font-semibold">导航</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted-foreground">
               {[...siteConfig.nav, ...siteConfig.footerNav].map((item) => (
                 <li key={item.href}>
                   <Link
@@ -69,7 +75,8 @@ export function Footer() {
 
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border/60 pt-6 text-xs text-muted-foreground sm:flex-row">
           <p>
-            © <CurrentYear /> {siteConfig.name} · Built with Next.js & Docker
+            © <CurrentYear year={uptime.year} /> {siteConfig.name} · Built with
+            Next.js & Docker
           </p>
           <p className="flex items-center gap-2">
             {siteConfig.footer.icp ? (
@@ -82,7 +89,7 @@ export function Footer() {
               </a>
             ) : null}
             <span>
-              已稳定运行 <UpTimeDays /> 天
+              已稳定运行 <span className="tabular-nums text-foreground/80">{uptime.daysText}</span> 天
             </span>
           </p>
         </div>
