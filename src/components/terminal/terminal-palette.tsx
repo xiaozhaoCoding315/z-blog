@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { AnimatePresence, motion } from "framer-motion";
-import { siteConfig } from "@/config/site";
+import { siteConfig, navItems } from "@/config/site";
 import { formatDays } from "@/lib/uptime";
 
 /**
@@ -134,7 +134,12 @@ export function TerminalPalette({
         navigate("/stats", "统计");
         break;
       case "friends":
-        navigate("/friends", "友链");
+        // 友链为空时该页面从导航隐藏；终端里给个明确回应，而不是跳进空页
+        if (navItems.some((item) => item.href === "/friends")) {
+          navigate("/friends", "友链");
+        } else {
+          print("output", "友链还没收录 —— 不摆占位数据，等真的有值得推荐的站再加。");
+        }
         break;
       case "about":
         navigate("/about", "关于");

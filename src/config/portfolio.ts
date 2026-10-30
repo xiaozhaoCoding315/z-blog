@@ -67,13 +67,13 @@ export interface FriendLink {
   avatar?: string;
 }
 
-export const friends: FriendLink[] = [
-  {
-    name: "示例友链",
-    url: "https://example.com",
-    description: "把这里换成你朋友的博客（编辑 src/config/portfolio.ts）",
-  },
-];
+/**
+ * 友链列表 —— 只放真实的、你确实在看的站点。
+ *
+ * 刻意留空：占位数据（example.com 之类）挂在生产站点上只会减分。
+ * 加到第一条真实友链时，页面的空状态会自动换成卡片列表，导航项也会跟着出现。
+ */
+export const friends: FriendLink[] = [];
 
 /** Now 页面数据：我最近在做什么（nownownow.com 运动，改这里即可） */
 export const now = {

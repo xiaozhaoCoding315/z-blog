@@ -1,13 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, ChevronDown, CircleDashed, Eye, EyeOff, Send, Sparkles, X } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, Send, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { toggleMastered, useMastered } from "@/components/interview/interview-browser";
+import {
+  LEVEL_LABEL,
+  LEVEL_STYLE,
+  hydrateMastery,
+  setMastery,
+  useMastery,
+  type MasteryLevel,
+} from "@/components/interview/mastery-store";
 import type { ReactNode } from "react";
 
 /** 答案折叠区：先思考再看答案 */
@@ -57,33 +64,56 @@ export function AnswerCard({ children }: { children: ReactNode }) {
   );
 }
 
-/** 掌握度三态 */
+/**
+ * 掌握度：四档自评（未学 / 模糊 / 掌握 / 熟练）。
+ *
+ * 为什么不是「会 / 不会」：真实准备状态里，「能背出要点」
+ * 和「被追问三层还不慌」是两回事，二分类会把两者混在一起。
+ */
 export function MasteryBar({ slug }: { slug: string }) {
-  const mastered = useMastered();
-  const isMastered = mastered.has(slug);
+  const { levels, signedIn } = useMastery();
+  const current = (levels[slug] ?? 0) as MasteryLevel;
+
+  useEffect(() => {
+    void hydrateMastery();
+  }, []);
 
   return (
-    <div className="mt-8 flex flex-wrap items-center gap-3">
-      <span className="text-xs text-muted-foreground">这题掌握得怎么样？</span>
-      <button
-        onClick={() => toggleMastered(slug, !isMastered)}
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-medium transition-all",
-          isMastered
-            ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-500"
-            : "border-border/70 text-muted-foreground hover:border-emerald-500/40 hover:text-emerald-500"
-        )}
-      >
-        {isMastered ? (
-          <>
-            <CheckCircle2 className="size-3.5" /> 已掌握（点击撤销）
-          </>
-        ) : (
-          <>
-            <CircleDashed className="size-3.5" /> 标记为已掌握
-          </>
-        )}
-      </button>
+    <div className="mt-8 rounded-xl border border-border/60 bg-card/30 p-4">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <span className="text-xs font-medium text-muted-foreground">
+          这题掌握到什么程度？
+        </span>
+        <span className="text-[11px] text-muted-foreground/70">
+          {signedIn ? "已同步到云端" : "仅保存在本浏览器"}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {([0, 1, 2, 3] as MasteryLevel[]).map((level) => {
+          const active = current === level;
+          return (
+            <button
+              key={level}
+              onClick={() => setMastery(slug, level)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
+                active
+                  ? LEVEL_STYLE[level] + " ring-1 ring-current/30"
+                  : "border-border/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              )}
+            >
+              {active && <span className="size-1.5 rounded-full bg-current" />}
+              {LEVEL_LABEL[level]}
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground/80">
+        「模糊」= 能想起大概，被追问会卡；「掌握」= 能完整讲清楚；
+        「熟练」= 能应对深度追问。选「未学」即清除记录。
+      </p>
     </div>
   );
 }

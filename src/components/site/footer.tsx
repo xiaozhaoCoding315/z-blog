@@ -3,7 +3,7 @@ import { Rss } from "lucide-react";
 import { GithubIcon } from "@/components/icons/github";
 import { CurrentYear } from "@/components/site/runtime-info";
 import { TerminalLinkButton } from "@/components/terminal/terminal-link-button";
-import { siteConfig } from "@/config/site";
+import { siteConfig, allNavItems } from "@/config/site";
 import { getUptimeSnapshot } from "@/lib/uptime-server";
 
 export async function Footer() {
@@ -32,7 +32,7 @@ export async function Footer() {
           <div>
             <h3 className="mb-3 text-sm font-semibold">导航</h3>
             <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted-foreground">
-              {[...siteConfig.nav, ...siteConfig.footerNav].map((item) => (
+              {allNavItems.map((item) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}

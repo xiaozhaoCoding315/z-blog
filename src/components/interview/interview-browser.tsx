@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -8,8 +8,20 @@ import {
   CircleDashed,
   Filter,
   Layers,
+  Loader2,
+  LogIn,
+  Cloud,
+  HardDriveDownload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  LEVEL_LABEL,
+  LEVEL_STYLE,
+  hydrateMastery,
+  masteryStats,
+  useMastery,
+  type MasteryLevel,
+} from "@/components/interview/mastery-store";
 
 export interface InterviewItem {
   slug: string;
@@ -17,55 +29,6 @@ export interface InterviewItem {
   category: string;
   difficulty: "易" | "中" | "难";
   tags: string[];
-}
-
-const STORE_KEY = "interview:mastered";
-
-/**
- * 掌握度存储：localStorage 持久化的 slug 集合。
- * useSyncExternalStore 要求 getSnapshot 返回稳定引用，
- * 因此用模块级缓存（写入时整体替换），不能每次 new Set。
- */
-let cachedMastered: Set<string> | null = null;
-
-function readMastered(): Set<string> {
-  if (cachedMastered) return cachedMastered;
-  try {
-    cachedMastered = new Set(JSON.parse(localStorage.getItem(STORE_KEY) ?? "[]"));
-  } catch {
-    cachedMastered = new Set();
-  }
-  return cachedMastered;
-}
-
-function writeMastered(set: Set<string>) {
-  cachedMastered = set;
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify([...set]));
-  } catch {
-    /* 忽略 */
-  }
-}
-
-const EMPTY_SET = new Set<string>();
-
-export function useMastered(): Set<string> {
-  return useSyncExternalStore(
-    (cb) => {
-      window.addEventListener("blog:mastered-changed", cb);
-      return () => window.removeEventListener("blog:mastered-changed", cb);
-    },
-    readMastered,
-    () => EMPTY_SET
-  );
-}
-
-export function toggleMastered(slug: string, mastered: boolean) {
-  const set = new Set(readMastered());
-  if (mastered) set.add(slug);
-  else set.delete(slug);
-  writeMastered(set);
-  window.dispatchEvent(new Event("blog:mastered-changed"));
 }
 
 const diffStyle: Record<string, string> = {
@@ -95,35 +58,140 @@ function categoryColor(index: number) {
 }
 
 export function InterviewBrowser({ items }: { items: InterviewItem[] }) {
-  const mastered = useMastered();
+  const { levels, signedIn, login, loading } = useMastery();
   const [category, setCategory] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<string | null>(null);
-  const [onlyUnmastered, setOnlyUnmastered] = useState(false);
+  const [onlyUnlearned, setOnlyUnlearned] = useState(false);
+
+  // 首次挂载：读本地 + 尝试拉云端
+  useEffect(() => {
+    void hydrateMastery();
+  }, []);
+
+  const stats = useMemo(() => masteryStats(levels), [levels]);
 
   const categories = useMemo(() => {
-    const map = new Map<string, { count: number; masteredCount: number }>();
+    const map = new Map<
+      string,
+      { count: number; masteredCount: number }
+    >();
     for (const item of items) {
       const stat = map.get(item.category) ?? { count: 0, masteredCount: 0 };
       stat.count++;
-      if (mastered.has(item.slug)) stat.masteredCount++;
+      const level = levels[item.slug] ?? 0;
+      if (level >= 2) stat.masteredCount++;
       map.set(item.category, stat);
     }
     return [...map.entries()];
-  }, [items, mastered]);
+  }, [items, levels]);
 
   const filtered = items.filter((item) => {
     if (category && item.category !== category) return false;
     if (difficulty && item.difficulty !== difficulty) return false;
-    if (onlyUnmastered && mastered.has(item.slug)) return false;
+    if (onlyUnlearned && (levels[item.slug] ?? 0) >= 2) return false;
     return true;
   });
 
   const totalProgress = items.length
-    ? Math.round((mastered.size / items.length) * 100)
+    ? Math.round((stats.mastered / items.length) * 100)
     : 0;
 
   return (
     <div>
+      {/* ===== 进度条 + 同步状态 ===== */}
+      <div className="glass mb-6 rounded-xl p-4">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <div className="flex items-baseline gap-2">
+            <span className="font-heading text-2xl font-extrabold tabular-nums">
+              {totalProgress}%
+            </span>
+            <span className="text-xs text-muted-foreground">
+              已掌握 {stats.mastered} / {items.length} 题
+            </span>
+          </div>
+
+          {/* 同步来源标识：明确告诉用户进度存在哪 */}
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px]",
+              signedIn
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                : "border-border/70 text-muted-foreground"
+            )}
+            title={
+              signedIn
+                ? `已登录 ${login}，进度同步到云端，换设备不丢`
+                : "未登录：进度只存在本浏览器，清除数据会丢失"
+            }
+          >
+            {loading ? (
+              <>
+                <Loader2 className="size-3 animate-spin" /> 同步中
+              </>
+            ) : signedIn ? (
+              <>
+                <Cloud className="size-3" /> 已同步 · {login}
+              </>
+            ) : (
+              <>
+                <HardDriveDownload className="size-3" /> 仅本地
+              </>
+            )}
+          </span>
+        </div>
+
+        {/* 分段进度条：三档各占一段 */}
+        <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
+          {([1, 2, 3] as MasteryLevel[]).map((lv) => {
+            const w = items.length
+              ? (stats.byLevel[lv] / items.length) * 100
+              : 0;
+            if (w === 0) return null;
+            return (
+              <div
+                key={lv}
+                className={cn(
+                  "h-full transition-all duration-500",
+                  lv === 1 && "bg-amber-500/70",
+                  lv === 2 && "bg-emerald-500/80",
+                  lv === 3 && "bg-sky-500/80"
+                )}
+                style={{ width: `${w}%` }}
+                title={`${LEVEL_LABEL[lv]}：${stats.byLevel[lv]} 题`}
+              />
+            );
+          })}
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+          <div className="flex flex-wrap gap-3">
+            {([1, 2, 3] as MasteryLevel[]).map((lv) => (
+              <span key={lv} className="inline-flex items-center gap-1">
+                <span
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    lv === 1 && "bg-amber-500/70",
+                    lv === 2 && "bg-emerald-500/80",
+                    lv === 3 && "bg-sky-500/80"
+                  )}
+                />
+                {LEVEL_LABEL[lv]} {stats.byLevel[lv]}
+              </span>
+            ))}
+          </div>
+
+          {!signedIn && !loading && (
+            <a
+              href="/api/auth/github?next=/interview"
+              className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
+            >
+              <LogIn className="size-3" />
+              用 GitHub 登录，同步进度
+            </a>
+          )}
+        </div>
+      </div>
+
       {/* ===== 分类卡片网格 ===== */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {categories.map(([cat, stat], i) => {
@@ -212,10 +280,10 @@ export function InterviewBrowser({ items }: { items: InterviewItem[] }) {
           </button>
         ))}
         <button
-          onClick={() => setOnlyUnmastered((v) => !v)}
+          onClick={() => setOnlyUnlearned((v) => !v)}
           className={cn(
             "ml-auto inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors",
-            onlyUnmastered
+            onlyUnlearned
               ? "border-primary/60 bg-primary/10 text-primary"
               : "border-border/70 text-muted-foreground hover:text-foreground"
           )}
@@ -231,47 +299,68 @@ export function InterviewBrowser({ items }: { items: InterviewItem[] }) {
         </div>
       ) : (
         <ul className="mt-4 space-y-2">
-          {filtered.map((item) => (
-            <li key={item.slug}>
-              <Link
-                href={`/interview/${item.slug}`}
-                className="group glass card-hover flex items-center gap-4 rounded-xl px-5 py-4"
-              >
-                {mastered.has(item.slug) ? (
-                  <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
-                ) : (
-                  <CircleDashed className="size-5 shrink-0 text-muted-foreground/50" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium transition-colors group-hover:text-primary">
-                    {item.question}
-                  </p>
-                  <p className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                    <span className="rounded border border-border/70 px-1.5 py-px">
-                      {item.category}
-                    </span>
-                    {item.tags.slice(0, 3).map((t) => (
-                      <span key={t}>#{t}</span>
-                    ))}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full border px-2 py-0.5 text-[11px]",
-                    diffStyle[item.difficulty]
-                  )}
+          {filtered.map((item) => {
+            const level = levels[item.slug] ?? 0;
+            return (
+              <li key={item.slug}>
+                <Link
+                  href={`/interview/${item.slug}`}
+                  className="group glass card-hover flex items-center gap-4 rounded-xl px-5 py-4"
                 >
-                  {item.difficulty}
-                </span>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-              </Link>
-            </li>
-          ))}
+                  {level >= 2 ? (
+                    <CheckCircle2
+                      className={cn(
+                        "size-5 shrink-0",
+                        level === 3 ? "text-sky-500" : "text-emerald-500"
+                      )}
+                    />
+                  ) : level === 1 ? (
+                    <CircleDashed className="size-5 shrink-0 text-amber-500" />
+                  ) : (
+                    <CircleDashed className="size-5 shrink-0 text-muted-foreground/50" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium transition-colors group-hover:text-primary">
+                      {item.question}
+                    </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="rounded border border-border/70 px-1.5 py-px">
+                        {item.category}
+                      </span>
+                      {item.tags.slice(0, 3).map((t) => (
+                        <span key={t}>#{t}</span>
+                      ))}
+                    </p>
+                  </div>
+                  {level > 0 && (
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full border px-2 py-0.5 text-[10px]",
+                        LEVEL_STYLE[level]
+                      )}
+                    >
+                      {LEVEL_LABEL[level]}
+                    </span>
+                  )}
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full border px-2 py-0.5 text-[11px]",
+                      diffStyle[item.difficulty]
+                    )}
+                  >
+                    {item.difficulty}
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
 
       <p className="mt-6 text-center text-[11px] text-muted-foreground">
-        共 {items.length} 题 · 已掌握 {mastered.size}（{totalProgress}%）· 进度保存在浏览器本地
+        共 {items.length} 题 · 已记录 {stats.touched} 题
+        {signedIn ? " · 进度保存在云端" : " · 进度保存在本浏览器（登录后可跨设备同步）"}
       </p>
     </div>
   );

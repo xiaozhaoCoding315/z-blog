@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, Search } from "lucide-react";
-import { siteConfig } from "@/config/site";
+import { siteConfig, navItems, allNavItems } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { GithubIcon } from "@/components/icons/github";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,7 @@ export function Navbar() {
         {/* 桌面端导航：9 个菜单项在 md（768px）放不下，改为 lg 起显示，
             中间宽度走移动端抽屉，避免挤压 logo 与右侧操作区 */}
         <nav className="hidden items-center gap-0.5 lg:flex">
-          {siteConfig.nav.map((item) => (
+          {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -116,7 +116,7 @@ export function Navbar() {
                 <SheetTitle className="text-left">{siteConfig.name}</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 px-4">
-                {[...siteConfig.nav, ...siteConfig.footerNav].map((item) => (
+                {allNavItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}

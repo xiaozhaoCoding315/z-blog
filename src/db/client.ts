@@ -83,4 +83,28 @@ export async function ensureSchema() {
       created_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id bigserial PRIMARY KEY,
+      github_id text NOT NULL UNIQUE,
+      login text NOT NULL,
+      avatar_url text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      last_seen_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS interview_mastery (
+      user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      slug text NOT NULL,
+      level integer NOT NULL DEFAULT 0,
+      review_count integer NOT NULL DEFAULT 0,
+      last_seen_at timestamptz NOT NULL DEFAULT now(),
+      next_review_at timestamptz,
+      PRIMARY KEY (user_id, slug)
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS interview_mastery_user_idx ON interview_mastery (user_id)`
+  );
 }
