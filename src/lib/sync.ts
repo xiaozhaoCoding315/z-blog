@@ -17,7 +17,15 @@ import {
  * 被 scripts/sync.ts（CLI）与 /api/sync（容器启动）共用。
  */
 
-const EMBED_BATCH = 16;
+/**
+ * 单次 embedding 请求的分块数。
+ *
+ * 阿里云百炼 text-embedding-v3 的硬限制是 **批大小 ≤ 10**，超过直接返回
+ * `400 batch size is invalid, it should not be larger than 10`。
+ * 原先写 16，只要某篇文章分块数超过 10 就整篇同步失败——
+ * 而这个失败只在容器日志里可见，页面上表现为「AI 搜不到这篇文章」。
+ */
+const EMBED_BATCH = 10;
 
 export interface SyncResult {
   total: number;
@@ -97,23 +105,33 @@ export async function syncPosts(options?: {
     // ---- 分块向量化 ----
     if (embeddingEnabled) {
       const pieces = chunkMarkdown(post.content);
-      await db.delete(chunks).where(inArray(chunks.postSlug, [post.slug]));
 
+      // 先把全部分块的向量算完，再动数据库。
+      // 原来的实现是「先 delete 旧分块 → 再逐批 embed」，一旦某批失败，
+      // 这篇文章在库里就一个分块都不剩了：页面还能看，但 AI 检索彻底找不到它，
+      // 而且失败只体现在容器日志里，非常难发现。
+      const rows: (typeof chunks.$inferInsert)[] = [];
       for (let i = 0; i < pieces.length; i += EMBED_BATCH) {
         const batch = pieces.slice(i, i + EMBED_BATCH);
         const { embeddings } = await embedMany({
           model: embeddingModel,
           values: batch.map((c) => c.text),
         });
-        await db.insert(chunks).values(
-          batch.map((piece, j) => ({
+        for (let j = 0; j < batch.length; j++) {
+          rows.push({
             postSlug: post.slug,
-            heading: piece.heading,
+            heading: batch[j].heading,
             orderIndex: i + j,
-            content: piece.text,
+            content: batch[j].text,
             embedding: embeddings[j],
-          }))
-        );
+          });
+        }
+      }
+
+      // 全部算完才替换旧分块：要么全成功，要么旧数据原样保留。
+      await db.delete(chunks).where(inArray(chunks.postSlug, [post.slug]));
+      if (rows.length > 0) {
+        await db.insert(chunks).values(rows);
       }
       console.log(`[sync]   ${pieces.length} 个分块已向量化`);
     }
