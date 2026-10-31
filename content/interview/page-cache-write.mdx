@@ -1,7 +1,7 @@
 ---
 question: 写文件时数据什么时候真正落盘？page cache 的作用？
 category: 操作系统
-difficulty: 难
+difficulty: 中
 tags: [page cache, IO]
 ---
 **你 write() 完数据并没到磁盘——先进了 page cache（页缓存）**，操作系统"记账"说写完了（写回 write back 机制），**真正的落盘由内核异步慢慢刷**（脏页刷盘：定时 30 秒/脏页比例超阈值/内存压力时）。

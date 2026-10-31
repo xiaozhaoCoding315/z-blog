@@ -48,3 +48,4 @@ next-env.d.ts
 .env.local
 .env*.local
 scripts/enable-dsh-lan.ps1
+scripts/.difficulty-cache.json

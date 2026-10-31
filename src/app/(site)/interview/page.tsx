@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { listInterviewQuestions } from "@/lib/interview-core";
 import { InterviewBrowser } from "@/components/interview/interview-browser";
 import { DailyQuestion } from "@/components/interview/daily-question";
+import { LoginNotice } from "@/components/interview/login-notice";
 import { Reveal } from "@/components/site/reveal";
 
 export const metadata: Metadata = {
@@ -54,6 +55,8 @@ export default function InterviewPage() {
           </dl>
         </div>
       </header>
+
+      <LoginNotice />
 
       <Reveal>
         <DailyQuestion items={items} />
