@@ -1,0 +1,148 @@
+---
+title: PostgreSQL 的表为什么越删越大
+date: 2026-09-19
+description: 删了一半数据，磁盘占用没降，查询还变慢了。这不是 bug，是 MVCC 的实现代价——理解死元组、autovacuum 和膨胀，才知道该在什么时候做什么。
+tags: [数据库, PostgreSQL, 性能]
+---
+
+在 MySQL 上删数据，磁盘空间不一定马上回收，但至少不会持续膨胀。PostgreSQL 的情况更极端：
+
+```sql
+DELETE FROM logs WHERE created_at < now() - interval '7 days';
+-- 删掉了 80% 的行
+SELECT pg_size_pretty(pg_total_relation_size('logs'));
+-- 还是那么大，甚至更大了
+```
+
+这不是没生效。**PostgreSQL 的 `DELETE` 只是给行打标记，不回收空间。**
+
+## 为什么删除不释放空间
+
+PostgreSQL 用 MVCC（多版本并发控制）实现事务隔离。每个事务有一个快照，读操作看到的是「快照时刻存在的那一版数据」。
+
+如果 `DELETE` 立刻物理删除，那么还在读旧快照的事务就会读到「不存在」——快照语义被破坏。
+
+所以 `DELETE` 做的事是：把这一行标记为「对我之后开始的事务不可见」。这行数据仍然物理存在，只是没人能看到它了。这就是**死元组**（dead tuple）。
+
+同理，`UPDATE` 也不是原地修改，而是**插入新版本 + 标记旧版本死亡**。
+
+所以一条频繁更新的记录，可能在磁盘上留下几十个历史版本。表越用越大，不是因为数据变多了，是因为**垃圾没清**。
+
+## VACUUM 做什么
+
+`VACUUM` 扫描表，找到那些「所有事务都看不到」的死元组，把它们的空间标记为可复用。
+
+注意：**可复用，不是还给操作系统。**
+
+这些空间会留在表文件内部，供后续的 `INSERT`/`UPDATE` 使用。所以 `VACUUM` 之后表大小不变，但后续写入不会让文件继续变大——这叫「空间复用」。
+
+真正要把空间还给系统，只有两条路：
+
+- `VACUUM FULL`：重写整个表，期间持有排他锁，大表上等于停机
+- `pg_repack`：在线重写，代价是额外磁盘和更长的执行时间
+
+## autovacuum 为什么不够
+
+PostgreSQL 默认开启 autovacuum，按「死元组占比超过阈值」触发。默认阈值是 20%（`autovacuum_vacuum_scale_factor`）。
+
+问题出在**大表上**：
+
+一张 1000 万行的表，20% 就是 200 万行。在它达到 200 万死元组之前，autovacuum 不会跑。这期间表已经膨胀了 20%，而且索引也跟着膨胀。
+
+对更新频繁的表，这个阈值太宽松。我一般会把大表的参数调低：
+
+```sql
+ALTER TABLE logs SET (
+  autovacuum_vacuum_scale_factor = 0.02,
+  autovacuum_vacuum_threshold = 500
+);
+```
+
+2% 而不是 20%，代价是 autovacuum 跑得更勤（消耗 I/O），收益是膨胀被控制在较小范围。
+
+<Callout type="tip" title="别把 autovacuum 当成免费的">
+
+autovacuum 跑起来会消耗 I/O 和 CPU。在小机器上（比如 2G 内存的服务器），它频繁启动可能跟业务查询抢资源。
+
+正确做法是：调低阈值，同时限制 `autovacuum_max_workers` 和 `autovacuum_vacuum_cost_limit`，让它「勤但轻」。
+
+</Callout>
+
+## 怎么发现膨胀
+
+两个内置视图：
+
+```sql
+-- 看死元组数量
+SELECT relname, n_live_tup, n_dead_tup,
+       round(n_dead_tup::numeric / nullif(n_live_tup + n_dead_tup, 0) * 100, 2) AS dead_pct,
+       last_autovacuum
+FROM pg_stat_user_tables
+ORDER BY n_dead_tup DESC
+LIMIT 10;
+```
+
+如果 `dead_pct` 长期高于 10%，说明 autovacuum 跟不上。
+
+```sql
+-- 看实际的表大小与「应该的大小」差距
+SELECT relname,
+       pg_size_pretty(pg_total_relation_size(oid)) AS total,
+       pg_size_pretty(pg_total_relation_size(oid) - pg_indexes_size(oid)) AS heap
+FROM pg_class
+WHERE relkind = 'r'
+ORDER BY pg_total_relation_size(oid) DESC
+LIMIT 10;
+```
+
+更精确的膨胀测量需要 `pgstattuple` 扩展：
+
+```sql
+CREATE EXTENSION pgstattuple;
+SELECT * FROM pgstattuple('logs');
+-- dead_tuple_percent 就是死元组占比
+```
+
+## 索引也会膨胀
+
+这一点常被忽略。`UPDATE` 会插入新版本，B 树索引也要为新版本插入一个条目。旧条目的索引项在 `VACUUM` 之前不会清理。
+
+所以频繁更新的表，索引可能比数据本身还大。重建索引可以解决：
+
+```sql
+REINDEX INDEX CONCURRENTLY idx_logs_created_at;
+```
+
+`CONCURRENTLY` 让重建不阻塞写入，但更慢、更耗 I/O。
+
+## 什么时候该做什么
+
+| 情况 | 动作 |
+| --- | --- |
+| 死元组占比 < 10% | 什么都不用做 |
+| 10%–30%，表不大 | 调低 autovacuum 阈值，等它自己清 |
+| 30%–50%，查询开始变慢 | 手动 `VACUUM (VERBOSE, ANALYZE)` 一次，然后调参数 |
+| > 50%，且表很大 | `pg_repack`（在线）或 `VACUUM FULL`（可接受停机时） |
+| 索引比数据还大 | `REINDEX CONCURRENTLY` |
+
+## 一个更根本的问题：设计层面
+
+如果一张表每天都在大量删除旧数据，说明「用删除来清理」这个设计本身可能有问题。
+
+三个替代思路：
+
+**分区表 + 删分区。** 按月分区，过期就 `DROP TABLE partition_x`——直接释放文件，不需要 VACUUM。这是日志类表的最佳实践。
+
+```sql
+CREATE TABLE logs (...) PARTITION BY RANGE (created_at);
+CREATE TABLE logs_2026_09 PARTITION OF logs
+  FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
+```
+
+**软删除 + 定期归档。** 不删行，加个 `deleted_at`。缺点是所有查询都要带过滤条件，而且膨胀问题依然存在。
+
+**把冷数据挪走。** 超过一定时间的数据迁到对象存储或另一张冷表。
+
+我见过最糟的情况是：一张日志表，每天 `DELETE` 然后 `INSERT`，从来没调过 autovacuum。半年后表文件 8GB，实际数据只有 400MB。加了分区之后，问题彻底消失——因为再也不用 `DELETE` 了。
+
+**PostgreSQL 的空间回收是「复用」而不是「释放」。** 记住这一点，很多「磁盘为什么一直涨」的困惑就解开了。

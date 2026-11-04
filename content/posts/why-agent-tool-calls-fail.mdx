@@ -1,0 +1,170 @@
+---
+title: Agent 调不动工具，八成是这四个原因
+date: 2026-09-06
+description: 工具调用失败很少是模型「不够聪明」。更多时候是 schema 写错了、返回值太啰嗦、错误信息没给下一步，或者根本没给模型重试的机会。
+tags: [AI, Agent, 工程化]
+---
+
+写过几个带工具的 Agent 之后，我总结出一条经验：**模型能力不是瓶颈，工具设计才是。**
+
+同一个模型，工具描述改一遍，成功率能从 60% 跳到 90%。这不是玄学，是有具体原因的。
+
+下面四条，按我遇到的频率排序。
+
+## 一、schema 没写清楚
+
+最典型的是这三种：
+
+```json
+// 差：类型含糊，没有 required
+{
+  "type": "object",
+  "properties": {
+    "query": { "type": "string" },
+    "limit": { "type": "number" }
+  }
+}
+```
+
+```json
+// 好：类型明确，必填项显式，带约束和说明
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "搜索关键词，中文或英文，不要传完整句子"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20,
+      "description": "返回条数，默认 5"
+    }
+  },
+  "required": ["query"],
+  "additionalProperties": false
+}
+```
+
+差别在哪：
+
+- **`integer` vs `number`**：模型看到 `number` 会传 `5.5`，然后你的代码崩在 `LIMIT 5.5`。
+- **`required` 缺失**：模型可能传空对象。
+- **`description` 缺失**：模型只能靠字段名猜语义。`query` 到底该传关键词还是自然语言？它不知道。
+- **`additionalProperties: false`**：不加这一条，模型会自作主张加字段，然后你收到一堆没用的参数。
+
+还有一个容易忽略的：**枚举值要写死。** 如果 `status` 只能取 `open` / `closed`，就在 schema 里用 `enum` 声明。否则模型会传 `"Open"`、`"OPEN"`、`"进行中"`。
+
+## 二、返回值太啰嗦
+
+工具返回给模型的内容，会直接进上下文。很多人把原始 API 响应整个丢回去：
+
+```python
+return {"data": api_response}   # 5000 token 的 JSON
+```
+
+后果有两个：
+
+**上下文被塞满。** 一次调用吃掉几千 token，多调几次就没空间了。后面真正需要推理的内容被挤掉。
+
+**关键信息被淹没。** 模型要在 5000 token 里找「有没有结果」，很容易看漏。
+
+正确做法是**只为模型重新格式化**：
+
+```python
+def format_for_model(results):
+    if not results:
+        return "没有找到匹配的内容。"
+    lines = [f"共 {len(results)} 条："]
+    for i, r in enumerate(results, 1):
+        lines.append(f"{i}. {r.title} — {r.url}")
+    return "\n".join(lines)
+```
+
+工具返回是给**模型读**的，不是给程序解析的。这两者的格式要求完全不同：程序要完整、结构化；模型要短、明确、可读。
+
+如果确实需要结构化返回（比如后续有代码要消费），那就双通道：给模型一份摘要，给程序一份完整数据。
+
+## 三、错误信息没告诉模型下一步
+
+这一条最容易改，收益最大。
+
+```python
+# 差
+raise Exception("Error")
+
+# 好
+return "参数 date 格式错误：收到 '2026/9/6'，需要 YYYY-MM-DD（例如 2026-09-06）。请修正后重试。"
+```
+
+差别在于：模型拿到「Error」之后，只能瞎猜。拿到具体错误，它知道该改什么。
+
+<Callout type="tip" title="错误信息是给模型的提示词">
+
+把错误信息当成一次微型的 prompt engineering。它应该包含三件事：**哪里错了、期望是什么、下一步怎么做**。
+
+我见过最有效的写法是直接给出修正后的调用示例：
+
+```
+缺少必填参数 user_id。请用这个格式重试：
+{"user_id": 42, "action": "list_orders"}
+```
+
+模型看到示例，几乎不会错第二次。
+
+</Callout>
+
+## 四、没给重试机会
+
+这是架构层面的问题。很多 Agent 的实现是「调一次，失败就终止」。
+
+但工具调用失败是**正常现象**，不是异常现象。参数可能拼错、临时网络抖动、数据可能不存在——这些都该允许重试。
+
+一个基本的循环应该是：
+
+```python
+for attempt in range(max_rounds):
+    response = model.invoke(messages)
+    if not response.tool_calls:
+        return response.text        # 模型认为可以结束了
+
+    for call in response.tool_calls:
+        result = execute(call)
+        messages.append(tool_result(call.id, result))
+
+    # 循环继续，模型看到结果后再决定下一步
+```
+
+关键点：**把工具结果作为新消息喂回模型**，让它自己判断下一步。而不是由你的代码决定「失败了就重来」。
+
+这里有个坑：重试必须有上限，而且要把「已经失败了几次」告诉模型。否则它会陷入无限循环，反复调同一个错参数。
+
+```python
+if attempt >= max_rounds:
+    messages.append({
+        "role": "user",
+        "content": f"已经尝试 {max_rounds} 次仍未成功，请停止调用工具，直接说明遇到的问题。"
+    })
+```
+
+## 还有一个隐性原因：工具太多
+
+模型的选择困难是真实存在的。给它 30 个工具，它经常挑错——不是因为笨，而是因为描述之间有重叠。
+
+我的经验是：**单轮暴露的工具不要超过 10 个。** 超过就要分组，或者按场景动态加载（只把当前任务相关的工具塞进上下文）。
+
+这也是 MCP 的一个副作用：接了一堆 server 之后，工具列表会爆炸。客户端需要做工具筛选，不能全量暴露。
+
+## 排查清单
+
+工具调不动的时候，我现在的检查顺序：
+
+1. **schema**：`required` 齐不齐？类型对不对？有没有 `enum`？
+2. **description**：换个不懂这个系统的人读一遍，能看懂该传什么吗？
+3. **返回值**：一次调用吃多少 token？关键信息在第几行？
+4. **错误**：报错信息里有「下一步怎么做」吗？
+5. **循环**：允许重试吗？有上限吗？失败次数告诉模型了吗？
+6. **数量**：这轮暴露了几个工具？有没有重叠的？
+
+按这个顺序走，大部分问题在 1 和 2 就能解决。剩下的才是模型能力问题——而那种情况比想象中少得多。

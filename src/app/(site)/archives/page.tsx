@@ -85,12 +85,15 @@ export default async function ArchivesPage() {
             // 画出来的空白月份才是真实发生的空白——九月没写，就该看见九月是空的。
             const isCurrentYear = String(year) === uptime.year;
             const visible = isCurrentYear ? uptime.month : 12;
+            // 建站那年从建站月份开始画：它之前的月份还没有这个站，
+            // 用 1px 细线画出来会被误读成「那个月没写」。
+            const startMonth = isCurrentYear ? uptime.startMonth : 1;
             return (
               <div key={year}>
                 {/* 始终 12 列：月份刻度在年份之间对得齐，空着的月份留白而不是拉宽 */}
                 <div className="grid grid-cols-12 items-end gap-1 sm:gap-2">
-                  {counts.slice(0, visible).map((count, index) => {
-                    const month = index + 1;
+                  {counts.slice(startMonth - 1, visible).map((count, index) => {
+                    const month = startMonth + index;
                     const key = `${year}-${monthLabel(month)}`;
                     const hasPosts = count > 0;
                     // 高度按峰值归一：零篇留一条 1px 细线，有文章的月份最低 8px
@@ -127,12 +130,12 @@ export default async function ArchivesPage() {
 
                 {/* 刻度行与柱行同样是 12 列，未画到的月份自然空着，对齐不跑偏 */}
                 <div className="mt-1 grid grid-cols-12 gap-1 border-t border-border/60 pt-1 font-mono text-[10px] tabular-nums text-muted-foreground/70 sm:gap-2">
-                  {counts.slice(0, visible).map((count, index) => (
+                  {counts.slice(startMonth - 1, visible).map((count, index) => (
                     <span
                       key={index}
                       className={count > 0 ? "text-muted-foreground" : undefined}
                     >
-                      {monthLabel(index + 1)}
+                      {monthLabel(startMonth + index)}
                     </span>
                   ))}
                 </div>

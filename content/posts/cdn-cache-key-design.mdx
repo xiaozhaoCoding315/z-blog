@@ -1,0 +1,138 @@
+---
+title: CDN 缓存命中率上不去，先看缓存键
+date: 2026-10-18
+description: 缓存命中率低，大家第一反应是「TTL 太短」。更常见的原因其实是缓存键里混进了不该有的东西——Cookie、随机参数、用户 ID。
+tags: [网络, 缓存, 性能]
+---
+
+CDN 命中率从 95% 掉到 60%，页面变慢，回源压力变大。
+
+排查顺序通常是：TTL 是不是太短 → 内容是不是更新太频繁 → 源站是不是在返回 `no-cache`。
+
+这些都对，但有个更隐蔽的原因：**缓存键算错了。**
+
+## 缓存键是什么
+
+CDN 判断「这次请求能不能用缓存」，靠的是缓存键。默认情况下，它通常是：
+
+```
+scheme + host + path + query string
+```
+
+`https://blog.example.com/blog/post-1?utm_source=wechat` 和 `https://blog.example.com/blog/post-1?utm_source=twitter` 是两个不同的键，缓存两份。
+
+而这两份内容完全一样。
+
+## 最常见的问题：URL 参数
+
+营销参数（`utm_*`、`fbclid`、`gclid`）、时间戳防缓存参数（`?t=1730000000`）、排序参数——这些都会让缓存键爆炸。
+
+一个页面如果有 10 个可能的 `utm_source` 值，缓存就要存 10 份。
+
+解法是配置 CDN 的**缓存键规则**：只把真正影响内容的参数纳入键。
+
+```
+缓存键 = host + path + (query 中的 page, tag, q)
+忽略：utm_*, fbclid, gclid, t, _, spm
+```
+
+各家的 CDN 控制台都有这个配置项，名字不太一样（「缓存键」「缓存规则」「Query String 处理」）。
+
+<Callout type="tip" title="保守做法：忽略所有 query">
+
+如果页面内容完全不依赖 query 参数，最干脆的做法是把整个 query string 从缓存键里剔除。
+
+风险是：如果某个参数确实影响内容（比如 `?lang=en`），会返回错误的内容。所以只对「确定无影响」的路径这么做。
+
+</Callout>
+
+## 第二个问题：Cookie 和 Vary
+
+如果源站在响应里带了 `Vary: Cookie`，或者 CDN 配置了「按 Cookie 区分缓存」，那每个用户的 Cookie 都会产生一份缓存。
+
+对需要登录的页面，这是必须的。但对公开页面（文章、首页、列表页），这是灾难——每个访客都有自己的 Cookie。
+
+正确做法：
+
+- 公开页面：完全不看 Cookie
+- 需要区分登录状态的页面：只用某一个特定的 Cookie（比如 `session_id` 的哈希）做键，或者干脆用「登录态/未登录态」两档
+
+```nginx
+# 只用一个标记位做区分，而不是整个 Cookie
+proxy_cache_key "$scheme$host$request_uri$is_logged_in";
+```
+
+## 第三个问题：设备区分
+
+如果 CDN 配置了「按 User-Agent 区分移动端/PC 端」，那么每个 UA 版本都是一个新键。Chrome 的 UA 随版本更新，缓存会被反复击穿。
+
+应该只按「设备类型」区分（mobile / desktop），而不是完整 UA。
+
+## 回源时的缓存头
+
+CDN 最终要尊重源站的响应头：
+
+| 头 | 作用 |
+| --- | --- |
+| `Cache-Control: public, max-age=3600` | 可缓存，1 小时 |
+| `Cache-Control: private` | 只允许浏览器缓存，CDN 不缓存 |
+| `Cache-Control: no-store` | 完全不缓存 |
+| `s-maxage=86400` | 只针对 CDN 的有效期（覆盖 `max-age`） |
+| `stale-while-revalidate=60` | 过期后先用旧内容，后台刷新 |
+
+`stale-while-revalidate` 是最容易被忽略但收益很大的一个。它让「缓存过期」不再是「用户等待回源」，而是「用户拿到旧内容，后台悄悄更新」。
+
+对内容型站点，这个值可以设得比较长（比如 60 秒到 5 分钟）——文章更新晚几十秒，用户根本感觉不到。
+
+## 静态资源的键
+
+带内容哈希的静态资源（`app-abc123.js`）应该设**一年**的有效期：
+
+```
+Cache-Control: public, max-age=31536000, immutable
+```
+
+`immutable` 告诉浏览器「这个 URL 的内容永远不会变，不要发条件请求」。省掉 304 往返。
+
+前提是文件名里的哈希确实随内容变。Next.js 的构建产物默认就是这样。
+
+## 怎么验证缓存键配对了
+
+最直接的办法是看响应头：
+
+```
+$ curl -I https://blog.example.com/blog/post-1?utm_source=test
+X-Cache: HIT
+Age: 120
+```
+
+`Age` 表示这份缓存已经存在多久。连续请求两次，第二次 `Age` 应该增加，说明命中了。
+
+对比两个不同的 `utm_source`：
+
+```
+$ curl -I "https://blog.example.com/blog/post-1?utm_source=a"
+X-Cache: HIT
+Age: 300
+
+$ curl -I "https://blog.example.com/blog/post-1?utm_source=b"
+X-Cache: HIT
+Age: 300      # 相同的 Age，说明是同一个缓存对象 —— 键配对了
+```
+
+如果第二个请求 `X-Cache: MISS` 或者 `Age` 是 0，说明键里包含了 `utm_source`。
+
+## 一个反直觉的点
+
+**缓存命中率不是越高越好。**
+
+如果命中率 99.9%，可能意味着内容更新后很长时间用户看到的还是旧的。命中率和新鲜度是一个权衡，不是单目标优化。
+
+合理的做法是分层：
+
+- 静态资源：几乎永久缓存（内容哈希保证正确性）
+- 文章页：短 TTL + `stale-while-revalidate`
+- 首页/列表页：更短的 TTL，因为内容变化更频繁
+- API 响应：按业务语义定，通常不缓存或者只缓存几秒
+
+**先想清楚「这个内容能容忍多久的旧」，再配 TTL。** 反过来（先定 TTL 再想语义）几乎一定出问题。

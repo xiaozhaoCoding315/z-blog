@@ -1,0 +1,163 @@
+---
+title: "\"use client\" 不是「这里跑在浏览器」，是「这里要打包」"
+date: 2026-10-29
+description: 很多人以为加了 'use client' 的组件不会在服务端运行。实际上它照样在服务端渲染，只是多打了一份 JS 到浏览器——理解这一点，才知道边界该画在哪。
+tags: [React, Next.js, 架构]
+---
+
+第一次用 App Router 时，最容易产生的误解是：
+
+> 加了 `'use client'` 的组件在浏览器里跑，没加的组件在服务端跑。
+
+前半句对，后半句**错得离谱**。
+
+`'use client'` 的真实含义是：**这个组件及其子树需要被包含在客户端 bundle 里。**
+
+它仍然会在服务端渲染（SSR），只是同时也被打包发给浏览器。
+
+## 两种组件，两种命运
+
+**Server Component（默认）**
+
+- 只在服务端运行
+- 代码不会进浏览器 bundle
+- 可以直接读数据库、读文件、用密钥
+- 不能用 `useState`、`useEffect`、事件处理
+
+**Client Component（`'use client'`）**
+
+- 服务端渲染一次（生成 HTML）
+- 代码打进浏览器 bundle
+- 浏览器里再执行一次（hydration）
+- 可以用 hooks、事件、浏览器 API
+- **不能**直接读数据库（代码会到浏览器，密钥就泄露了）
+
+所以 `'use client'` 的代价不是「不能在服务端跑」，而是：
+
+1. **多了一份 JS 要下载**——bundle 变大
+2. **多了一次执行**——hydration 成本
+3. **代码暴露**——里面的逻辑和常量都能被看到
+
+## 边界会传染
+
+这是最容易踩的坑：**`'use client'` 会沿着 import 向下传染。**
+
+```
+Page (server)
+  └── Layout (server)
+        └── Card ('use client')     ← 边界在这
+              ├── Header            ← 自动变成 client
+              ├── Body              ← 自动变成 client
+              └── utils.ts          ← 打进 bundle
+```
+
+一旦某个组件标了 `'use client'`，它 import 的所有东西都会进客户端 bundle，**即使那些东西本来可以是服务端的**。
+
+我见过一个组件标了 `'use client'` 只为了用 `useState`，结果它 import 了一个包含几千行数据处理的工具模块，整个模块都进了 bundle。
+
+## 边界该画在哪
+
+原则是：**边界画在「需要交互的最小单位」，而不是「页面」或「区块」。**
+
+```tsx
+// 差：整个卡片都成了 client
+"use client";
+export function PostCard({ post }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <Title>{post.title}</Title>      {/* 不需要交互，却在 client */}
+      <Content>{post.content}</Content> {/* 大段内容，却在 client */}
+      <Button onClick={() => setOpen(!open)}>展开</Button>
+    </div>
+  );
+}
+```
+
+```tsx
+// 好：只有按钮是 client
+export function PostCard({ post }) {           // server
+  return (
+    <div>
+      <Title>{post.title}</Title>
+      <Content>{post.content}</Content>
+      <ToggleButton />                          {/* client */}
+    </div>
+  );
+}
+```
+
+第二种写法里，`post.content` 只在服务端处理，不进 bundle。`ToggleButton` 只有几行代码。
+
+## 一个反直觉的细节：props 要能序列化
+
+从 Server Component 传给 Client Component 的 props，必须能被序列化（JSON 兼容）。
+
+这意味着：
+
+- 不能传函数（除了 Server Actions）
+- 不能传类实例
+- 不能传 `Date` 对象的某些用法（会被转成字符串）
+- 不能传 `undefined` 在数组里（会有警告）
+
+经常遇到的问题：把一个 ORM 返回的对象直接传下去，里面可能有 `Decimal`、`Buffer` 或者循环引用。传之前要 map 成普通对象。
+
+<Callout type="warning" title="别把整个对象丢下去">
+
+```tsx
+<ClientCard data={user} />   // user 有 20 个字段
+```
+
+即使客户端只用 `user.name`，整个对象都会序列化进 HTML 里的 RSC payload。这个 payload 会被浏览器下载。
+
+**只传用得到的字段。** 这不是优化，是正确性——你也不想把 `password_hash` 传下去。
+
+</Callout>
+
+## 什么时候必须用 client
+
+需要这些能力时，没得选：
+
+- `useState` / `useReducer` / `useRef`
+- `useEffect` / `useLayoutEffect`
+- 事件处理（`onClick`、`onChange`）
+- 浏览器 API（`window`、`localStorage`、`IntersectionObserver`）
+- 依赖浏览器的第三方库（图表、编辑器、地图）
+
+不需要这些时，默认留在 server。
+
+## 一个常见的错误用法
+
+```tsx
+"use client";
+import { db } from "@/lib/db";     // 危险
+
+export function UserList() {
+  const users = db.query(...);     // 在浏览器里会崩，而且 db 连接串进了 bundle
+}
+```
+
+这段代码会：
+1. 在服务端渲染时执行一次（可能成功）
+2. 把 `@/lib/db` 整个打进浏览器 bundle（连接串、SQL 都暴露）
+3. 在 hydration 时再执行一次（在浏览器里，直接崩）
+
+正确的做法是把数据获取留在 server 组件，通过 props 传下去。
+
+## 怎么检查边界画得对不对
+
+看构建输出里的 bundle 大小，或者用 Next.js 的分析工具。重点看：
+
+- 哪些模块进了 client bundle，但「本来不该」
+- 有没有大的依赖（图表库、日期库、i18n）被拖进客户端
+- 首屏的 JS 体积
+
+我的经验是：**一个页面标了 `'use client'` 在顶层，几乎一定有问题。** 通常可以拆出一个小的交互层，让大部分内容留在服务端。
+
+## 小结
+
+`'use client'` 不是「这个组件在浏览器跑」，而是「这份代码要发给浏览器」。
+
+它影响的是**传输体积和执行成本**，不是**执行位置**——服务端渲染照样发生。
+
+把边界画在最小的交互单元上，只传必要的字段，是这件事的全部要诀。

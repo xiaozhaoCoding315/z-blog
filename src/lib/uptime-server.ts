@@ -31,5 +31,13 @@ export async function getUptimeSnapshot() {
      * 同样不能在预渲染期直接读时间，所以和天数一起放进这份缓存快照。
      */
     month: now.getMonth() + 1,
+    /**
+     * 建站那一年从第几个月开始。往年是 1 月；建站当年之前的月份属于
+     * 「还没有这个站」，不该画成「没写」——空白的含义必须是真的没写。
+     */
+    startMonth:
+      Number(siteConfig.startedAt.slice(0, 4)) === now.getFullYear()
+        ? Number(siteConfig.startedAt.slice(5, 7))
+        : 1,
   };
 }

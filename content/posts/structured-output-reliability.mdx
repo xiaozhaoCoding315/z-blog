@@ -1,0 +1,135 @@
+---
+title: 让模型稳定输出 JSON，靠的不是 prompt
+date: 2026-10-06
+description: 「请只输出 JSON」这句话能解决八成的格式问题，剩下两成要靠约束解码、schema 校验和重试。分层做，别指望一层。
+tags: [AI, 工程化, 结构化输出]
+---
+
+需要模型输出结构化数据时，最直觉的做法是在 prompt 里写：
+
+> 请只输出 JSON，不要有任何解释文字。
+
+这招在简单场景下有效，但你会遇到这些情况：
+
+- 前面多一句「好的，这是结果：」
+- 用 ` ```json ` 包起来，或者不包
+- 少一个括号
+- 字段名拼错（`userName` vs `username`）
+- 数字变成字符串（`"3"` vs `3`）
+- 数组里混进一个 `null`
+
+这些都不是模型「不听话」，是**自由生成本身就不可靠**。
+
+## 分三层解决
+
+我把结构化输出的可靠性分成三层，每层解决不同的问题：
+
+| 层 | 手段 | 解决什么 |
+| --- | --- | --- |
+| 1 | 约束解码 / Structured Output | 格式一定合法 |
+| 2 | Schema 校验 | 语义符合预期 |
+| 3 | 重试与降级 | 兜住剩下的失败 |
+
+## 第一层：约束解码
+
+现代模型 API 大多支持「结构化输出」：你给它一个 JSON Schema，它保证输出符合这个 schema。实现方式是在解码时屏蔽掉不合法的 token——不是「希望它输出 JSON」，是「物理上只能输出 JSON」。
+
+这层是**根本性的改进**，应该优先用，而不是靠 prompt 祈祷。
+
+```ts
+const result = await generateText({
+  model,
+  prompt,
+  output: Output.object({ schema: z.object({
+    sentiment: z.enum(["positive", "negative", "neutral"]),
+    confidence: z.number().min(0).max(1),
+    reason: z.string(),
+  }) }),
+});
+```
+
+注意：不同厂商、不同模型对结构化输出的支持程度不一样。有的只支持有限的 schema 特性（比如不支持 `oneOf`、不支持递归）。写 schema 时保持简单，嵌套不要超过三层。
+
+<Callout type="info" title="约束解码也有边界">
+
+它保证「是合法 JSON 且符合 schema」，但不保证「内容正确」。
+
+`confidence: 0.99` 完全合法，但模型可能就是在胡说。格式可靠 ≠ 语义可靠。
+
+</Callout>
+
+## 第二层：Schema 校验
+
+即使有约束解码，也要在服务端校验一遍。理由有三个：
+
+1. 不是所有调用路径都能用约束解码（比如流式输出）
+2. schema 里可能有约束解码覆盖不到的语义规则（比如「start 必须早于 end」）
+3. 防御性编程——你的代码不该信任外部输入，哪怕它来自模型
+
+用 zod 之类的库，把校验和类型推断合一：
+
+```ts
+const EventSchema = z.object({
+  title: z.string().min(1).max(80),
+  start: z.string().datetime(),
+  end: z.string().datetime(),
+  attendees: z.array(z.string().email()).max(20),
+}).refine((e) => new Date(e.start) < new Date(e.end), {
+  message: "结束时间必须晚于开始时间",
+});
+```
+
+`refine` 这类跨字段约束，是约束解码通常做不到的——它只看单个字段的语法。
+
+## 第三层：重试
+
+校验失败怎么办？直接报错给用户，体验很差。
+
+正确的做法是**带着错误信息重试**：
+
+```ts
+for (let attempt = 0; attempt < 3; attempt++) {
+  const raw = await callModel(messages);
+  const parsed = EventSchema.safeParse(raw);
+  if (parsed.success) return parsed.data;
+
+  // 关键：把具体的错误告诉模型
+  messages.push({
+    role: "user",
+    content: `输出不符合要求：${parsed.error.issues
+      .map((i) => `${i.path.join(".")}: ${i.message}`)
+      .join("; ")}。请修正后重新输出，只输出 JSON。`,
+  });
+}
+throw new Error("三次尝试后仍无法获得合法输出");
+```
+
+这里和工具调用的错误处理是同一个道理：**错误信息要具体到能指导修改**。只说「格式错误」模型会瞎猜；说「`attendees[1]` 不是合法邮箱」，它就知道改哪。
+
+## 一个实践中的细节：别让模型输出长文本
+
+如果 schema 里有个大字段（比如 `summary: string` 要求 500 字），模型在长文本生成时更容易跑偏——比如在字符串里插入未转义的引号或换行。
+
+两个缓解办法：
+
+**流式解析 + 增量校验。** 对长输出用流式，边收边解析，早发现早中断，省 token。
+
+**拆成两次调用。** 先让模型输出结构（短、稳定），再单独生成文本字段。两次调用的稳定性都比一次好。
+
+## 常见的坑
+
+**`null` vs 缺失。** 模型经常用 `null` 表示「没有」。你的 schema 要么允许 `null`，要么在 prompt 里明确说「没有就省略这个字段」。两者混用会导致校验失败。
+
+**枚举值大小写。** 模型会输出 `"Positive"` 而不是 `"positive"`。用 `enum` 约束，或者在解析前做归一化。
+
+**数字精度。** 模型可能输出 `3.0` 而不是 `3`。JSON 层面这没问题，但如果你的代码要求整数，就得在 schema 里写 `z.int()`。
+
+**数组长度。** 模型可能返回空数组，也可能返回 50 条。`min`/`max` 是必须的。
+
+## 该按什么顺序做
+
+1. **先上约束解码**——成本最低，收益最大
+2. **再加 schema 校验**——补上语义约束
+3. **最后加重试**——兜住残余失败
+
+顺序不能反。我见过不少项目一上来就写复杂的重试逻辑，却没用结构化输出——那是在给一个本可以不存在的问题做补救。
