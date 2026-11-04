@@ -2,12 +2,15 @@
 <title id="t">'use client' 边界的两道代价</title>
 <desc id="d">标注 use client 的组件仍然会在服务端渲染一次，代价是代码进入浏览器 bundle、并在浏览器里再执行一次；边界向下传染，import 的东西一并打包。</desc>
 
-<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#646764">
+<!-- 纸底：亮色下与页面同色，暗色下随 filter 一起反相 -->
+<rect id="paper" x="0" y="0" width="720" height="380" fill="#ecede9"/>
+
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#5b5e5b">
   <text x="56" y="32">服务端</text>
   <text x="392" y="32">浏览器</text>
 </g>
 
-<g stroke="#d6d7d2" stroke-width="1">
+<g stroke="#82857f" stroke-width="1">
   <path d="M352 20 V360"/>
 </g>
 
@@ -15,25 +18,25 @@
 <g>
   <rect x="56" y="52" width="260" height="56" fill="none" stroke="#215148" stroke-width="1.2"/>
   <text x="72" y="76" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#131413">Page（默认 server）</text>
-  <text x="72" y="96" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#646764">读数据库、读文件、用密钥</text>
+  <text x="72" y="96" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#5b5e5b">读数据库、读文件、用密钥</text>
 
   <rect x="56" y="128" width="260" height="56" fill="none" stroke="#215148" stroke-width="1.2"/>
   <text x="72" y="152" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#131413">Title / Content</text>
-  <text x="72" y="172" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#646764">不进 bundle</text>
+  <text x="72" y="172" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#5b5e5b">不进 bundle</text>
 
   <!-- 连接线 -->
-  <g stroke="#d6d7d2" stroke-width="1">
+  <g stroke="#82857f" stroke-width="1">
     <path d="M186 108 V128"/>
   </g>
 </g>
 
 <!-- 边界 -->
 <g>
-  <rect x="56" y="204" width="260" height="56" fill="#e3e4e0" stroke="#646764" stroke-width="1.2" stroke-dasharray="6 4"/>
+  <rect x="56" y="204" width="260" height="56" fill="#e3e4e0" stroke="#5b5e5b" stroke-width="1.2" stroke-dasharray="6 4"/>
   <text x="72" y="228" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#131413">ToggleButton</text>
-  <text x="72" y="248" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#646764">&apos;use client&apos;</text>
+  <text x="72" y="248" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#5b5e5b">&apos;use client&apos;</text>
 
-  <g stroke="#d6d7d2" stroke-width="1">
+  <g stroke="#82857f" stroke-width="1">
     <path d="M186 184 V204"/>
   </g>
 </g>
@@ -61,7 +64,7 @@
   </g>
 </g>
 
-<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#646764">
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#5b5e5b">
   <text x="56" y="300">边界画在「需要交互的最小单位」上，</text>
   <text x="56" y="322">而不是整页或整块。</text>
 </g>

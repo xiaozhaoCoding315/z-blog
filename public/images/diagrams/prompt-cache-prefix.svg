@@ -2,7 +2,10 @@
 <title id="t">prompt caching 的前缀匹配</title>
 <desc id="d">从第一个 token 开始逐段比对，差异点之前命中缓存。变化最少的内容放最前面，动态内容一律后置。</desc>
 
-<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#646764">
+<!-- 纸底：亮色下与页面同色，暗色下随 filter 一起反相 -->
+<rect id="paper" x="0" y="0" width="720" height="340" fill="#ecede9"/>
+
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#5b5e5b">
   <text x="48" y="30">请求 1</text>
   <text x="48" y="118">请求 2</text>
 </g>
@@ -18,7 +21,7 @@
   <rect x="394" y="44" width="140" height="44" fill="#dae0dc" stroke="#215148" stroke-width="1"/>
   <text x="410" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#131413">参考资料</text>
 
-  <rect x="536" y="44" width="136" height="44" fill="none" stroke="#646764" stroke-width="1"/>
+  <rect x="536" y="44" width="136" height="44" fill="none" stroke="#5b5e5b" stroke-width="1"/>
   <text x="552" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#131413">当前问题</text>
 </g>
 
@@ -33,7 +36,7 @@
   <rect x="394" y="132" width="140" height="44" fill="#dae0dc" stroke="#215148" stroke-width="1"/>
   <text x="410" y="160" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#131413">参考资料</text>
 
-  <rect x="536" y="132" width="136" height="44" fill="none" stroke="#646764" stroke-width="1"/>
+  <rect x="536" y="132" width="136" height="44" fill="none" stroke="#5b5e5b" stroke-width="1"/>
   <text x="552" y="160" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#131413">新的问题</text>
 </g>
 
@@ -49,7 +52,7 @@
 </g>
 <text x="546" y="252" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#934132">差异点之后全价</text>
 
-<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#646764">
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#5b5e5b">
   <text x="48" y="286">前缀里只要混进时间戳、随机 ID 或顺序不固定的数组，</text>
   <text x="48" y="308">整段就永远不命中。</text>
 </g>

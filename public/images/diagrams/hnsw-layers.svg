@@ -2,7 +2,10 @@
 <title id="t">HNSW 的分层图结构</title>
 <desc id="d">三层节点：顶层稀疏、边跨度大；底层全量数据。检索从顶层入口开始，逐层下沉，最后在底层做精细搜索。</desc>
 
-<g fill="none" stroke="#d6d7d2" stroke-width="1">
+<!-- 纸底：亮色下与页面同色，暗色下随 filter 一起反相 -->
+<rect id="paper" x="0" y="0" width="720" height="400" fill="#ecede9"/>
+
+<g fill="none" stroke="#82857f" stroke-width="1">
   <!-- 层内连接：只画示意性的相邻边 -->
   <g stroke-linecap="round">
     <!-- 第 2 层 -->
@@ -15,7 +18,7 @@
 </g>
 
 <!-- 普通节点 -->
-<g fill="#d6d7d2">
+<g fill="#82857f">
   <!-- 第 2 层 -->
   <circle cx="330" cy="62" r="6"/>
   <circle cx="510" cy="62" r="6"/>
@@ -57,15 +60,15 @@
 </g>
 
 <!-- 入口标注 -->
-<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#646764">
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#5b5e5b">
   <text x="440" y="46">入口点</text>
-  <text x="96" y="42" fill="#646764">第 2 层 · 点最少，边跨度最大</text>
-  <text x="96" y="150" fill="#646764">第 1 层 · 下层的采样</text>
-  <text x="96" y="268" fill="#646764">第 0 层 · 全量数据</text>
+  <text x="96" y="42" fill="#5b5e5b">第 2 层 · 点最少，边跨度最大</text>
+  <text x="96" y="150" fill="#5b5e5b">第 1 层 · 下层的采样</text>
+  <text x="96" y="268" fill="#5b5e5b">第 0 层 · 全量数据</text>
 </g>
 
 <!-- 右侧说明 -->
-<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#646764">
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#5b5e5b">
   <text x="540" y="140">先做大跨度跳跃</text>
   <text x="540" y="258">再逐步收紧</text>
   <text x="400" y="330">在这里做精细搜索，直到邻居都不更近</text>

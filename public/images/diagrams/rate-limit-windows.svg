@@ -2,16 +2,19 @@
 <title id="t">固定窗口的边界问题与令牌桶的差异</title>
 <desc id="d">固定窗口在跨窗口的两秒内能放行两倍流量；令牌桶按速率补充，允许有限突发但长期速率受控。</desc>
 
-<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#646764">
+<!-- 纸底：亮色下与页面同色，暗色下随 filter 一起反相 -->
+<rect id="paper" x="0" y="0" width="720" height="400" fill="#ecede9"/>
+
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#5b5e5b">
   <text x="48" y="28">固定窗口：边界处放过两倍</text>
 </g>
 
 <!-- 两个窗口 -->
 <g>
-  <rect x="48" y="44" width="300" height="120" fill="none" stroke="#d6d7d2" stroke-width="1.2"/>
-  <rect x="348" y="44" width="300" height="120" fill="none" stroke="#d6d7d2" stroke-width="1.2"/>
-  <text x="160" y="66" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#646764">第 1 分钟（上限 100）</text>
-  <text x="460" y="66" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#646764">第 2 分钟（上限 100）</text>
+  <rect x="48" y="44" width="300" height="120" fill="none" stroke="#82857f" stroke-width="1.2"/>
+  <rect x="348" y="44" width="300" height="120" fill="none" stroke="#82857f" stroke-width="1.2"/>
+  <text x="160" y="66" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#5b5e5b">第 1 分钟（上限 100）</text>
+  <text x="460" y="66" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#5b5e5b">第 2 分钟（上限 100）</text>
 
   <!-- 第 1 分钟尾部打满 -->
   <g fill="#215148">
@@ -40,12 +43,12 @@
 <text x="360" y="184" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#934132">跨过这条线的两秒内实际放行 200 个</text>
 
 <!-- 令牌桶 -->
-<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#646764">
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#5b5e5b">
   <text x="48" y="232">令牌桶：长期速率受限，瞬时允许突发</text>
 </g>
 
 <g>
-  <rect x="48" y="248" width="600" height="96" fill="none" stroke="#d6d7d2" stroke-width="1.2"/>
+  <rect x="48" y="248" width="600" height="96" fill="none" stroke="#82857f" stroke-width="1.2"/>
   <!-- 速率线 -->
   <g stroke="#215148" stroke-width="1.2" stroke-dasharray="4 3">
     <path d="M48 300 H648"/>
@@ -53,10 +56,10 @@
   <text x="600" y="294" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#215148">rate</text>
 
   <!-- 桶容量上限 -->
-  <g stroke="#646764" stroke-width="1" stroke-dasharray="3 3">
+  <g stroke="#5b5e5b" stroke-width="1" stroke-dasharray="3 3">
     <path d="M48 262 H648"/>
   </g>
-  <text x="586" y="258" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#646764">capacity</text>
+  <text x="586" y="258" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#5b5e5b">capacity</text>
 
   <!-- 突发 -->
   <g fill="#215148">
@@ -67,16 +70,16 @@
     <rect x="110" y="264" width="5" height="36"/>
     <rect x="120" y="264" width="5" height="36"/>
   </g>
-  <text x="70" y="366" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#646764">一波点击，允许连发</text>
+  <text x="70" y="366" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#5b5e5b">一波点击，允许连发</text>
 
   <!-- 匀速部分 -->
-  <g fill="#646764">
+  <g fill="#5b5e5b">
     <rect x="300" y="292" width="5" height="8"/>
     <rect x="360" y="292" width="5" height="8"/>
     <rect x="420" y="292" width="5" height="8"/>
     <rect x="480" y="292" width="5" height="8"/>
     <rect x="540" y="292" width="5" height="8"/>
   </g>
-  <text x="320" y="366" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#646764">之后按速率补充，超出桶容量的请求被拒</text>
+  <text x="320" y="366" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#5b5e5b">之后按速率补充，超出桶容量的请求被拒</text>
 </g>
 </svg>
