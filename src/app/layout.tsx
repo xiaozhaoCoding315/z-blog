@@ -37,6 +37,12 @@ export const metadata: Metadata = {
     description: siteConfig.description,
   },
   robots: { index: true, follow: true },
+  // 让浏览器和阅读器能自动发现订阅源，不用人肉在首页找那个 RSS 链接
+  alternates: {
+    types: {
+      "application/rss+xml": [{ url: "/feed.xml", title: siteConfig.title }],
+    },
+  },
 };
 
 export const viewport: Viewport = {

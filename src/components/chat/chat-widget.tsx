@@ -26,6 +26,8 @@ const SUGGESTIONS = [
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [aiStatus, setAiStatus] = useState<"loading" | "on" | "off">("loading");
+  // 检索（embedding）是否可用：聊天能开而检索没开时，回答里不会带引用
+  const [retrieval, setRetrieval] = useState(true);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -38,7 +40,10 @@ export function ChatWidget() {
   useEffect(() => {
     fetch("/api/chat")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setAiStatus(d?.enabled ? "on" : "off"))
+      .then((d) => {
+        setAiStatus(d?.enabled ? "on" : "off");
+        setRetrieval(Boolean(d?.retrieval));
+      })
       .catch(() => setAiStatus("off"));
   }, []);
 
@@ -127,7 +132,9 @@ export function ChatWidget() {
                 <p className="text-sm font-semibold leading-tight">博客 AI 助手</p>
                 <p className="truncate text-[11px] text-muted-foreground">
                   {aiStatus === "on"
-                    ? "读过站内所有文章 · 回答附引用来源"
+                    ? retrieval
+                      ? "读过站内所有文章 · 回答附引用来源"
+                      : "通用问答 · 站内检索未配置"
                     : aiStatus === "loading"
                       ? "连接中…"
                       : "AI 未配置"}

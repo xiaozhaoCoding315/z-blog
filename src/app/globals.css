@@ -272,8 +272,23 @@
 }
 
 .prose img {
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius);
   border: 1px solid var(--border);
+  /* 图片不带尺寸信息，用宽度约束 + 原始比例，避免撑破版面 */
+  max-width: 100%;
+  height: auto;
+}
+
+/* 正文插图通常配一句说明，图注用等宽小字，和全站的栏注同一套语气 */
+.prose figure {
+  margin: 2em 0;
+}
+.prose figcaption {
+  margin-top: 0.5em;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
 }
 
 .prose table {

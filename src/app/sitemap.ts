@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getAllPosts } from "@/content";
+import { getAllPosts, getTags } from "@/content";
 import { getChangelog } from "@/config/changelog";
 import { siteConfig } from "@/config/site";
 
@@ -21,7 +21,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/friends",
     "/about",
     "/archives",
-    "/stats",
     "/guestbook",
     "/interview",
   ].map((path) => ({
@@ -40,5 +39,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   };
 
-  return [...staticPages, changelogPage, ...posts];
+  // 标签页是横切入口，也进站点地图
+  const tagPages = getTags().map(({ tag }) => ({
+    url: `${siteConfig.url}/blog/tag/${encodeURIComponent(tag)}`,
+    lastModified: new Date(`${siteConfig.startedAt}T00:00:00+08:00`),
+    changeFrequency: "weekly" as const,
+    priority: 0.6,
+  }));
+
+  return [...staticPages, changelogPage, ...posts, ...tagPages];
 }

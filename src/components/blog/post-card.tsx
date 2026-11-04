@@ -39,6 +39,10 @@ export function excerptOf(content: string, max = 110) {
 /**
  * 文章条目：一条细线一行，日期在左、标题在右。
  * 不用卡片——列表页要的是能快速扫读的目录，不是一墙盒子。
+ *
+ * 整行可点用的是「拉伸链接」：标题的锚点铺满整行（after:inset-0），
+ * 标签再以 z-10 抬到上层。这样行内可以有多个真正的 <a>，
+ * 而不是在 <a> 里塞假的 role="link"。
  */
 export function PostCard({
   post,
@@ -48,10 +52,9 @@ export function PostCard({
   variant?: "default" | "featured";
 }) {
   return (
-    <Link
-      href={`/blog/${post.slug}`}
+    <div
       className={cn(
-        "group grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b border-border/60 py-4",
+        "group relative grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b border-border/60 py-4",
         variant === "featured" && "py-5"
       )}
     >
@@ -65,11 +68,16 @@ export function PostCard({
       <div className="min-w-0">
         <h3
           className={cn(
-            "font-heading font-semibold leading-snug tracking-[-0.01em] transition-colors group-hover:text-primary",
+            "font-heading font-semibold leading-snug tracking-[-0.01em]",
             variant === "featured" ? "text-xl" : "text-[17px]"
           )}
         >
-          {post.title}
+          <Link
+            href={`/blog/${post.slug}`}
+            className="transition-colors after:absolute after:inset-0 after:content-[''] group-hover:text-primary"
+          >
+            {post.title}
+          </Link>
         </h3>
 
         {post.description && (
@@ -85,8 +93,15 @@ export function PostCard({
 
         <p className="mt-1.5 flex flex-wrap items-center gap-x-3 font-mono text-[11px] text-muted-foreground">
           <span>{post.readingText}</span>
+          {/* 标签可点击：列表里的标签是横切的入口，不只是装饰 */}
           {post.tags.slice(0, 3).map((tag) => (
-            <span key={tag}>{tag}</span>
+            <Link
+              key={tag}
+              href={`/blog/tag/${encodeURIComponent(tag)}`}
+              className="relative z-10 transition-colors hover:text-primary hover:underline hover:underline-offset-4"
+            >
+              {tag}
+            </Link>
           ))}
           {post.pinned && (
             <span className="inline-flex items-center gap-1 text-vermilion">
@@ -95,6 +110,6 @@ export function PostCard({
           )}
         </p>
       </div>
-    </Link>
+    </div>
   );
 }

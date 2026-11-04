@@ -29,6 +29,8 @@ export const postMetaSchema = z.object({
   tags: z.array(z.string()).default([]),
   pinned: z.boolean().default(false),
   draft: z.boolean().default(false),
+  /** 封面图：/images/... 下的相对路径；不写则文章顶部直接进正文 */
+  cover: z.string().nullish(),
 });
 
 export type PostMeta = z.infer<typeof postMetaSchema>;

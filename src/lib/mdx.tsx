@@ -24,8 +24,20 @@ function Anchor({ href = "", ...rest }: ComponentPropsWithoutRef<"a">) {
   return <a target="_blank" rel="noreferrer noopener" href={href} {...rest} />;
 }
 
+/**
+ * 正文插图：一律懒加载，避免长文里的图片拖慢首屏。
+ * 图片尺寸在 Markdown 里写不出来，所以交给 CSS 约束宽度、保留原始比例。
+ */
+function ProseImage({ alt = "", ...rest }: ComponentPropsWithoutRef<"img">) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img alt={alt} loading="lazy" decoding="async" {...rest} />
+  );
+}
+
 const components = {
   a: Anchor,
+  img: ProseImage,
   pre: PreBlock,
   Callout,
 };
