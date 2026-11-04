@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { getAllPosts, getPostBySlug } from "@/content";
 import { siteConfig } from "@/config/site";
 
@@ -7,22 +9,28 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 /**
- * 中文字体从 jsDelivr（国内可访问）加载并缓存，
- * 失败时优雅降级为默认字体（仅影响渲染样式，不影响生成）。
+ * 中文字体从仓库内的 assets/fonts 读取，不打运行时网络请求。
+ *
+ * 之前是从 jsDelivr 拉 woff2——satori 不认 woff2（「Unsupported OpenType
+ * signature wOF2」），换成 SubsetOTF 也不行（CFF 轮廓解析时报
+ * 「Offset is outside the bounds of the DataView」）。只有 glyf 轮廓的
+ * TrueType 能用，所以把 Noto Sans SC 按 GB2312 常用字集子集化成 2.1MB
+ * 的 ttf 放进仓库，随镜像一起发布。
  */
-let fontCache: ArrayBuffer | null = null;
+const FONT_PATH = path.join(
+  process.cwd(),
+  "assets",
+  "fonts",
+  "NotoSansSC-Bold.ttf"
+);
+let fontCache: Buffer | null = null;
 
-async function loadCjkFont(): Promise<ArrayBuffer | null> {
+async function loadCjkFont(): Promise<Buffer | null> {
   if (fontCache) return fontCache;
   try {
-    const res = await fetch(
-      "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.2.5/files/noto-sans-sc-chinese-simplified-700-normal.woff2"
-    );
-    if (res.ok) {
-      fontCache = await res.arrayBuffer();
-    }
+    fontCache = await readFile(FONT_PATH);
   } catch {
-    /* 网络不可用时使用默认字体 */
+    /* 字体缺失时降级为默认字体：卡片仍能生成，只是中文可能缺字 */
   }
   return fontCache;
 }
