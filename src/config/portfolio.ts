@@ -64,13 +64,35 @@ export const projects: Project[] = [
     status: "维护中",
   },
   {
-    name: "AI 作业批改系统",
-    role: "后端架构与实时交互",
-    context: "教师需要低延迟答疑，学生需要即时反馈，作业数据需要可追溯并满足权限隔离。",
+    name: "TripCraft",
+    tagline: "多智能体协作的旅行规划助手",
+    role: "Agent 编排、检索与容错设计",
+    context:
+      "一次旅行规划要同时权衡天气、交通、住宿、景点四类信息，单次 LLM 生成既容易漏项，也无法在数据缺失时优雅降级。",
     description:
-      "前后端分离的智能批改平台：教师发布作业、AI 辅助评分、实时批注反馈，具备完整 RBAC 权限体系。",
-    stack: ["Spring Boot", "MyBatis-Plus", "Sa-Token", "WebSocket", "Vue 3"],
-    repo: "https://github.com/xiaozhaoCoding315/AI_TeachPlatform",
+      "多智能体旅行规划系统：四个信息采集 Agent 并行跑，结果交给行程编排与评审 Agent，评审不通过就带着意见重跑，最多三轮；规划过程通过 WebSocket 实时推给前端，并在地图上画出路线。",
+    highlights: [
+      "并行 → 编排 → 评审的 Agent 流水线，评审不通过就带着意见重试（上限 3 轮）",
+      "Hybrid RAG 三路召回：向量、BM25、结构化城市过滤，RRF（k=60）融合",
+      "降级链 hybrid → dense-only → sparse-only → fallback，检索挂掉也不空手而归",
+      "Harness 容错：超时、指数退避、熔断器状态机、分级降级，工具调用有显式结果 Schema",
+      "三层记忆：Redis 短期会话 + PostgreSQL 长期语义（recency×frequency×confidence 衰减）+ 请求级上下文",
+      "50 条 golden query 做检索评估，Recall / MRR / NDCG / HitRate + RAGAS",
+    ],
+    outcomes: [
+      "单一数据源失败不再导致整次规划失败，最差退化为带说明的降级结果",
+      "检索质量有量化基线，调参不再靠感觉",
+    ],
+    stack: [
+      "React 18",
+      "FastAPI",
+      "LangGraph",
+      "Qdrant",
+      "PostgreSQL",
+      "Redis",
+      "高德 JSAPI",
+    ],
+    repo: "https://github.com/xiaozhaoCoding315/TripCraft",
     status: "已完成",
   },
 ];

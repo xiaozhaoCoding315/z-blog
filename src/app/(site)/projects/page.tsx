@@ -55,7 +55,7 @@ export default function ProjectsPage() {
               </p>
             )}
 
-            {project.featured && project.highlights && (
+            {project.highlights && project.highlights.length > 0 && (
               <ul className="mt-4 space-y-1.5">
                 {project.highlights.map((item) => (
                   <li
