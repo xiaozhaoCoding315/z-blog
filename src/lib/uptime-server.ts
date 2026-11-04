@@ -19,10 +19,17 @@ export async function getUptimeSnapshot() {
   cacheLife("hours");
 
   const days = daysSince(siteConfig.startedAt);
+  const now = new Date();
   return {
     days,
     daysText: days === null ? "—" : String(days),
     startedAt: siteConfig.startedAt,
-    year: String(new Date().getFullYear()),
+    year: String(now.getFullYear()),
+    /**
+     * 当前月份（1–12）。归档页的月度密度条只画到本月：
+     * 九月没写就是没写，不该因为「还没到」而藏起来。
+     * 同样不能在预渲染期直接读时间，所以和天数一起放进这份缓存快照。
+     */
+    month: now.getMonth() + 1,
   };
 }
