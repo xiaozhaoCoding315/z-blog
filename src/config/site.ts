@@ -24,9 +24,10 @@ export const siteConfig = {
   startedAt: process.env.NEXT_PUBLIC_SITE_START_DATE ?? "2026-07-02",
   author: {
     name: "Z",
-    avatar: "/images/avatar.png",
+    avatar: "/images/avatar.svg",
     bio: "全栈工程师，习惯从需求、架构、实现到上线完整走一遍。擅长把复杂系统拆成可验证的小步骤，并在代码、数据和反馈中持续修正。",
-    email: "mailto:me@example.com",
+    // 邮箱留空 = 不显示「邮箱」入口。别填示例地址：点开是死链接，比没有更糟。
+    email: process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "",
   },
   links: {
     github: "https://github.com/xiaozhaoCoding315",

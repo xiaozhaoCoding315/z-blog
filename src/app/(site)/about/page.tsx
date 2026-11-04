@@ -33,10 +33,17 @@ export default async function AboutPage() {
           >
             <GithubIcon className="size-3.5" /> GitHub
           </a>
-          <span aria-hidden>·</span>
-          <a href={siteConfig.author.email} className="link-underline">
-            邮箱
-          </a>
+          {siteConfig.author.email && (
+            <>
+              <span aria-hidden>·</span>
+              <a
+                href={`mailto:${siteConfig.author.email}`}
+                className="link-underline"
+              >
+                邮箱
+              </a>
+            </>
+          )}
           <span aria-hidden>·</span>
           <span>
             更新 {uptime.daysText} 天 · {getChangelogStats().entries} 次迭代

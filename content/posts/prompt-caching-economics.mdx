@@ -30,6 +30,8 @@ Prompt caching 就是为这件事设计的：**把不变的前缀缓存起来，
 
 同理，如果工具定义数组的顺序不固定（比如从 Map 遍历出来），前缀也会变。
 
+![prompt caching 的前缀匹配：差异点之前命中，之后全价](/images/diagrams/prompt-cache-prefix.svg)
+
 ## 正确的排列方式
 
 把「变化最少」的放最前面：

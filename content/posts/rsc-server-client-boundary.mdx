@@ -51,6 +51,8 @@ Page (server)
               └── utils.ts          ← 打进 bundle
 ```
 
+!['use client' 的两道代价：代码进 bundle，浏览器里再执行一次；边界向下传染](/images/diagrams/rsc-client-boundary.svg)
+
 一旦某个组件标了 `'use client'`，它 import 的所有东西都会进客户端 bundle，**即使那些东西本来可以是服务端的**。
 
 我见过一个组件标了 `'use client'` 只为了用 `useState`，结果它 import 了一个包含几千行数据处理的工具模块，整个模块都进了 bundle。

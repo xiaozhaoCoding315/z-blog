@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" width="720" height="400" role="img" aria-labelledby="t d">
+<title id="t">HNSW 的分层图结构</title>
+<desc id="d">三层节点：顶层稀疏、边跨度大；底层全量数据。检索从顶层入口开始，逐层下沉，最后在底层做精细搜索。</desc>
+
+<g fill="none" stroke="#d6d7d2" stroke-width="1">
+  <!-- 层内连接：只画示意性的相邻边 -->
+  <g stroke-linecap="round">
+    <!-- 第 2 层 -->
+    <path d="M330 62 H510"/>
+    <!-- 第 1 层 -->
+    <path d="M200 168 H620"/>
+    <!-- 第 0 层 -->
+    <path d="M120 286 H652"/>
+  </g>
+</g>
+
+<!-- 普通节点 -->
+<g fill="#d6d7d2">
+  <!-- 第 2 层 -->
+  <circle cx="330" cy="62" r="6"/>
+  <circle cx="510" cy="62" r="6"/>
+  <!-- 第 1 层 -->
+  <circle cx="200" cy="168" r="6"/>
+  <circle cx="270" cy="168" r="6"/>
+  <circle cx="480" cy="168" r="6"/>
+  <circle cx="550" cy="168" r="6"/>
+  <circle cx="620" cy="168" r="6"/>
+  <!-- 第 0 层 -->
+  <circle cx="120" cy="286" r="6"/>
+  <circle cx="158" cy="286" r="6"/>
+  <circle cx="196" cy="286" r="6"/>
+  <circle cx="234" cy="286" r="6"/>
+  <circle cx="272" cy="286" r="6"/>
+  <circle cx="348" cy="286" r="6"/>
+  <circle cx="386" cy="286" r="6"/>
+  <circle cx="424" cy="286" r="6"/>
+  <circle cx="462" cy="286" r="6"/>
+  <circle cx="500" cy="286" r="6"/>
+  <circle cx="538" cy="286" r="6"/>
+  <circle cx="576" cy="286" r="6"/>
+  <circle cx="614" cy="286" r="6"/>
+  <circle cx="652" cy="286" r="6"/>
+</g>
+
+<!-- 检索路径：入口 → 逐层下沉 → 底层贪心 -->
+<g stroke="#215148" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-dasharray="5 4">
+  <path d="M420 62 L340 168"/>
+  <path d="M340 168 L310 286"/>
+  <path d="M310 286 L348 286"/>
+  <path d="M348 286 L386 286"/>
+</g>
+<g fill="#215148">
+  <circle cx="420" cy="62" r="9"/>
+  <circle cx="340" cy="168" r="8"/>
+  <circle cx="310" cy="286" r="8"/>
+  <circle cx="386" cy="286" r="8"/>
+</g>
+
+<!-- 入口标注 -->
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#646764">
+  <text x="440" y="46">入口点</text>
+  <text x="96" y="42" fill="#646764">第 2 层 · 点最少，边跨度最大</text>
+  <text x="96" y="150" fill="#646764">第 1 层 · 下层的采样</text>
+  <text x="96" y="268" fill="#646764">第 0 层 · 全量数据</text>
+</g>
+
+<!-- 右侧说明 -->
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#646764">
+  <text x="540" y="140">先做大跨度跳跃</text>
+  <text x="540" y="258">再逐步收紧</text>
+  <text x="400" y="330">在这里做精细搜索，直到邻居都不更近</text>
+</g>
+</svg>

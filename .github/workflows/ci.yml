@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# 同一分支的新提交取消上一次未跑完的任务，省额度也省等待
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Lint
+        run: npm run lint
+
+      - name: 校验文章 frontmatter
+        # 文章是内容层的唯一输入，日期写错、tags 写成字符串、
+        # 标题里带裸引号，都会在构建期才炸。这里提前抓出来。
+        run: node scripts/check-content.mjs
+
+      - name: 构建
+        run: npm run build
+        env:
+          # 构建期不需要真实服务，但不能是 undefined：
+          # site.ts 用 envOr 兜底，这里给一个合法值即可
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          NEXT_PUBLIC_SITE_START_DATE: "2026-07-02"

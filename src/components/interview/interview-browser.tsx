@@ -41,6 +41,9 @@ const DIFFICULTY_LABEL: Record<InterviewItem["difficulty"], string> = {
   难: "困难",
 };
 
+/** 稳定的空集合：每次渲染都 new 一个会让下游的 useMemo 白白重算 */
+const EMPTY_SLUGS: ReadonlySet<string> = new Set();
+
 const diffStyle: Record<string, string> = {
   易: "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
   中: "border-amber-500/40 bg-amber-500/10 text-amber-500",
@@ -54,31 +57,40 @@ export function InterviewBrowser({ items }: { items: InterviewItem[] }) {
   const [onlyUnlearned, setOnlyUnlearned] = useState(false);
   const [onlyReview, setOnlyReview] = useState(false);
   const [query, setQuery] = useState("");
-  const [reviewSlugs, setReviewSlugs] = useState<Set<string>>(new Set());
-  const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
     void hydrateMastery();
   }, []);
 
+  // 只在登录状态变化时拉一次待复习列表。
+  //
+  // 两个曾经的问题：把 reviewLoading 放进依赖又在 effect 里 setReviewLoading(true)，
+  // 等于自己触发自己，登录后无限发请求；退出登录时在 effect 体内同步 setState，
+  // 又会触发级联渲染。现在加载态用「已拿到结果的那次请求是哪个登录态」来推断，
+  // 退出登录时什么都不用清——下面派生出来的值天然为空。
+  const [reviewFor, setReviewFor] = useState<boolean | null>(null);
+  const [loadedSlugs, setLoadedSlugs] = useState<Set<string>>(new Set());
+
   useEffect(() => {
-    if (!signedIn || reviewLoading) return;
+    if (!signedIn) return;
     let cancelled = false;
-    setReviewLoading(true);
     fetch("/api/interview/review", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (cancelled || !data?.signedIn) return;
-        setReviewSlugs(new Set(data.items.map((item: { slug: string }) => item.slug)));
+        setLoadedSlugs(
+          new Set(data.items.map((item: { slug: string }) => item.slug))
+        );
+        setReviewFor(true);
       })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setReviewLoading(false);
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [signedIn, reviewLoading]);
+  }, [signedIn]);
+
+  // 未登录或还没拿到结果时，待复习集合为空
+  const reviewSlugs = signedIn && reviewFor ? loadedSlugs : EMPTY_SLUGS;
 
   const stats = useMemo(() => masteryStats(levels), [levels]);
 
