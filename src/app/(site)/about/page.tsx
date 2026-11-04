@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { GithubIcon } from "@/components/icons/github";
 import { siteConfig } from "@/config/site";
@@ -18,9 +19,23 @@ export default async function AboutPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
       <header>
-        <h1 className="font-heading text-3xl font-bold tracking-[-0.02em]">
-          {siteConfig.author.name}
-        </h1>
+        <div className="flex items-end gap-5">
+          {/* 印章式字母标，不是照片：它不假装是一张人像。
+              它本身画的就是「Z」，所以不再并排重复一遍名字。
+              unoptimized：next/image 的优化器默认拒绝 SVG（返回 400），
+              而这个标是矢量，没必要也不该走优化管线。 */}
+          <Image
+            src={siteConfig.author.avatar}
+            alt={siteConfig.author.name}
+            width={64}
+            height={64}
+            unoptimized
+            className="shrink-0"
+          />
+          <p className="pb-1 font-mono text-[11px] text-muted-foreground">
+            全栈 · AI 应用
+          </p>
+        </div>
         <p className="mt-3 text-[15px] leading-7 text-muted-foreground">
           {siteConfig.author.bio}
         </p>
