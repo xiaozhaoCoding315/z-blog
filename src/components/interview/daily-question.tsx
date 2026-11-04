@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Sparkles } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import type { InterviewItem } from "@/components/interview/interview-browser";
 
@@ -36,29 +36,22 @@ export function DailyQuestion({ items }: { items: InterviewItem[] }) {
   return (
     <Link
       href={`/interview/${today.slug}`}
-      className="group relative mb-10 block overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.08] via-card/60 to-transparent p-6 transition-colors hover:border-primary/50"
+      className="group mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 border-y border-border py-4 transition-colors hover:border-primary/60"
     >
-      <div
-        className="glow-orb -right-10 -top-10 size-40"
-        style={{ background: "var(--glow-1)" }}
-      />
-      <div className="relative flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0">
-          <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-primary">
-            <Sparkles className="size-3.5" />
-            每日一题 · {dateStr}
-          </p>
-          <p className="truncate text-lg font-semibold transition-colors group-hover:text-primary sm:text-xl">
-            {today.question}
-          </p>
-          <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="rounded border border-border/70 px-1.5 py-px">{today.category}</span>
-            <span>{today.difficulty}</span>
-            <span className="opacity-70">· 点开先自己答一遍，再看参考答案</span>
-          </p>
-        </div>
-        <ChevronRight className="size-6 shrink-0 text-primary/60 transition-transform group-hover:translate-x-1" />
+      <div className="min-w-0">
+        <p className="mb-1 font-mono text-[11px] text-primary">
+          每日一题 · {dateStr}
+        </p>
+        <p className="font-heading text-[17px] font-semibold leading-snug transition-colors group-hover:text-primary">
+          {today.question}
+        </p>
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 font-mono text-[11px] text-muted-foreground">
+          <span>{today.category}</span>
+          <span>{today.difficulty}</span>
+          <span className="opacity-70">点开先自己答一遍</span>
+        </p>
       </div>
+      <ChevronRight className="size-4 shrink-0 text-primary/60 transition-transform group-hover:translate-x-1" />
     </Link>
   );
 }

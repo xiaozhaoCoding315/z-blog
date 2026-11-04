@@ -84,7 +84,7 @@ export default async function InterviewQuestionPage({
         {prev ? (
           <Link
             href={`/interview/${prev.slug}`}
-            className="glass card-hover group rounded-lg p-4"
+            className="card-surface-hover group rounded-lg p-4"
           >
             <span className="text-xs text-muted-foreground">上一题</span>
             <p className="mt-1 line-clamp-2 text-sm font-medium group-hover:text-primary">
@@ -97,7 +97,7 @@ export default async function InterviewQuestionPage({
         {next && (
           <Link
             href={`/interview/${next.slug}`}
-            className="glass card-hover group rounded-lg p-4 sm:text-right"
+            className="card-surface-hover group rounded-lg p-4 sm:text-right"
           >
             <span className="text-xs text-muted-foreground">下一题</span>
             <p className="mt-1 line-clamp-2 text-sm font-medium group-hover:text-primary">

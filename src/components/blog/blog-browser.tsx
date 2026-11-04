@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Tags, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { PostCard } from "@/components/blog/post-card";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export interface PostListItem {
@@ -41,35 +40,35 @@ export function BlogBrowser({
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-3">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+      {/* 筛选：一行输入 + 一行标签，没有胶囊按钮和卡片容器 */}
+      <div className="flex flex-col gap-3 border-b border-border pb-4">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-0 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="按关键词过滤…（语义搜索请按 ⌘K）"
-            className="rounded-full bg-card/60 pl-9"
+            placeholder="按关键词过滤"
+            className="w-full border-b border-border bg-transparent py-1.5 pl-5 pr-6 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
           />
           {query && (
             <button
               aria-label="清空"
               onClick={() => setQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              <X className="size-4" />
+              <X className="size-3.5" />
             </button>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Tags className="mr-1 size-4 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px]">
           <button
             onClick={() => setActiveTag(null)}
             className={cn(
-              "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+              "transition-colors",
               !activeTag
-                ? "border-primary/60 bg-primary/10 text-primary"
-                : "border-border/70 text-muted-foreground hover:text-foreground"
+                ? "text-foreground underline underline-offset-4"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             全部
@@ -79,33 +78,34 @@ export function BlogBrowser({
               key={tag}
               onClick={() => setActiveTag(activeTag === tag ? null : tag)}
               className={cn(
-                "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                "transition-colors",
                 activeTag === tag
-                  ? "border-primary/60 bg-primary/10 text-primary"
-                  : "border-border/70 text-muted-foreground hover:text-foreground"
+                  ? "text-primary underline underline-offset-4"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {tag}
-              <span className="ml-1 opacity-60">{count}</span>
+              <span className="ml-0.5 opacity-50">{count}</span>
             </button>
           ))}
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="glass flex flex-col items-center gap-2 rounded-xl py-16 text-center text-muted-foreground">
-          <Search className="size-8 opacity-40" />
-          <p className="text-sm">没有匹配的文章</p>
-          <p className="text-xs opacity-70">
-            试试 ⌘K 语义搜索——它能理解「意思相近」的查询
+        <div className="py-16 text-center">
+          <p className="text-sm text-muted-foreground">没有匹配的文章</p>
+          <p className="mt-1 font-mono text-[11px] text-muted-foreground/70">
+            换个关键词，或按 ⌘K 用语义搜索
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <ul>
           {filtered.map((post) => (
-            <PostCard key={post.slug} post={post} />
+            <li key={post.slug}>
+              <PostCard post={post} />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

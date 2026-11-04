@@ -97,7 +97,7 @@ export function ArticleTools() {
         type="button"
         aria-label="分享这篇文章"
         onClick={share}
-        className="glass flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
+        className="card-surface flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
       >
         <Share2 className="size-4" />
       </button>
@@ -106,7 +106,7 @@ export function ArticleTools() {
         type="button"
         aria-label="复制链接"
         onClick={() => copy(window.location.href)}
-        className="glass flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
+        className="card-surface flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
       >
         {copied ? (
           <Check className="size-4 text-emerald-500" />
@@ -119,7 +119,7 @@ export function ArticleTools() {
         type="button"
         aria-label="回到顶部"
         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="glass flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
+        className="card-surface flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
       >
         <ArrowUp className="size-4" />
       </button>

@@ -59,7 +59,7 @@ export function RelatedPosts({
           <Link
             key={item.slug}
             href={`/blog/${item.slug}`}
-            className="card-hover glass rounded-lg p-4 text-sm font-medium leading-snug"
+            className="card-surface-hover rounded-lg p-4 text-sm font-medium leading-snug"
           >
             {item.title}
           </Link>

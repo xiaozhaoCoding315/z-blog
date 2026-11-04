@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { AnimatePresence, motion } from "framer-motion";
-import { siteConfig, navItems } from "@/config/site";
+import { siteConfig } from "@/config/site";
 import { formatDays } from "@/lib/uptime";
 
 /**
@@ -134,12 +134,8 @@ export function TerminalPalette({
         navigate("/stats", "统计");
         break;
       case "friends":
-        // 友链为空时该页面从导航隐藏；终端里给个明确回应，而不是跳进空页
-        if (navItems.some((item) => item.href === "/friends")) {
-          navigate("/friends", "友链");
-        } else {
-          print("output", "友链还没收录 —— 不摆占位数据，等真的有值得推荐的站再加。");
-        }
+        // 友链为空时不跳进空页，给个明确回应
+        print("output", "友链还没收录 —— 不摆占位数据，等真的有值得推荐的站再加。");
         break;
       case "about":
         navigate("/about", "关于");
@@ -286,7 +282,7 @@ export function TerminalPalette({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0.4 }}
           transition={{ type: "spring", stiffness: 340, damping: 34 }}
-          className="glass fixed inset-x-0 bottom-0 z-[70] mx-auto max-w-3xl overflow-hidden rounded-t-2xl border-x border-t font-mono text-[13px] shadow-2xl"
+          className="card-surface fixed inset-x-0 bottom-0 z-[70] mx-auto max-w-3xl overflow-hidden rounded-t-2xl border-x border-t font-mono text-[13px] shadow-2xl"
         >
           {/* 标题栏 */}
           <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2">

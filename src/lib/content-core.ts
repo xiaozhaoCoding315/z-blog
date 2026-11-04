@@ -58,7 +58,8 @@ function estimateReading(raw: string) {
     .split(/\s+/)
     .filter(Boolean).length;
   const minutes = Math.max(1, Math.round(cjk / 300 + words / 200));
-  return { minutes, text: `${minutes} min read` };
+  // 中文站点就说中文：一行里混着英文单位，是「AI 味」最直接的来源之一
+  return { minutes, text: `${minutes} 分钟` };
 }
 
 export function contentHash(raw: string): string {

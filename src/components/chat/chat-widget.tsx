@@ -75,8 +75,8 @@ export function ChatWidget() {
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "fixed bottom-6 right-6 z-50 flex items-center justify-center rounded-full",
-          "bg-gradient-to-br from-[oklch(0.62_0.23_285)] to-[oklch(0.72_0.16_215)] text-white",
-          "shadow-xl shadow-primary/30 transition-shadow hover:shadow-2xl hover:shadow-primary/40"
+          "bg-primary text-primary-foreground",
+          "transition-colors hover:bg-primary/90"
         )}
         style={{ width: 52, height: 52 }}
       >
@@ -104,7 +104,7 @@ export function ChatWidget() {
           )}
         </AnimatePresence>
         {!open && (
-          <span className="absolute -right-0.5 -top-0.5 size-3 animate-pulse rounded-full bg-emerald-400 ring-2 ring-background" />
+          <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-vermilion ring-2 ring-background" />
         )}
       </motion.button>
 
@@ -116,11 +116,11 @@ export function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className="glass fixed bottom-24 right-4 z-50 flex h-[560px] max-h-[calc(100dvh-8rem)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl shadow-2xl sm:right-6"
+            className="card-surface fixed bottom-24 right-4 z-50 flex h-[560px] max-h-[calc(100dvh-8rem)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl shadow-2xl sm:right-6"
           >
             {/* 头部 */}
             <div className="flex items-center gap-2.5 border-b border-border/70 px-4 py-3">
-              <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-[oklch(0.62_0.23_285)] to-[oklch(0.72_0.16_215)] text-white">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Sparkles className="size-4" />
               </span>
               <div className="min-w-0 flex-1">
@@ -241,7 +241,7 @@ export function ChatWidget() {
                     aria-label="发送"
                     onClick={() => submit(input)}
                     disabled={!input.trim() || aiStatus !== "on"}
-                    className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[oklch(0.62_0.23_285)] to-[oklch(0.72_0.16_215)] text-white transition-opacity disabled:opacity-40"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
                   >
                     <Send className="size-4" />
                   </button>

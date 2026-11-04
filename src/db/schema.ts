@@ -126,7 +126,31 @@ export const interviewMastery = pgTable(
   ]
 );
 
+/**
+ * interviewReview：用户主动标记的错误题/待复盘题。
+ * 这是复习队列的数据源，掌握度只描述当前状态，这里记录为什么进入复习。
+ */
+export const interviewReview = pgTable(
+  "interview_review",
+  {
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    reason: text("reason").notNull().default("错误后进入复习"),
+    tag: text("tag"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.slug] }),
+    index("interview_review_user_idx").on(table.userId),
+  ]
+);
+
 export type PostRow = typeof posts.$inferSelect;
 export type ChunkRow = typeof chunks.$inferSelect;
 export type UserRow = typeof users.$inferSelect;
 export type MasteryRow = typeof interviewMastery.$inferSelect;
+export type ReviewRow = typeof interviewReview.$inferSelect;

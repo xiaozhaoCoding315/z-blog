@@ -4,41 +4,49 @@
  */
 import { friends } from "@/config/portfolio";
 
+/**
+ * .env 里留空的变量是空字符串而不是 undefined，
+ * `??` 接不住，会让站点名变成空白——所以这里按「有值才用」处理。
+ */
+function envOr(value: string | undefined, fallback: string) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : fallback;
+}
+
 export const siteConfig = {
-  name: process.env.NEXT_PUBLIC_SITE_NAME ?? "Z·Blog",
-  title: process.env.NEXT_PUBLIC_SITE_NAME ?? "Z·Blog",
+  name: envOr(process.env.NEXT_PUBLIC_SITE_NAME, "Z·Blog"),
+  title: envOr(process.env.NEXT_PUBLIC_SITE_NAME, "Z·Blog"),
   description:
-    "一个热爱编程的程序员的技术博客：学习笔记、项目实践与踩坑复盘。",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+    "全栈工程师与 AI 应用开发者，专注系统构建、后端服务、RAG 检索与开发者工具。",
+  url: envOr(process.env.NEXT_PUBLIC_SITE_URL, "http://localhost:3000"),
   // 站点建立日期：全站「运行天数」的唯一数据源（首页 / 页脚 / 终端 neofetch 均读这里）
   // 2026-07-02 起算，至今约 120 天
   startedAt: process.env.NEXT_PUBLIC_SITE_START_DATE ?? "2026-07-02",
   author: {
     name: "Z",
     avatar: "/images/avatar.png",
-    bio: "热爱编程的程序员。喜欢从零造轮子，把想法一个个变成能跑起来的东西，再把过程写下来。",
+    bio: "全栈工程师，习惯从需求、架构、实现到上线完整走一遍。擅长把复杂系统拆成可验证的小步骤，并在代码、数据和反馈中持续修正。",
     email: "mailto:me@example.com",
   },
   links: {
     github: "https://github.com/xiaozhaoCoding315",
     // rss 会在 /feed.xml 自动生成
   },
+  // 主导航只放四个入口：读者真正会点的地方。
+  // 其余栏目（面试题库、开发日志、留言板、友链）沉到页脚。
   nav: [
-    { title: "首页", href: "/" },
-    { title: "博客", href: "/blog" },
-    { title: "面试", href: "/interview" },
+    { title: "文章", href: "/blog" },
     { title: "归档", href: "/archives" },
     { title: "项目", href: "/projects" },
-    { title: "开发日志", href: "/changelog" },
-    { title: "留言板", href: "/guestbook" },
-    // 友链在 portfolio.ts 的 friends 为空时自动隐藏（见 navbar 的过滤逻辑），
-    // 加了第一条真实友链就会自己出现，不用回来改这里。
-    { title: "友链", href: "/friends" },
     { title: "关于", href: "/about" },
   ],
   footerNav: [
-    { title: "统计", href: "/stats" },
+    { title: "面试题库", href: "/interview" },
     { title: "开发日志", href: "/changelog" },
+    { title: "留言板", href: "/guestbook" },
+    // 友链在 portfolio.ts 的 friends 为空时自动隐藏（见下方 visibleNav），
+    // 加了第一条真实友链就会自己出现，不用回来改这里。
+    { title: "友链", href: "/friends" },
   ],
   footer: {
     icp: "", // 备案号（有域名备案后填写）

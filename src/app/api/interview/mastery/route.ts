@@ -1,93 +1,51 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { connection } from "next/server";
-import { and, eq } from "drizzle-orm";
-import { getDb } from "@/db/client";
-import { interviewMastery } from "@/db/schema";
+import { readProgress, saveProgress } from "@/lib/interview-progress";
 import { getSessionUser } from "@/lib/session";
 import { NO_STORE } from "@/app/api/_shared/no-store";
 
-/** 与 interview-browser 里的三档定义保持一致 */
 const LEVELS = [0, 1, 2, 3] as const;
 type Level = (typeof LEVELS)[number];
 
-interface MasteryItem {
-  slug: string;
-  level: Level;
-  updatedAt: string;
-}
-
-/**
- * GET /api/interview/mastery —— 拉当前用户的全部掌握度。
- *
- * 未登录不报错，返回 `{ items: [], signedIn: false }`：
- * 前端据此决定是走云端还是退回 localStorage。
- */
+/** GET /api/interview/mastery：返回当前用户全部掌握度，未登录返回空。 */
 export async function GET() {
   await connection();
 
   const user = await getSessionUser();
-  const db = getDb();
-  if (!user || !db) {
+  if (!user) {
     return NextResponse.json(
       { items: [], signedIn: false },
       { headers: NO_STORE }
     );
   }
 
-  try {
-    const rows = await db
-      .select({
-        slug: interviewMastery.slug,
-        level: interviewMastery.level,
-        lastSeenAt: interviewMastery.lastSeenAt,
-      })
-      .from(interviewMastery)
-      .where(eq(interviewMastery.userId, user.id));
-
-    const items: MasteryItem[] = rows.map((r) => ({
-      slug: r.slug,
-      level: (LEVELS.includes(r.level as Level) ? r.level : 0) as Level,
-      updatedAt: r.lastSeenAt.toISOString(),
-    }));
-
+  const progress = await readProgress(user.id);
+  if (!progress.signedIn) {
     return NextResponse.json(
-      {
-        items,
-        signedIn: true,
-        user: { login: user.login, avatarUrl: user.avatarUrl },
-      },
-      { headers: NO_STORE }
-    );
-  } catch (err) {
-    console.error("[api/interview/mastery] 读取失败：", err);
-    return NextResponse.json(
-      { items: [], signedIn: true, error: "read-failed" },
+      { items: [], signedIn: true, error: "database-unavailable" },
       { headers: NO_STORE }
     );
   }
+
+  return NextResponse.json(
+    {
+      items: progress.items,
+      signedIn: true,
+      user: { login: user.login, avatarUrl: user.avatarUrl },
+    },
+    { headers: NO_STORE }
+  );
 }
 
-/**
- * PUT /api/interview/mastery —— 设置单题掌握度。
- *
- * body: { slug: string, level: 0 | 1 | 2 | 3 }
- * level=0 表示「清除」这条记录，而不是存一个 0——
- * 这样统计「已掌握 N 题」时不必先过滤。
- */
+/** PUT /api/interview/mastery：保存单题掌握度，level=0 表示删除。 */
 export async function PUT(request: Request) {
+  await connection();
+
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json(
       { error: "需要登录", code: "unauthenticated" },
       { status: 401, headers: NO_STORE }
-    );
-  }
-
-  const db = getDb();
-  if (!db) {
-    return NextResponse.json(
-      { error: "数据库不可用" },
-      { status: 503, headers: NO_STORE }
     );
   }
 
@@ -116,39 +74,16 @@ export async function PUT(request: Request) {
     );
   }
 
-  try {
-    if (level === 0) {
-      await db
-        .delete(interviewMastery)
-        .where(
-          and(
-            eq(interviewMastery.userId, user.id),
-            eq(interviewMastery.slug, slug)
-          )
-        );
-      return NextResponse.json(
-        { ok: true, slug, level: 0 },
-        { headers: NO_STORE }
-      );
-    }
-
-    await db
-      .insert(interviewMastery)
-      .values({ userId: user.id, slug, level })
-      .onConflictDoUpdate({
-        target: [interviewMastery.userId, interviewMastery.slug],
-        set: { level, lastSeenAt: new Date() },
-      });
-
+  const result = await saveProgress(slug, level as 0 | 1 | 2 | 3);
+  if (!result.ok) {
     return NextResponse.json(
-      { ok: true, slug, level },
-      { headers: NO_STORE }
-    );
-  } catch (err) {
-    console.error("[api/interview/mastery] 写入失败：", err);
-    return NextResponse.json(
-      { error: "写入失败" },
-      { status: 500, headers: NO_STORE }
+      { error: "数据库不可用" },
+      { status: 503, headers: NO_STORE }
     );
   }
+
+  return NextResponse.json(
+    { ok: true, slug, level },
+    { headers: NO_STORE }
+  );
 }

@@ -2,7 +2,6 @@ import { Navbar } from "@/components/site/navbar";
 import { Footer } from "@/components/site/footer";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { SearchPalette } from "@/components/search/search-palette";
-import { TerminalPalette } from "@/components/terminal/terminal-palette";
 import { getAllPosts } from "@/content";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
@@ -16,10 +15,9 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   return (
     <>
       <Navbar />
-      <main className="flex-1 pt-16">{children}</main>
+      <main className="flex-1">{children}</main>
       <Footer />
       <SearchPalette posts={searchable} />
-      <TerminalPalette posts={searchable} />
       <ChatWidget />
     </>
   );

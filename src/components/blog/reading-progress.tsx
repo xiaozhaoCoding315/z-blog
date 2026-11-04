@@ -25,7 +25,7 @@ export function ReadingProgress() {
   return (
     <div
       aria-hidden
-      className="fixed inset-x-0 top-0 z-[60] h-[3px] origin-left scale-x-0 bg-gradient-to-r from-[oklch(0.62_0.23_285)] via-[oklch(0.7_0.17_250)] to-[oklch(0.75_0.15_215)]"
+      className="fixed inset-x-0 top-0 z-[60] h-[3px] origin-left scale-x-0 bg-primary"
       ref={ref}
     />
   );

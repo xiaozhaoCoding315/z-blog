@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, CalendarDays, Clock } from "lucide-react";
 import { getAllPosts, getPostBySlug, getAdjacentPosts } from "@/content";
 import { extractHeadings } from "@/lib/content-core";
 import { RenderMDX } from "@/lib/mdx";
 import { siteConfig } from "@/config/site";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ReadingProgress } from "@/components/blog/reading-progress";
 import { TableOfContents } from "@/components/blog/toc";
@@ -75,53 +73,48 @@ export default async function PostPage({
     <>
       <ReadingProgress />
       <ArticleTools />
-      <article className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+      <article className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         {/* 文章头部 */}
         <header className="mx-auto max-w-3xl">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary"
+            className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
           >
-            <ArrowLeft className="size-3.5" /> 返回列表
+            ← 文章
           </Link>
-          <h1 className="mt-5 font-heading text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+          <h1 className="mt-4 font-heading text-2xl font-bold leading-tight tracking-[-0.02em] text-balance sm:text-3xl">
             {post.meta.title}
           </h1>
 
-          {/* 元信息栏：左侧客观数据，右侧互动 */}
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-y border-border/50 py-3">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <CalendarDays className="size-3.5" />
-                <time dateTime={post.meta.date}>{post.meta.date}</time>
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Clock className="size-3.5" />
-                {post.readingText}
-              </span>
-              <span className="inline-flex items-center gap-1.5 font-mono tabular-nums">
+          {/* 元信息栏：一行等宽小字，不画盒子 */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border pb-3 font-mono text-[11px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <time dateTime={post.meta.date}>
+                {post.meta.date.replace(/-/g, ".")}
+              </time>
+              <span aria-hidden>·</span>
+              <span>{post.readingText}</span>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">
                 {charCount.toLocaleString()} 字
               </span>
+              <span aria-hidden>·</span>
               <ViewCounter slug={slug} />
+              {post.meta.tags.map((tag) => (
+                <span key={tag} className="text-foreground/60">
+                  {tag}
+                </span>
+              ))}
             </div>
             <LikeButton slug={slug} />
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {post.meta.tags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="secondary"
-                className="rounded-full font-normal"
-              >
-                {tag}
-              </Badge>
-            ))}
-          </div>
           {!post.meta.description && <SummaryFallback slug={slug} />}
         </header>
 
-        <Separator className="mx-auto my-10 max-w-3xl" />
+        <div className="mx-auto my-8 max-w-3xl">
+          <Separator />
+        </div>
 
         {/* 正文 + 目录 */}
         <div className="mx-auto grid max-w-4xl gap-10 xl:grid-cols-[minmax(0,1fr)_220px] xl:max-w-none xl:justify-center">
@@ -131,16 +124,16 @@ export default async function PostPage({
             </div>
 
             {/* 上一篇 / 下一篇 */}
-            <nav className="mt-14 grid gap-3 sm:grid-cols-2">
+            <nav className="mt-14 grid gap-x-6 border-t border-border pt-4 sm:grid-cols-2">
               {prev ? (
                 <Link
                   href={`/blog/${prev.slug}`}
-                  className="card-hover glass group rounded-lg p-4"
+                  className="group py-2"
                 >
-                  <span className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <ArrowLeft className="size-3" /> 上一篇
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    ← 上一篇
                   </span>
-                  <p className="text-sm font-medium leading-snug group-hover:text-primary">
+                  <p className="mt-1 font-heading text-sm font-semibold leading-snug transition-colors group-hover:text-primary">
                     {prev.meta.title}
                   </p>
                 </Link>
@@ -150,12 +143,12 @@ export default async function PostPage({
               {next && (
                 <Link
                   href={`/blog/${next.slug}`}
-                  className="card-hover glass group rounded-lg p-4 sm:text-right"
+                  className="group py-2 sm:text-right"
                 >
-                  <span className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    下一篇 <ArrowRight className="size-3" />
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    下一篇 →
                   </span>
-                  <p className="text-sm font-medium leading-snug group-hover:text-primary">
+                  <p className="mt-1 font-heading text-sm font-semibold leading-snug transition-colors group-hover:text-primary">
                     {next.meta.title}
                   </p>
                 </Link>

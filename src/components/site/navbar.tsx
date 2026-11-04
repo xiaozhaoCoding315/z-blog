@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { Menu, Search } from "lucide-react";
+import { useState } from "react";
 import { siteConfig, navItems, allNavItems } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { GithubIcon } from "@/components/icons/github";
@@ -17,17 +17,13 @@ import {
 } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 
+/**
+ * 顶部导航：一条细线，四个入口。
+ * 不吸顶浮动、不做玻璃——滚动时它只是安静地留在页面顶部。
+ */
 export function Navbar() {
   const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -35,42 +31,25 @@ export function Navbar() {
   }
 
   return (
-    <header
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-        scrolled
-          ? "glass border-b shadow-[0_8px_30px_-12px_rgba(0,0,0,0.35)]"
-          : "border-b border-transparent bg-transparent"
-      )}
-    >
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="group flex items-center gap-2.5">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-[oklch(0.62_0.23_285)] to-[oklch(0.72_0.16_215)] font-bold text-white shadow-lg shadow-primary/25 transition-transform group-hover:scale-105">
-            {siteConfig.name.charAt(0)}
-          </span>
-          <span className="font-heading text-[1.05rem] font-bold tracking-tight">
-            {siteConfig.name}
-          </span>
+    <header className="border-b border-border">
+      <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
+        <Link href="/" className="font-heading text-[15px] font-bold tracking-tight">
+          {siteConfig.name}
         </Link>
 
-        {/* 桌面端导航：9 个菜单项在 md（768px）放不下，改为 lg 起显示，
-            中间宽度走移动端抽屉，避免挤压 logo 与右侧操作区 */}
-        <nav className="hidden items-center gap-0.5 lg:flex">
+        <nav className="hidden items-center gap-6 sm:flex">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "relative rounded-md px-2.5 py-1.5 text-[13px] transition-colors xl:px-3 xl:text-sm",
+                "text-[13px] transition-colors",
                 isActive(item.href)
-                  ? "text-foreground"
+                  ? "text-foreground underline decoration-1 underline-offset-4"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               {item.title}
-              {isActive(item.href) && (
-                <span className="absolute inset-x-2.5 -bottom-[3px] h-[2px] rounded-full bg-gradient-to-r from-[oklch(0.62_0.23_285)] to-[oklch(0.72_0.16_215)] xl:inset-x-3" />
-              )}
             </Link>
           ))}
         </nav>
@@ -80,34 +59,33 @@ export function Navbar() {
             variant="ghost"
             size="sm"
             aria-label="搜索"
-            className="h-9 gap-2 rounded-full border border-border/60 px-3 text-muted-foreground"
+            className="h-8 gap-1.5 rounded-none px-2 text-muted-foreground hover:text-foreground"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("blog:open-search"))
             }
           >
             <Search className="size-4" />
-            <span className="hidden text-xs sm:inline">搜索文章</span>
-            <kbd className="hidden rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] sm:inline">
-              ⌘K
-            </kbd>
+            <kbd className="hidden font-mono text-[10px] sm:inline">⌘K</kbd>
           </Button>
           <Button
             variant="ghost"
             size="icon"
             aria-label="GitHub"
-            className="text-muted-foreground"
-            onClick={() =>
-              window.open(siteConfig.links.github, "_blank")
-            }
+            className="size-8 rounded-none text-muted-foreground hover:text-foreground"
+            onClick={() => window.open(siteConfig.links.github, "_blank")}
           >
-            <GithubIcon className="size-[1.1rem]" />
+            <GithubIcon className="size-4" />
           </Button>
           <ThemeToggle />
 
-          {/* 移动端菜单 */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild className="lg:hidden">
-              <Button variant="ghost" size="icon" aria-label="菜单">
+            <SheetTrigger asChild className="sm:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="菜单"
+                className="size-8 rounded-none"
+              >
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger>
@@ -115,17 +93,17 @@ export function Navbar() {
               <SheetHeader>
                 <SheetTitle className="text-left">{siteConfig.name}</SheetTitle>
               </SheetHeader>
-              <nav className="flex flex-col gap-1 px-4">
+              <nav className="flex flex-col px-4">
                 {allNavItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      "rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      "border-b border-border py-3 text-sm transition-colors",
                       isActive(item.href)
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     {item.title}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Eye, EyeOff, Send, Sparkles, X } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, RotateCw, Send, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -50,7 +50,7 @@ export function AnswerCard({ children }: { children: ReactNode }) {
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="glass mt-5 rounded-xl p-6 sm:p-8">{children}</div>
+            <div className="card-surface mt-5 rounded-xl p-6 sm:p-8">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -73,10 +73,43 @@ export function AnswerCard({ children }: { children: ReactNode }) {
 export function MasteryBar({ slug }: { slug: string }) {
   const { levels, signedIn } = useMastery();
   const current = (levels[slug] ?? 0) as MasteryLevel;
+  // 错误复盘队列：登录后才可写，未登录时按钮只做说明
+  const [inReview, setInReview] = useState(false);
 
   useEffect(() => {
     void hydrateMastery();
   }, []);
+
+  useEffect(() => {
+    if (!signedIn) return;
+    let cancelled = false;
+    fetch("/api/interview/review", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.signedIn) return;
+        setInReview(
+          data.items.some((item: { slug: string }) => item.slug === slug)
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, signedIn]);
+
+  async function addToReview() {
+    if (inReview) return;
+    try {
+      const res = await fetch("/api/interview/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      if (res.ok) setInReview(true);
+    } catch {
+      /* 离线时静默失败，下一次进入详情页会重新读取 */
+    }
+  }
 
   return (
     <div className="mt-8 rounded-xl border border-border/60 bg-card/30 p-4">
@@ -110,6 +143,24 @@ export function MasteryBar({ slug }: { slug: string }) {
         })}
       </div>
 
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] leading-relaxed text-muted-foreground/80">
+          「生疏」= 会卡壳，被追问会崩；「掌握」= 能完整讲清楚；「熟练」= 能应对深度追问；「未学」= 直接移除记录。
+        </p>
+        <button
+          onClick={addToReview}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] transition-colors",
+            inReview
+              ? "border-red-500/40 bg-red-500/10 text-red-500"
+              : "border-border/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+          )}
+        >
+          <RotateCw className="size-3" />
+          {inReview ? "已加入复盘" : "加入错误复盘"}
+        </button>
+      </div>
+
       <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground/80">
         「模糊」= 能想起大概，被追问会卡；「掌握」= 能完整讲清楚；
         「熟练」= 能应对深度追问。选「未学」即清除记录。
@@ -141,7 +192,7 @@ export function FollowUpPanel({ slug }: { slug: string }) {
     <div className="mt-10">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[oklch(0.62_0.23_285)] to-[oklch(0.72_0.16_215)] px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-primary/25 transition-transform hover:scale-[1.03]"
+        className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-transform hover:scale-[1.03]"
       >
         <Sparkles className="size-4" />
         {open ? "收起 AI 面试官" : "让 AI 面试官追问这题"}
@@ -159,7 +210,7 @@ export function FollowUpPanel({ slug }: { slug: string }) {
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="glass mt-5 rounded-xl p-5">
+            <div className="card-surface mt-5 rounded-xl p-5">
               {messages.length === 0 ? (
                 <div className="py-6 text-center">
                   <p className="text-sm text-muted-foreground">

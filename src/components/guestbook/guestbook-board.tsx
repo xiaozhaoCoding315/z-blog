@@ -13,11 +13,12 @@ interface Entry {
   createdAt: string;
 }
 
-const AVATAR_GRADIENTS = [
-  "from-[oklch(0.62_0.23_285)] to-[oklch(0.72_0.16_215)]",
-  "from-[oklch(0.65_0.18_160)] to-[oklch(0.72_0.16_215)]",
-  "from-[oklch(0.7_0.18_30)] to-[oklch(0.75_0.15_75)]",
-  "from-[oklch(0.6_0.22_285)] to-[oklch(0.7_0.18_30)]",
+/** 头像底色：墨与纸体系里的四个低饱和色，不用渐变 */
+const AVATAR_TONES = [
+  "bg-primary",
+  "bg-secondary text-secondary-foreground",
+  "bg-accent text-accent-foreground",
+  "bg-muted text-muted-foreground",
 ];
 
 function timeAgo(iso: string) {
@@ -76,7 +77,7 @@ export function GuestbookBoard() {
   return (
     <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
       {/* 留言表单 */}
-      <div className="glass h-fit rounded-xl p-6 lg:sticky lg:top-24">
+      <div className="card-surface h-fit rounded-xl p-6 lg:sticky lg:top-24">
         <h2 className="mb-4 font-semibold">留下点什么</h2>
         <div className="space-y-3">
           <Input
@@ -139,11 +140,11 @@ export function GuestbookBoard() {
         {entries === null ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="glass h-20 animate-pulse rounded-xl" />
+              <div key={i} className="card-surface h-20 animate-pulse rounded-xl" />
             ))}
           </div>
         ) : entries.length === 0 ? (
-          <div className="glass flex flex-col items-center gap-2 rounded-xl py-16 text-center text-muted-foreground">
+          <div className="card-surface flex flex-col items-center gap-2 rounded-xl py-16 text-center text-muted-foreground">
             <Send className="size-8 opacity-40" />
             <p className="text-sm">还没有留言</p>
             <p className="text-xs opacity-70">来做第一个留下脚印的人</p>
@@ -157,11 +158,11 @@ export function GuestbookBoard() {
                   initial={{ opacity: 0, y: -14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35 }}
-                  className="glass card-hover flex gap-4 rounded-xl p-5"
+                  className="card-surface-hover flex gap-4 rounded-xl p-5"
                 >
                   <span
-                    className={`flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-base font-bold text-white ${
-                      AVATAR_GRADIENTS[entry.name.length % AVATAR_GRADIENTS.length]
+                    className={`flex size-10 shrink-0 items-center justify-center rounded-full text-base font-bold ${
+                      AVATAR_TONES[entry.name.length % AVATAR_TONES.length]
                     }`}
                   >
                     {entry.name.charAt(0).toUpperCase()}

@@ -1,11 +1,8 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Pin } from "lucide-react";
 import type { Post } from "@/lib/content-core";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { ViewBadge } from "@/components/blog/view-badge";
 
-/** 卡片所需的轻量数据（可序列化，可跨服务端/客户端边界） */
 export interface PostCardData {
   slug: string;
   title: string;
@@ -16,7 +13,6 @@ export interface PostCardData {
   readingText: string;
 }
 
-/** 服务端：把完整 Post 映射为卡片数据 */
 export function toCardData(post: Post): PostCardData {
   return {
     slug: post.slug,
@@ -40,6 +36,10 @@ export function excerptOf(content: string, max = 110) {
   return plain.length > max ? `${plain.slice(0, max)}…` : plain;
 }
 
+/**
+ * 文章条目：一条细线一行，日期在左、标题在右。
+ * 不用卡片——列表页要的是能快速扫读的目录，不是一墙盒子。
+ */
 export function PostCard({
   post,
   variant = "default",
@@ -51,54 +51,49 @@ export function PostCard({
     <Link
       href={`/blog/${post.slug}`}
       className={cn(
-        "card-hover group glass relative flex flex-col rounded-xl p-5 sm:p-6",
-        variant === "featured" && "sm:p-7"
+        "group grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b border-border/60 py-4",
+        variant === "featured" && "py-5"
       )}
     >
-      <div className="mb-3 flex items-center gap-3 text-xs text-muted-foreground">
-        <time className="font-mono" dateTime={post.date}>
-          {post.date}
-        </time>
-        <span aria-hidden>·</span>
-        <span>{post.readingText}</span>
-        {post.pinned && (
-          <span className="inline-flex items-center gap-1 text-primary">
-            <Pin className="size-3" /> 置顶
-          </span>
-        )}
-        <span className="ml-auto">
-          <ViewBadge slug={post.slug} />
-        </span>
-      </div>
-
-      <h3
-        className={cn(
-          "font-heading font-bold leading-snug tracking-tight transition-colors group-hover:text-primary",
-          variant === "featured" ? "text-xl sm:text-2xl" : "text-lg"
-        )}
+      <time
+        dateTime={post.date}
+        className="font-mono text-[11px] tabular-nums text-muted-foreground"
       >
-        {post.title}
-      </h3>
+        {post.date.slice(5).replace("-", ".")}
+      </time>
 
-      <p
-        className={cn(
-          "mt-2.5 flex-1 text-sm leading-relaxed text-muted-foreground",
-          variant === "featured" ? "line-clamp-3" : "line-clamp-2"
-        )}
-      >
-        {post.description}
-      </p>
+      <div className="min-w-0">
+        <h3
+          className={cn(
+            "font-heading font-semibold leading-snug tracking-[-0.01em] transition-colors group-hover:text-primary",
+            variant === "featured" ? "text-xl" : "text-[17px]"
+          )}
+        >
+          {post.title}
+        </h3>
 
-      <div className="mt-4 flex flex-wrap items-center gap-1.5">
-        {post.tags.slice(0, variant === "featured" ? 4 : 3).map((tag) => (
-          <Badge
-            key={tag}
-            variant="secondary"
-            className="rounded-full px-2.5 py-0 text-[11px] font-normal text-muted-foreground"
+        {post.description && (
+          <p
+            className={cn(
+              "mt-1 text-[13px] leading-6 text-muted-foreground",
+              variant === "featured" ? "line-clamp-2" : "line-clamp-1"
+            )}
           >
-            {tag}
-          </Badge>
-        ))}
+            {post.description}
+          </p>
+        )}
+
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 font-mono text-[11px] text-muted-foreground">
+          <span>{post.readingText}</span>
+          {post.tags.slice(0, 3).map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
+          {post.pinned && (
+            <span className="inline-flex items-center gap-1 text-vermilion">
+              <Pin className="size-3" /> 置顶
+            </span>
+          )}
+        </p>
       </div>
     </Link>
   );

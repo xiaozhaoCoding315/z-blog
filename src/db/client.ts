@@ -107,4 +107,17 @@ export async function ensureSchema() {
   await db.execute(
     sql`CREATE INDEX IF NOT EXISTS interview_mastery_user_idx ON interview_mastery (user_id)`
   );
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS interview_review (
+      user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      slug text NOT NULL,
+      reason text NOT NULL DEFAULT '错误后进入复习',
+      tag text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, slug)
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS interview_review_user_idx ON interview_review (user_id)`
+  );
 }
