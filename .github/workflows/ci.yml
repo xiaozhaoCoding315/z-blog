@@ -26,7 +26,9 @@ jobs:
         run: npm ci
 
       - name: 类型检查
-        run: npx tsc --noEmit -p tsconfig.json
+        # 路由类型（LayoutProps、PageProps 等）由 next typegen 生成，
+        # 只跑 tsc 会因为缺 .next/types 而报错——本地能过是因为 dev/build 已经生成过
+        run: npm run type-check
 
       - name: Lint
         run: npm run lint
