@@ -15,20 +15,17 @@ export function ThemeToggle() {
     () => true,
     () => false
   );
+  const dark = mounted && resolvedTheme === "dark";
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      aria-label="切换主题"
+      aria-label={dark ? "切到报表模式" : "切到观测台模式"}
       className="text-muted-foreground"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      onClick={() => setTheme(dark ? "light" : "dark")}
     >
-      {mounted && resolvedTheme === "dark" ? (
-        <Sun className="size-[1.1rem]" />
-      ) : (
-        <Moon className="size-[1.1rem]" />
-      )}
+      {dark ? <Sun className="size-[1.1rem]" /> : <Moon className="size-[1.1rem]" />}
     </Button>
   );
 }

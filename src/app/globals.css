@@ -7,94 +7,108 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * 信笺与邮戳：道林纸底、墨字、邮戳蓝。
- * 一个主色（--stamp），一个朱红（--postmark）只给日期章和未读。
+ * 观测台：暗色是默认，界面上每个读数都有源。
+ * 「报表模式」是同一块面板打印出来的样子，不是附属主题。
  * 变量名继续沿用 shadcn 的约定，只换值，组件不用改。
  */
 :root {
-  --background: #f4f4ef;
-  --foreground: #1a1b18;
-  --card: #fbfbf7;
-  --card-foreground: #1a1b18;
-  --popover: #fbfbf7;
-  --popover-foreground: #1a1b18;
-  --primary: #2f4f74;
+  /* 报表模式（亮） */
+  --background: #f5f5f3;
+  --foreground: #12141a;
+  --card: #ffffff;
+  --card-foreground: #12141a;
+  --popover: #ffffff;
+  --popover-foreground: #12141a;
+  --primary: #2b5c93;
   --primary-foreground: #f7f8fb;
-  --secondary: #e9e9e2;
-  --secondary-foreground: #2a2b28;
-  --muted: #e9e9e2;
-  --muted-foreground: #65685f;
-  --accent: #e2e6ec;
-  --accent-foreground: #223a55;
-  --destructive: #a83f30;
-  --border: #dcdcd3;
-  --input: #dcdcd3;
-  --ring: #2f4f7480;
-  --chart-1: #2f4f74;
-  --chart-2: #a83f30;
-  --chart-3: #5c7089;
-  --chart-4: #7d807a;
-  --chart-5: #3a3b38;
-  /* 信笺的边不是圆角卡片，是裁切过的纸 */
+  --secondary: #ecece8;
+  --secondary-foreground: #12141a;
+  --muted: #ecece8;
+  --muted-foreground: #5a6068;
+  --accent: #e4e9f1;
+  --accent-foreground: #1e3f63;
+  --destructive: #9e4a3b;
+  --border: #d9dce1;
+  --input: #d9dce1;
+  --ring: #2b5c9380;
+  --chart-1: #2b5c93;
+  --chart-2: #2b7655;
+  --chart-3: #88631d;
+  --chart-4: #9e4a3b;
+  --chart-5: #5a6068;
+  /* 面板是切出来的，不是圆角卡片 */
   --radius: 0.125rem;
-  --sidebar: #ecece5;
-  --sidebar-foreground: #1a1b18;
-  --sidebar-primary: #2f4f74;
+  --sidebar: #f0f0ec;
+  --sidebar-foreground: #12141a;
+  --sidebar-primary: #2b5c93;
   --sidebar-primary-foreground: #f7f8fb;
-  --sidebar-accent: #e2e6ec;
-  --sidebar-accent-foreground: #223a55;
-  --sidebar-border: #dcdcd3;
-  --sidebar-ring: #2f4f7480;
+  --sidebar-accent: #e4e9f1;
+  --sidebar-accent-foreground: #1e3f63;
+  --sidebar-border: #d9dce1;
+  --sidebar-ring: #2b5c9380;
 
-  /* 信笺与邮戳专用 */
-  --stamp: #2f4f74;
-  --postmark: #a83f30;
-  --rule: #dcdcd3;
-  --paper-raised: #fbfbf7;
+  /* 观测台专用语义 */
+  --panel: #ffffff;
+  --panel-2: #ecece8;
+  --rule: #d9dce1;
+  --ok: #2b7655;
+  --data: #2b5c93;
+  --wait: #88631d;
+  --alert: #9e4a3b;
 
-  /* 旧组件还在用这个名字，别让它们断掉 */
-  --vermilion: #a83f30;
+  /* 旧名字降级为别名：Task 6 删 */
+  --stamp: var(--data);
+  --postmark: var(--alert);
+  --paper-raised: var(--panel);
+  --vermilion: var(--alert);
 }
 
 .dark {
-  --background: #17181a;
-  --foreground: #e6e6df;
-  --card: #1e1f22;
-  --card-foreground: #e6e6df;
-  --popover: #1e1f22;
-  --popover-foreground: #e6e6df;
-  --primary: #8fb0d6;
-  --primary-foreground: #141518;
-  --secondary: #232427;
-  --secondary-foreground: #e6e6df;
-  --muted: #232427;
-  --muted-foreground: #9a9d96;
-  --accent: #232a33;
+  /* 观测台（默认） */
+  --background: #0d0f12;
+  --foreground: #e8eaed;
+  --card: #14171c;
+  --card-foreground: #e8eaed;
+  --popover: #14171c;
+  --popover-foreground: #e8eaed;
+  --primary: #6f9bd1;
+  --primary-foreground: #0d0f12;
+  --secondary: #1a1e24;
+  --secondary-foreground: #e8eaed;
+  --muted: #1a1e24;
+  --muted-foreground: #8b9099;
+  --accent: #1c2530;
   --accent-foreground: #cfe0f2;
-  --destructive: #d9776a;
-  --border: #2c2d31;
+  --destructive: #c66e5c;
+  --border: #262b32;
   --input: #33343a;
-  --ring: #8fb0d680;
-  --chart-1: #8fb0d6;
-  --chart-2: #d9776a;
-  --chart-3: #9aa6b5;
-  --chart-4: #a8b0a4;
-  --chart-5: #cfd0c9;
-  --sidebar: #1b1c1f;
-  --sidebar-foreground: #e6e6df;
-  --sidebar-primary: #8fb0d6;
-  --sidebar-primary-foreground: #141518;
-  --sidebar-accent: #232a33;
+  --ring: #6f9bd180;
+  --chart-1: #6f9bd1;
+  --chart-2: #46a37a;
+  --chart-3: #cea04c;
+  --chart-4: #c66e5c;
+  --chart-5: #8b9099;
+  --sidebar: #11141a;
+  --sidebar-foreground: #e8eaed;
+  --sidebar-primary: #6f9bd1;
+  --sidebar-primary-foreground: #0d0f12;
+  --sidebar-accent: #1c2530;
   --sidebar-accent-foreground: #cfe0f2;
-  --sidebar-border: #2c2d31;
-  --sidebar-ring: #8fb0d680;
+  --sidebar-border: #262b32;
+  --sidebar-ring: #6f9bd180;
 
-  --stamp: #8fb0d6;
-  --postmark: #d9776a;
-  --rule: #2c2d31;
-  --paper-raised: #1e1f22;
+  --panel: #14171c;
+  --panel-2: #1a1e24;
+  --rule: #262b32;
+  --ok: #46a37a;
+  --data: #6f9bd1;
+  --wait: #cea04c;
+  --alert: #c66e5c;
 
-  --vermilion: #d9776a;
+  --stamp: var(--data);
+  --postmark: var(--alert);
+  --paper-raised: var(--panel);
+  --vermilion: var(--alert);
 }
 
 @theme inline {
@@ -141,6 +155,12 @@
   --color-stamp: var(--stamp);
   --color-postmark: var(--postmark);
   --color-rule: var(--rule);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-ok: var(--ok);
+  --color-data: var(--data);
+  --color-wait: var(--wait);
+  --color-alert: var(--alert);
   --color-paper-raised: var(--paper-raised);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
