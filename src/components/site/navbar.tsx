@@ -47,10 +47,11 @@ export function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
                 className={cn(
                   "text-[13px] transition-colors",
                   isActive(item.href)
-                    ? "text-data"
+                    ? "font-medium text-data"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -104,10 +105,11 @@ export function Navbar() {
                       key={item.href}
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
+                      aria-current={isActive(item.href) ? "page" : undefined}
                       className={cn(
                         "border-b border-border py-3 text-sm transition-colors",
                         isActive(item.href)
-                          ? "text-foreground"
+                          ? "font-medium text-data"
                           : "text-muted-foreground hover:text-foreground"
                       )}
                     >
