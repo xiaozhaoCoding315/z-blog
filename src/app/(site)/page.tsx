@@ -49,7 +49,7 @@ export default async function HomePage() {
   const readings = [
     {
       label: "Days",
-      value: observation.days ?? "—",
+      value: observation.days ?? "",
       unit: "建站",
       available: observation.days !== null,
     },
@@ -67,13 +67,13 @@ export default async function HomePage() {
     },
     {
       label: "Commits",
-      value: observation.commits90 === null ? "—" : String(observation.commits90),
+      value: observation.commits90 === null ? "" : String(observation.commits90),
       unit: "90 天",
       available: observation.commits90 !== null,
     },
     {
       label: "Weather",
-      value: weather ? `${weather.temperature}°` : "—",
+      value: weather ? `${weather.temperature}°` : "",
       unit: weather?.label ?? observation.city,
       available: weather !== null,
     },
@@ -96,12 +96,15 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-      <header className="flex items-end justify-between gap-4 border-b border-rule py-6">
-        <div className="min-w-0">
-          <h1 className="font-heading text-[26px] font-bold tracking-tight">
+      <header className="flex items-baseline justify-between gap-4 border-b border-rule py-5">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+          <h1 className="font-heading text-[15px] font-bold tracking-tight">
             {siteConfig.name}
           </h1>
-          <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+          <span aria-hidden className="font-mono text-[11px] text-muted-foreground">
+            ·
+          </span>
+          <p className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">
             {siteConfig.status}
           </p>
         </div>
@@ -133,12 +136,15 @@ export default async function HomePage() {
                       <li className="lg:hidden">
                         <details className="border-y border-rule py-3">
                           <summary className="flex cursor-pointer items-baseline gap-2 font-mono text-[11px] text-muted-foreground">
-                            <span className="uppercase tracking-[0.14em]">此刻</span>
-                            <span className="tabular-nums">
+                            <span className="shrink-0 uppercase tracking-[0.14em]">此刻</span>
+                            <span className="shrink-0 tabular-nums">
                               {weather
                                 ? `${observation.city} ${weather.temperature}° ${weather.label}`
                                 : observation.city}
                             </span>
+                            <span aria-hidden className="shrink-0">·</span>
+                            <span aria-hidden className="shrink-0">♪</span>
+                            <span className="min-w-0 truncate">{portfolioNow.listening}</span>
                           </summary>
                           <div className="mt-4">{nowPanel}</div>
                         </details>
@@ -155,7 +161,6 @@ export default async function HomePage() {
           aria-label="此刻"
           className="hidden lg:sticky lg:top-6 lg:block lg:self-start"
         >
-          <h2 className="sr-only">此刻</h2>
           {nowPanel}
         </aside>
       </div>
