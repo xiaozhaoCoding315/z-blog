@@ -445,3 +445,100 @@ html {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============ 信笺与邮戳 ============ */
+
+/* 一张信笺。2px 圆角是裁切过的纸，不是卡片 */
+.paper-sheet {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+/*
+ * 邮戳：全站唯一的签名元素。
+ * 尺寸和角度由行内样式传进来，这里只管形状。
+ */
+.postmark {
+  --pm-size: 88px;
+  --pm-rotate: -9deg;
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: var(--pm-size);
+  height: var(--pm-size);
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  color: var(--postmark);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  line-height: 1;
+  transform: rotate(var(--pm-rotate));
+  /* 邮戳本来就不是正的 */
+  flex: none;
+}
+
+/* 内圈：双环才像戳，单环像标签 */
+.postmark::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.postmark-date {
+  font-size: calc(var(--pm-size) * 0.19);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.postmark-label {
+  max-width: calc(var(--pm-size) * 0.62);
+  overflow: hidden;
+  font-size: calc(var(--pm-size) * 0.115);
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+/*
+ * 齿孔：照片和纸条的上下边各打一排半圆缺口。
+ * 用纸色圆点盖住图片边缘，比 mask 兼容性好——Safari 的 mask-composite 关键字不同。
+ * 注意：它假设图片直接铺在 --background 上，放进卡片的图片不要用。
+ */
+.perforated {
+  position: relative;
+  --hole: 5px;
+  --step: 14px;
+}
+
+.perforated::before,
+.perforated::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: calc(var(--hole) * 2);
+  background-image: radial-gradient(
+    circle var(--hole) at 50% 50%,
+    var(--background) 97%,
+    transparent 100%
+  );
+  background-size: var(--step) calc(var(--hole) * 2);
+  background-repeat: repeat-x;
+  pointer-events: none;
+}
+
+.perforated::before {
+  top: calc(var(--hole) * -1);
+}
+
+.perforated::after {
+  bottom: calc(var(--hole) * -1);
+}
