@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Postmark } from "@/components/site/postmark";
+import { Moment } from "@/components/life/moment";
 
 /**
  * 样式走廊：只在开发环境存在，生产构建时直接 404。
@@ -38,6 +39,47 @@ export default function StylePage() {
               照片
             </span>
           </div>
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          动态的三种形态
+        </h2>
+        <div className="mt-6 flex flex-col gap-10">
+          <Moment
+            moment={{
+              id: "s1",
+              kind: "text",
+              publishedAt: "2026-11-05T21:40:00+08:00",
+              body: "降温了。把阳台上的薄荷搬进屋，顺手给自己煮了碗面。",
+              weather: "阴",
+              place: "杭州",
+              mood: "安静",
+            }}
+          />
+          <Moment
+            moment={{
+              id: "s2",
+              kind: "photo",
+              publishedAt: "2026-11-03T16:20:00+08:00",
+              body: "城南那家旧书店，二楼靠窗的位置还在。老板换了台唱片机。",
+              place: "南京西路",
+            }}
+          />
+          <Moment
+            moment={{
+              id: "s3",
+              kind: "song",
+              publishedAt: "2026-11-01T23:10:00+08:00",
+              body: "十一月的第一首歌。",
+              card: {
+                title: "Merry Christmas Mr. Lawrence",
+                meta: "坂本龍一",
+                note: "每年入冬都会翻出来听一遍。",
+              },
+            }}
+          />
         </div>
       </section>
     </div>
