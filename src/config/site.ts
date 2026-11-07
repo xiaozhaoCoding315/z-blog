@@ -14,11 +14,15 @@ function envOr(value: string | undefined, fallback: string) {
 }
 
 export const siteConfig = {
-  name: envOr(process.env.NEXT_PUBLIC_SITE_NAME, "Z·Blog"),
-  title: envOr(process.env.NEXT_PUBLIC_SITE_NAME, "Z·Blog"),
-  description:
-    "全栈工程师与 AI 应用开发者，专注系统构建、后端服务、RAG 检索与开发者工具。",
+  name: envOr(process.env.NEXT_PUBLIC_SITE_NAME, "赵小元"),
+  title: envOr(process.env.NEXT_PUBLIC_SITE_NAME, "赵小元"),
+  description: "赵小元的个人空间：记录生活，收信，听歌，看书。",
   url: envOr(process.env.NEXT_PUBLIC_SITE_URL, "http://localhost:3000"),
+  /**
+   * 首页页头那句状态话，是首页唯一的自我介绍。
+   * 阶段 1 先写死；阶段 3 挪进数据库，由站长在管理页改。
+   */
+  status: "在杭州，最近在学做饭",
   // 站点建立日期：全站「运行天数」的唯一数据源（首页 / 页脚 / 终端 neofetch 均读这里）
   // 2026-07-02 起算，至今约 120 天
   startedAt: process.env.NEXT_PUBLIC_SITE_START_DATE ?? "2026-07-02",
@@ -33,21 +37,19 @@ export const siteConfig = {
     github: "https://github.com/xiaozhaoCoding315",
     // rss 会在 /feed.xml 自动生成
   },
-  // 主导航只放四个入口：读者真正会点的地方。
-  // 其余栏目（面试题库、开发日志、留言板、友链）沉到页脚。
+  // 主导航只放四个真正会点的地方；其余沉到页脚。
   nav: [
-    { title: "文章", href: "/blog" },
-    { title: "归档", href: "/archives" },
-    { title: "项目", href: "/projects" },
-    { title: "关于", href: "/about" },
+    { title: "生活", href: "/" },
+    { title: "书架", href: "/shelf" },
+    { title: "歌单", href: "/playlist" },
+    { title: "信箱", href: "/letters" },
   ],
   footerNav: [
-    { title: "面试题库", href: "/interview" },
-    { title: "开发日志", href: "/changelog" },
-    { title: "留言板", href: "/guestbook" },
-    // 友链在 portfolio.ts 的 friends 为空时自动隐藏（见下方 visibleNav），
-    // 加了第一条真实友链就会自己出现，不用回来改这里。
+    { title: "笔记", href: "/notes" },
+    { title: "项目", href: "/projects" },
+    { title: "日志", href: "/journal" },
     { title: "友链", href: "/friends" },
+    { title: "关于", href: "/about" },
   ],
   footer: {
     icp: "", // 备案号（有域名备案后填写）

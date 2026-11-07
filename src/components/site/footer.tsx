@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Rss } from "lucide-react";
 import { GithubIcon } from "@/components/icons/github";
 import { CurrentYear } from "@/components/site/runtime-info";
-import { siteConfig, allNavItems } from "@/config/site";
+import { siteConfig, footerNavItems } from "@/config/site";
 import { getUptimeSnapshot } from "@/lib/uptime-server";
 
 /**
@@ -17,7 +17,7 @@ export async function Footer() {
       <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <nav className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
-            {allNavItems.map((item) => (
+            {footerNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
