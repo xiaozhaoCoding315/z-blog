@@ -62,13 +62,3 @@ export const mockMoments: Moment[] = [
     },
   },
 ];
-
-export const mockNow = {
-  song: { title: "Merry Christmas Mr. Lawrence", artist: "坂本龍一" },
-  shelf: { type: "书", title: "《城市与狗》", meta: "巴尔加斯·略萨" },
-  letters: [
-    { id: "l1", name: "阿远", body: "路过，祝好。", date: "11.05" },
-    { id: "l2", name: "小满", body: "这首歌我也在循环。", date: "11.02" },
-    { id: "l3", name: "老陈", body: "旧书店叫什么名字？", date: "10.30" },
-  ],
-};
