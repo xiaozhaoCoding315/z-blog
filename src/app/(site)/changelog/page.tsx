@@ -4,7 +4,6 @@ import { getAllPosts } from "@/content";
 import { getChangelog, getChangelogStats, changeTypeMeta } from "@/config/changelog";
 import { siteConfig } from "@/config/site";
 import { ActivityHeatmap } from "@/components/changelog/activity-heatmap";
-import { Reveal } from "@/components/site/reveal";
 import { buildActivityDays } from "@/lib/activity";
 import { cn } from "@/lib/utils";
 
@@ -51,29 +50,27 @@ export default function ChangelogPage() {
         </p>
       </header>
 
-      <Reveal>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-y border-border py-4 sm:grid-cols-4">
-          {overview.map((item) => (
-            <div key={item.label}>
-              <dd className="font-heading text-xl font-bold tabular-nums tracking-tight">
-                {item.value}
-                {item.unit && (
-                  <span className="ml-0.5 font-mono text-[11px] font-normal text-muted-foreground">
-                    {item.unit}
-                  </span>
-                )}
-              </dd>
-              <dt className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                {item.label}
-              </dt>
-            </div>
-          ))}
-        </dl>
-      </Reveal>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-y border-border py-4 sm:grid-cols-4">
+        {overview.map((item) => (
+          <div key={item.label}>
+            <dd className="font-heading text-xl font-bold tabular-nums tracking-tight">
+              {item.value}
+              {item.unit && (
+                <span className="ml-0.5 font-mono text-[11px] font-normal text-muted-foreground">
+                  {item.unit}
+                </span>
+              )}
+            </dd>
+            <dt className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+              {item.label}
+            </dt>
+          </div>
+        ))}
+      </dl>
 
-      <Reveal className="mt-8">
+      <div className="mt-8">
         <ActivityHeatmap days={buildActivityDays()} />
-      </Reveal>
+      </div>
 
       {/* 时间线：细线 + 日期列，不做发光节点 */}
       <div className="mt-12">

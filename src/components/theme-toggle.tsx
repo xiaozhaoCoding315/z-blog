@@ -9,13 +9,13 @@ const emptySubscribe = () => () => {};
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  // SSR 渲染月亮图标，客户端挂载后按真实主题渲染（避免水合不匹配）
+  // SSR 默认按观测台（暗）渲染，客户端挂载后按真实主题渲染（避免水合不匹配）
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
     () => false
   );
-  const dark = mounted && resolvedTheme === "dark";
+  const dark = mounted ? resolvedTheme === "dark" : true;
 
   return (
     <Button

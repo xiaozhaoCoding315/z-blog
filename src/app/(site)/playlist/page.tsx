@@ -5,8 +5,8 @@ export const metadata: Metadata = { title: "歌单" };
 
 export default function PlaylistPage() {
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
-      <h1 className="font-heading text-[24px] font-bold">歌单</h1>
+    <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
+      <h1 className="font-heading text-3xl font-bold">歌单</h1>
       <div className="mt-8">
         <NotYetOpen
           title="此刻循环、我的歌单、大家推荐的"

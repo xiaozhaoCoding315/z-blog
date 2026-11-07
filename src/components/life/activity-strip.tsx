@@ -30,6 +30,7 @@ export function ActivityStrip({ activity }: { activity: GithubActivity }) {
         ))}
       </div>
       <p className="mt-2 font-mono text-[11px] tabular-nums text-muted-foreground">
+        {activity.truncated ? "≥" : ""}
         {activity.total90} 次 / 90 天
       </p>
     </div>

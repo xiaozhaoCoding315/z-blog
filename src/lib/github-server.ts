@@ -6,6 +6,11 @@ export interface GithubActivity {
   days: { date: string; count: number }[];
   total90: number;
   available: boolean;
+  /**
+   * 事件接口按页返回，最多 100 条；拿满一页说明后面可能还有事件没取到，
+   * 此时 total90 是下限而不是精确总数。
+   */
+  truncated: boolean;
 }
 
 /**
@@ -15,7 +20,10 @@ export interface GithubActivity {
  *
  * 数的是提交（PushEvent 的 payload.size），不是全部公开事件；
  * IssuesEvent、WatchEvent 之类的活动不算进来。
- * Events API 最多返回 100 条事件，所以活跃账号的 90 天数字是下限而非精确总数。
+ *
+ * Events API 每页最多 100 条事件，所以活跃账号的 90 天数字是下限而非精确总数。
+ * `truncated` 标记这件事：事件响应正好 100 条（撞上分页上限）时为 true，
+ * 调用方应在读数前加「≥」；其余情况（含所有失败路径）为 false。
  *
  * 取不到就返回 available: false、total90: 0；
  * 调用方必须看 available 决定显示读数还是 NOT AVAILABLE，不许把 0 当读数。
@@ -26,7 +34,7 @@ export async function getGithubActivity(): Promise<GithubActivity> {
 
   const username = /github\.com\/([^/]+)/.exec(siteConfig.links.github)?.[1];
   if (!username) {
-    return { days: [], total90: 0, available: false };
+    return { days: [], total90: 0, available: false, truncated: false };
   }
 
   try {
@@ -55,8 +63,10 @@ export async function getGithubActivity(): Promise<GithubActivity> {
       days,
       total90: days.reduce((sum, d) => sum + d.count, 0),
       available: true,
+      // 拿满一页（100 条）说明可能还有更早的事件没返回，总数只能算下限
+      truncated: events.length === 100,
     };
   } catch {
-    return { days: [], total90: 0, available: false };
+    return { days: [], total90: 0, available: false, truncated: false };
   }
 }

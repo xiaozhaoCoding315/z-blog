@@ -91,7 +91,7 @@ export default async function TagPage({
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 {t}
-                <span className="ml-0.5 opacity-50">{count}</span>
+                <span className="ml-0.5">{count}</span>
               </Link>
             ))}
         </div>

@@ -164,7 +164,7 @@ export function ChatWidget() {
                       <p className="text-sm text-muted-foreground">
                         AI 功能尚未启用
                       </p>
-                      <p className="text-xs leading-relaxed text-muted-foreground/70">
+                      <p className="text-xs leading-relaxed text-muted-foreground">
                         在服务器 .env 中配置 AI_API_KEY（智谱开放平台免费注册），
                         重启容器即可解锁语义搜索与智能问答。
                       </p>

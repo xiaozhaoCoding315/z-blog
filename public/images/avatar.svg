@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="站点标记：印章式字母 Z">
-  <!-- 墨与纸的印章标记：青瓷底、深青边框、衬线字母。用字母而不是照片，
+  <!-- 观测台标记：深色面板底、读数蓝边框、衬线字母。用字母而不是照片，
        是因为照片需要真实素材，而这个标记本身不声称任何东西。 -->
-  <rect width="120" height="120" fill="#ecede9"/>
-  <rect x="6" y="6" width="108" height="108" fill="none" stroke="#215148" stroke-width="2"/>
-  <rect x="12" y="12" width="96" height="96" fill="none" stroke="#215148" stroke-width="1" opacity="0.35"/>
-  <text x="60" y="82" text-anchor="middle" font-family="Georgia, 'Noto Serif SC', serif" font-size="56" font-weight="700" fill="#215148">Z</text>
+  <rect width="120" height="120" fill="#14171c"/>
+  <rect x="6" y="6" width="108" height="108" fill="none" stroke="#6f9bd1" stroke-width="2"/>
+  <rect x="12" y="12" width="96" height="96" fill="none" stroke="#6f9bd1" stroke-width="1" opacity="0.35"/>
+  <text x="60" y="82" text-anchor="middle" font-family="Georgia, 'Noto Serif SC', serif" font-size="56" font-weight="700" fill="#6f9bd1">Z</text>
 </svg>

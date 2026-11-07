@@ -147,7 +147,7 @@ export function GuestbookBoard() {
           <div className="card-surface flex flex-col items-center gap-2 rounded-xl py-16 text-center text-muted-foreground">
             <Send className="size-8 opacity-40" />
             <p className="text-sm">还没有留言</p>
-            <p className="text-xs opacity-70">来做第一个留下脚印的人</p>
+            <p className="text-xs">来做第一个留下脚印的人</p>
           </div>
         ) : (
           <div className="space-y-3">

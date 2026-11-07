@@ -136,3 +136,40 @@ test("语义色两两不同，不许一个色兼职两个状态", () => {
     assert.equal(new Set(colors).size, 4, `${name}：有语义色重复`);
   }
 });
+
+test("v1 的退役 token 与类不许回流", () => {
+  for (const name of [
+    "--stamp",
+    "--postmark",
+    "--vermilion",
+    "--paper-raised",
+  ]) {
+    assert.ok(
+      !css.includes(name + ":"),
+      `globals.css 里又出现了退役变量 ${name}`
+    );
+  }
+  for (const cls of [".postmark", ".perforated", ".paper-sheet"]) {
+    assert.ok(!css.includes(cls), `globals.css 里又出现了退役类 ${cls}`);
+  }
+});
+
+test("--chart-1..5 绑在语义色上", () => {
+  const expected = [
+    "var(--data)",
+    "var(--ok)",
+    "var(--wait)",
+    "var(--alert)",
+    "var(--muted-foreground)",
+  ];
+  for (const [name, tokens] of THEMES) {
+    expected.forEach((want, i) => {
+      const key = `chart-${i + 1}`;
+      assert.equal(
+        tokens[key]?.replace(/\s+/g, " "),
+        want,
+        `${name}：--${key} 应绑定 ${want}，实际是 ${tokens[key]}`
+      );
+    });
+  }
+});

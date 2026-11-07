@@ -31,11 +31,12 @@
   --border: #d9dce1;
   --input: #d9dce1;
   --ring: #2b5c9380;
-  --chart-1: #2b5c93;
-  --chart-2: #2b7655;
-  --chart-3: #88631d;
-  --chart-4: #9e4a3b;
-  --chart-5: #5a6068;
+  /* 图表系列色直接绑语义色，不再另存一份十六进制 */
+  --chart-1: var(--data);
+  --chart-2: var(--ok);
+  --chart-3: var(--wait);
+  --chart-4: var(--alert);
+  --chart-5: var(--muted-foreground);
   /* 面板是切出来的，不是圆角卡片 */
   --radius: 0.125rem;
   --sidebar: #f0f0ec;
@@ -77,11 +78,11 @@
   --border: #262b32;
   --input: #33343a;
   --ring: #6f9bd180;
-  --chart-1: #6f9bd1;
-  --chart-2: #46a37a;
-  --chart-3: #cea04c;
-  --chart-4: #c66e5c;
-  --chart-5: #8b9099;
+  --chart-1: var(--data);
+  --chart-2: var(--ok);
+  --chart-3: var(--wait);
+  --chart-4: var(--alert);
+  --chart-5: var(--muted-foreground);
   --sidebar: #11141a;
   --sidebar-foreground: #e8eaed;
   --sidebar-primary: #6f9bd1;

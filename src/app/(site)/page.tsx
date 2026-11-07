@@ -67,7 +67,11 @@ export default async function HomePage() {
     },
     {
       label: "Commits",
-      value: observation.commits90 === null ? "" : String(observation.commits90),
+      // 事件接口按页截断时 total90 只是下限，读数前加「≥」，不冒充精确值
+      value:
+        observation.commits90 === null
+          ? ""
+          : `${activity.truncated ? "≥" : ""}${observation.commits90}`,
       unit: "90 天",
       available: observation.commits90 !== null,
     },

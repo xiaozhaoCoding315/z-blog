@@ -17,9 +17,10 @@ export interface Reading {
  */
 export function ObservBar({ readings }: { readings: Reading[] }) {
   return (
-    <dl className="grid grid-cols-2 divide-rule border-b border-rule sm:grid-cols-5 sm:divide-x">
+    <dl className="grid grid-cols-2 divide-y divide-rule border-b border-rule sm:grid-cols-5 sm:divide-x sm:divide-y-0">
+      {/* 手机奇数格贴齐左缘；桌面所有格统一 px-3，只有首格归零 */}
       {readings.map((r) => (
-        <div key={r.label} className="px-3 py-4 first:pl-0">
+        <div key={r.label} className="px-3 py-4 max-sm:odd:pl-0 sm:first:pl-0">
           <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             {r.label}
           </dt>

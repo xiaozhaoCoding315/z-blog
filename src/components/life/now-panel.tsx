@@ -95,6 +95,10 @@ export function NowPanel({
         <h2 className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           Letters
         </h2>
+        {/* 三封信是布局示例，不是真实访客留言——留言墙阶段 3 才上线 */}
+        <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+          示例 · 阶段 3 上线
+        </p>
         <ul className="mt-2 space-y-3">
           {letters.map((letter) => (
             <li key={letter.id} className="border-b border-rule pb-3 last:border-0 last:pb-0">
@@ -107,7 +111,7 @@ export function NowPanel({
         </ul>
         <Link
           href="/letters"
-          className="mt-4 inline-block border border-data px-3 py-1.5 font-mono text-[11px] text-data transition-colors hover:bg-data hover:text-background"
+          className="mt-4 inline-block border border-data px-3 py-1.5 font-mono text-[11px] text-data transition-colors hover:border-data hover:text-foreground"
         >
           写一封
         </Link>

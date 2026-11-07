@@ -14,8 +14,8 @@ export function MomentMeta({ moment }: { moment: Moment }) {
       <time dateTime={moment.publishedAt}>
         {formatDay(moment.publishedAt)}
       </time>
-      {rest.map((item) => (
-        <span key={item}>
+      {rest.map((item, index) => (
+        <span key={index}>
           <span aria-hidden>·</span> {item}
         </span>
       ))}

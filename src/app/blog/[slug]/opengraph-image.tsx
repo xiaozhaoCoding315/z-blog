@@ -9,14 +9,14 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 /**
- * 墨与纸的配色，直接取自 globals.css 里的设计令牌（OKLCH 换算成十六进制，
- * satori 只认 rgb/hex）。改主题时这两个地方要一起改。
+ * 观测台暗色配色，直接取自 globals.css 里的设计令牌（satori 只认 rgb/hex）。
+ * 这些值必须与 globals.css 的暗色 token 一起改，改主题时两个地方要同步。
  */
-const PAPER = "#ecede9"; // --background
-const INK = "#131413"; // --foreground
-const INK_SOFT = "#646764"; // --muted-foreground
-const TEAL = "#215148"; // --primary
-const RULE = "#d6d7d2"; // --border
+const PAPER = "#0d0f12";      // --background（暗）
+const INK = "#e8eaed";        // --foreground
+const INK_SOFT = "#8b9099";   // --muted-foreground
+const ACCENT = "#6f9bd1";     // --data
+const RULE = "#262b32";       // --rule
 
 /**
  * 字体从仓库内读，不打运行时网络请求。
@@ -93,7 +93,7 @@ export default async function PostOgImage({
         <div
           style={{
             width: 2,
-            backgroundColor: TEAL,
+            backgroundColor: ACCENT,
             display: "flex",
             marginRight: 36,
           }}
@@ -163,8 +163,8 @@ export default async function PostOgImage({
                 key={tag}
                 style={{
                   display: "flex",
-                  color: TEAL,
-                  borderBottom: `1px solid ${TEAL}`,
+                  color: ACCENT,
+                  borderBottom: `1px solid ${ACCENT}`,
                   paddingBottom: 4,
                 }}
               >

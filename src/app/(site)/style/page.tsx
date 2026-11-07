@@ -25,7 +25,7 @@ export default function StylePage() {
               { label: "Days", value: "128", unit: "建站", available: true },
               { label: "Moments", value: "26", unit: "条", available: true },
               { label: "Month", value: "6", unit: "本月", available: true },
-              { label: "Commits", value: "—", unit: "90 天", available: false },
+              { label: "Commits", value: "", unit: "90 天", available: false },
               { label: "Weather", value: "17°", unit: "阴", available: true },
             ]}
           />
