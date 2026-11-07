@@ -43,11 +43,11 @@ export function MomentCard({ moment }: { moment: Moment }) {
           </p>
         )}
         {moment.body && (
-          <p className="mt-3 text-[15px] leading-[1.8]">{moment.body}</p>
+          <p className="mt-3 whitespace-pre-line text-[16px] leading-[1.85]">{moment.body}</p>
         )}
       </div>
       <Postmark
-        className="absolute! right-4 top-4"
+        className="absolute right-4 top-4"
         date={formatPostmark(moment.publishedAt)}
         label={moment.place ?? KIND_LABEL[moment.kind]}
         size="sm"

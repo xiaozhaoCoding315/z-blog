@@ -23,7 +23,7 @@
   --secondary: #e9e9e2;
   --secondary-foreground: #2a2b28;
   --muted: #e9e9e2;
-  --muted-foreground: #6b6e67;
+  --muted-foreground: #65685f;
   --accent: #e2e6ec;
   --accent-foreground: #223a55;
   --destructive: #a83f30;
@@ -448,6 +448,7 @@ html {
 
 /* ============ 信笺与邮戳 ============ */
 
+@layer components {
 /* 一张信笺。2px 圆角是裁切过的纸，不是卡片 */
 .paper-sheet {
   background: var(--paper-raised);
@@ -497,14 +498,14 @@ html {
 }
 
 .postmark-label {
-  max-width: calc(var(--pm-size) * 0.62);
+  /* 64px 的小章上标签也要看清：字号与宽度按比例放大，不靠透明度压色 */
+  max-width: calc(var(--pm-size) * 0.78);
   overflow: hidden;
-  font-size: calc(var(--pm-size) * 0.115);
-  letter-spacing: 0.08em;
+  font-size: calc(var(--pm-size) * 0.15);
+  letter-spacing: 0.06em;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
-  opacity: 0.85;
 }
 
 /*
@@ -541,4 +542,5 @@ html {
 
 .perforated::after {
   bottom: calc(var(--hole) * -1);
+}
 }

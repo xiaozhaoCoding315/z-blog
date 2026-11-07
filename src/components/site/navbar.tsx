@@ -33,9 +33,12 @@ export function Navbar() {
   return (
     <header className="border-b border-border">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="font-heading text-[15px] font-bold tracking-tight">
-          {siteConfig.name}
-        </Link>
+        {/* 首页自带报头，导航不再重复站名 */}
+        {pathname !== "/" && (
+          <Link href="/" className="font-heading text-[15px] font-bold tracking-tight">
+            {siteConfig.name}
+          </Link>
+        )}
 
         <nav className="hidden items-center gap-6 sm:flex">
           {navItems.map((item) => (

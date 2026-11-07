@@ -4,8 +4,7 @@ import { MomentPhoto } from "./moment-photo";
 import { MomentCard } from "./moment-card";
 
 /**
- * 按 kind 选形态。有 card 字段的一律走卡片，
- * 有图片的走图文，其余走短记。
+ * 分发顺序：先看 moment.card，有则走卡片；再看 kind === "photo"，是则走图文；其余一律走短记。
  */
 export function Moment({ moment }: { moment: MomentData }) {
   if (moment.card) return <MomentCard moment={moment} />;

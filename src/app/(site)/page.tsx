@@ -36,7 +36,7 @@ export default async function HomePage() {
   const groups = groupByMonth(mockMoments, currentYear);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
+    <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
       <header className="border-b border-rule py-10 sm:py-14">
         <h1 className="font-heading text-[28px] font-bold tracking-tight sm:text-[32px]">
           {siteConfig.name}

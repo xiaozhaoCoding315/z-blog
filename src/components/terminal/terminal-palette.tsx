@@ -17,6 +17,10 @@ interface Line {
   text: string;
 }
 
+// 站名清洗后可能为空串（如「赵小元」），兜底一个 ASCII 主机名
+const hostname =
+  siteConfig.name.toLowerCase().replace(/[^a-z0-9]+/g, "") || "zxy";
+
 export function TerminalPalette({
   posts,
 }: {
@@ -181,7 +185,7 @@ export function TerminalPalette({
         break;
       }
       case "whoami":
-        print("output", `guest@${siteConfig.name.toLowerCase().replace(/[^a-z0-9]+/g, "")} —— 但你显然是来认识 ${siteConfig.author.name} 的`);
+        print("output", `guest@${hostname} —— 但你显然是来认识 ${siteConfig.author.name} 的`);
         break;
       case "uptime": {
         const days = formatDays(siteConfig.startedAt) ?? "?";
@@ -231,9 +235,9 @@ export function TerminalPalette({
         print(
           "hint",
           [
-            `      ▄▄▄▄▄▄▄     guest@${siteConfig.name}`,
+            `      ▄▄▄▄▄▄▄     guest@${hostname}`,
             `    ▄█████████▄   ─────────────────────`,
-            `   ███████████    OS: Z·BlogOS (web)`,
+            `   ███████████    OS: ZXY-OS (web)`,
             `   ███████████    Host: 阿里云 ECS`,
             `    ▀█████████▀   Kernel: Next.js 16`,
             `      ▀▀▀▀▀▀▀     Shell: zsh (fake)`,

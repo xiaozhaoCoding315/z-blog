@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: 安装依赖
@@ -32,6 +32,10 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: 单元测试
+        # 纯函数与设计 token 的护栏；本地用 node --test 直接跑
+        run: npm test
 
       - name: 校验文章 frontmatter
         # 文章是内容层的唯一输入，日期写错、tags 写成字符串、

@@ -38,7 +38,7 @@ export function MomentPhoto({ moment }: { moment: Moment }) {
           {images.map((src) => (
             <div
               key={src}
-              className="perforated transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+              className="perforated transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:hover:shadow-none"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -53,7 +53,7 @@ export function MomentPhoto({ moment }: { moment: Moment }) {
         </div>
       )}
 
-      <p className="mt-4 max-w-[34rem] text-[16px] leading-[1.85]">
+      <p className="mt-4 max-w-[34rem] whitespace-pre-line text-[16px] leading-[1.85]">
         {moment.body}
       </p>
     </article>

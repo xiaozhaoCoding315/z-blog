@@ -47,13 +47,13 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0d0d12" },
-    { media: "(prefers-color-scheme: light)", color: "#f8f8fa" },
+    { media: "(prefers-color-scheme: dark)", color: "#17181a" },
+    { media: "(prefers-color-scheme: light)", color: "#f4f4ef" },
   ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  // 站点级结构化数据：让搜索引擎知道这是一个人在持续维护的技术博客
+  // 站点级结构化数据：让搜索引擎知道这是一个人在持续维护的个人空间
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
