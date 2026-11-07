@@ -4,7 +4,13 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatDay, groupByMonth, monthKeyOf, monthLabel } from "../src/lib/life.ts";
+import {
+  countThisMonth,
+  formatDay,
+  groupByMonth,
+  monthKeyOf,
+  monthLabel,
+} from "../src/lib/life.ts";
 
 const moment = (id, publishedAt, kind = "text") => ({
   id,
@@ -60,4 +66,16 @@ test("分组不修改传入的数组", () => {
     input.map((m) => m.id),
     ["a", "b"]
   );
+});
+
+test("本月条数只算当月，跨年不算", () => {
+  const moments = [
+    { publishedAt: "2026-11-05T21:40:00+08:00" },
+    { publishedAt: "2026-11-01T09:00:00+08:00" },
+    { publishedAt: "2026-10-31T23:00:00+08:00" },
+    { publishedAt: "2025-11-03T09:00:00+08:00" },
+  ];
+  assert.equal(countThisMonth(moments, 2026, 11), 2);
+  assert.equal(countThisMonth(moments, 2026, 10), 1);
+  assert.equal(countThisMonth(moments, 2027, 1), 0);
 });

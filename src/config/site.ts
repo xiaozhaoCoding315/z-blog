@@ -37,6 +37,12 @@ export const siteConfig = {
     github: "https://github.com/xiaozhaoCoding315",
     // rss 会在 /feed.xml 自动生成
   },
+  /** 观测条的天气读数：城市写死，坐标由城市决定；不采集访客位置 */
+  weather: {
+    city: "杭州",
+    latitude: 30.2741,
+    longitude: 120.1551,
+  },
   // 主导航只放四个真正会点的地方；其余沉到页脚。
   nav: [
     { title: "生活", href: "/" },

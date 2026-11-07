@@ -119,3 +119,17 @@ export function groupByMonth(
   }
   return groups;
 }
+
+/**
+ * 本月条数。只按北京时间算，跨年不算。
+ * 放在这里而不是 observation.ts，是因为 observation.ts 要 import 服务端模块，
+ * node --test 解析不了 `@/` 别名——纯函数留在本文件才测得到。
+ */
+export function countThisMonth(
+  moments: Pick<Moment, "publishedAt">[],
+  year: number,
+  month: number
+): number {
+  const key = `${year}-${String(month).padStart(2, "0")}`;
+  return moments.filter((m) => monthKeyOf(m.publishedAt) === key).length;
+}
