@@ -32,7 +32,7 @@ export function Navbar() {
 
   return (
     <header className="border-b border-border">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center px-4 sm:px-6">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center px-4 sm:px-6">
         {/* 首页自带报头，导航不再重复站名 */}
         {pathname !== "/" && (
           <Link href="/" className="font-heading text-[15px] font-bold tracking-tight">
@@ -50,7 +50,7 @@ export function Navbar() {
                 className={cn(
                   "text-[13px] transition-colors",
                   isActive(item.href)
-                    ? "text-foreground underline decoration-1 underline-offset-4"
+                    ? "text-data"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >

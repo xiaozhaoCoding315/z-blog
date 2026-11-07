@@ -180,7 +180,7 @@ export default async function ArchivesPage() {
                       <span className="min-w-0 truncate text-[15px] transition-colors group-hover:text-primary">
                         {post.meta.title}
                         {post.meta.pinned && (
-                          <span className="ml-2 font-mono text-[10px] text-vermilion">
+                          <span className="ml-2 font-mono text-[10px] text-alert">
                             置顶
                           </span>
                         )}

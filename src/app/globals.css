@@ -55,12 +55,6 @@
   --data: #2b5c93;
   --wait: #88631d;
   --alert: #9e4a3b;
-
-  /* 旧名字降级为别名：Task 6 删 */
-  --stamp: var(--data);
-  --postmark: var(--alert);
-  --paper-raised: var(--panel);
-  --vermilion: var(--alert);
 }
 
 .dark {
@@ -104,11 +98,6 @@
   --data: #6f9bd1;
   --wait: #cea04c;
   --alert: #c66e5c;
-
-  --stamp: var(--data);
-  --postmark: var(--alert);
-  --paper-raised: var(--panel);
-  --vermilion: var(--alert);
 }
 
 @theme inline {
@@ -151,9 +140,6 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --color-vermilion: var(--vermilion);
-  --color-stamp: var(--stamp);
-  --color-postmark: var(--postmark);
   --color-rule: var(--rule);
   --color-panel: var(--panel);
   --color-panel-2: var(--panel-2);
@@ -161,7 +147,6 @@
   --color-data: var(--data);
   --color-wait: var(--wait);
   --color-alert: var(--alert);
-  --color-paper-raised: var(--paper-raised);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

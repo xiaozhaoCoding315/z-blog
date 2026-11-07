@@ -109,7 +109,7 @@ export function ChatWidget() {
           )}
         </AnimatePresence>
         {!open && (
-          <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-vermilion ring-2 ring-background" />
+          <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-alert ring-2 ring-background" />
         )}
       </motion.button>
 

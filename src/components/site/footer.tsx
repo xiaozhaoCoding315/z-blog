@@ -14,7 +14,7 @@ export async function Footer() {
 
   return (
     <footer className="mt-24 border-t border-border">
-      <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <nav className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
             {footerNavItems.map((item) => (

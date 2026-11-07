@@ -104,7 +104,7 @@ export function PostCard({
             </Link>
           ))}
           {post.pinned && (
-            <span className="inline-flex items-center gap-1 text-vermilion">
+            <span className="inline-flex items-center gap-1 text-alert">
               <Pin className="size-3" /> 置顶
             </span>
           )}
