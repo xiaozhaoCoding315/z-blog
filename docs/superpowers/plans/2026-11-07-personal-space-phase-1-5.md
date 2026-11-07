@@ -829,7 +829,7 @@ export function MomentCard({ moment }: { moment: Moment }) {
                   <li key={moment.id} className="relative">
                     <span
                       aria-hidden
-                      className={`absolute left-0 top-[6px] size-2 -translate-x-1/2 rounded-full ${NODE_CLASS[moment.kind]}`}
+                      className={`absolute -left-6 top-[6px] size-2 -translate-x-1/2 rounded-full sm:-left-8 ${NODE_CLASS[moment.kind]}`}
                     />
                     <Moment moment={moment} />
                   </li>
@@ -1672,7 +1672,7 @@ export default async function HomePage() {
                     <li className="relative">
                       <span
                         aria-hidden
-                        className={`absolute left-0 top-[6px] size-2 -translate-x-1/2 rounded-full ${NODE_CLASS[moment.kind]}`}
+                        className={`absolute -left-6 top-[6px] size-2 -translate-x-1/2 rounded-full sm:-left-8 ${NODE_CLASS[moment.kind]}`}
                       />
                       <Moment moment={moment} />
                     </li>
@@ -1973,7 +1973,7 @@ export default function StylePage() {
           <MonthTick label="十一月" count={3} />
           <ul className="mt-6 flex flex-col gap-10">
             <li className="relative">
-              <span aria-hidden className="absolute left-0 top-[6px] size-2 -translate-x-1/2 rounded-full bg-muted-foreground" />
+              <span aria-hidden className="absolute -left-6 top-[6px] size-2 -translate-x-1/2 rounded-full bg-muted-foreground sm:-left-8" />
               <Moment
                 moment={{
                   id: "s1",
@@ -1987,7 +1987,7 @@ export default function StylePage() {
               />
             </li>
             <li className="relative">
-              <span aria-hidden className="absolute left-0 top-[6px] size-2 -translate-x-1/2 rounded-full bg-data" />
+              <span aria-hidden className="absolute -left-6 top-[6px] size-2 -translate-x-1/2 rounded-full bg-data sm:-left-8" />
               <Moment
                 moment={{
                   id: "s2",
@@ -1999,7 +1999,7 @@ export default function StylePage() {
               />
             </li>
             <li className="relative">
-              <span aria-hidden className="absolute left-0 top-[6px] size-2 -translate-x-1/2 rounded-full bg-ok" />
+              <span aria-hidden className="absolute -left-6 top-[6px] size-2 -translate-x-1/2 rounded-full bg-ok sm:-left-8" />
               <Moment
                 moment={{
                   id: "s3",
