@@ -4,12 +4,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  formatPostmark,
-  groupByMonth,
-  monthLabel,
-  rotateForSeed,
-} from "../src/lib/life.ts";
+import { formatDay, groupByMonth, monthKeyOf, monthLabel } from "../src/lib/life.ts";
 
 const moment = (id, publishedAt, kind = "text") => ({
   id,
@@ -18,12 +13,15 @@ const moment = (id, publishedAt, kind = "text") => ({
   body: id,
 });
 
-test("邮戳日期按北京时间换算", () => {
-  // UTC 16:30 已经是北京时间次日 00:30
-  assert.equal(formatPostmark("2026-11-03T16:30:00Z"), "11.04");
-  assert.equal(formatPostmark("2026-11-03T23:30:00+08:00"), "11.03");
-  // 个位数月日补零
-  assert.equal(formatPostmark("2026-01-05T09:00:00+08:00"), "01.05");
+test("日期按北京时间换算，输出 MM.DD", () => {
+  assert.equal(formatDay("2026-11-03T16:30:00Z"), "11.04");
+  assert.equal(formatDay("2026-11-03T23:30:00+08:00"), "11.03");
+  assert.equal(formatDay("2026-01-05T09:00:00+08:00"), "01.05");
+});
+
+test("monthKeyOf 给出分组用的年月键", () => {
+  assert.equal(monthKeyOf("2026-11-03T23:30:00+08:00"), "2026-11");
+  assert.equal(monthKeyOf("2026-11-01T07:30:00+08:00"), "2026-11");
 });
 
 test("月份名用中文，跨年时带年份", () => {
@@ -62,13 +60,4 @@ test("分组不修改传入的数组", () => {
     input.map((m) => m.id),
     ["a", "b"]
   );
-});
-
-test("邮戳角度稳定且落在 -12 到 -8 之间", () => {
-  const a = rotateForSeed("11.03南京西路");
-  assert.equal(a, rotateForSeed("11.03南京西路"));
-  for (const seed of ["", "11.03", "十二月", "阿远"]) {
-    const deg = rotateForSeed(seed);
-    assert.ok(deg >= -12 && deg <= -8, `${seed} 得到 ${deg}`);
-  }
 });

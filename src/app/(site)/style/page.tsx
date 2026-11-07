@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
-import { Postmark } from "@/components/site/postmark";
 import { Moment } from "@/components/life/moment";
-import { MonthDivider } from "@/components/life/month-divider";
-import { NowCard } from "@/components/life/now-card";
+import { MonthTick } from "@/components/life/month-tick";
 
 /**
  * 样式走廊：只在开发环境存在，生产构建时直接 404。
@@ -15,28 +13,17 @@ export default function StylePage() {
     <div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6">
       <h1 className="font-heading text-2xl font-bold">样式走廊</h1>
 
-      <section className="mt-10">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          邮戳
-        </h2>
-        <div className="mt-6 flex flex-wrap items-center gap-8">
-          <Postmark date="11.03" label="南京西路" size="sm" />
-          <Postmark date="11.03" label="南京西路" />
-          <Postmark date="十一月" label="二〇二六" size="lg" />
-        </div>
-      </section>
-
       <section className="mt-12">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
           信笺与齿孔
         </h2>
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
-          <div className="paper-sheet p-5">
+          <div className="border border-rule bg-panel p-5">
             <p className="text-sm leading-relaxed">
               一张信笺：2px 圆角，1px 格线，纸色比页面底浅一档。
             </p>
           </div>
-          <div className="perforated flex aspect-[4/3] items-center justify-center bg-secondary">
+          <div className="flex aspect-[4/3] items-center justify-center bg-secondary">
             <span className="font-mono text-[11px] text-muted-foreground">
               照片
             </span>
@@ -87,23 +74,13 @@ export default function StylePage() {
 
       <section className="mt-12">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          月份分隔与此刻卡
+          月份刻度
         </h2>
-        <div className="mt-6 grid gap-10 sm:grid-cols-[minmax(0,1fr)_280px]">
-          <div>
-            <MonthDivider label="十一月" />
-            <p className="text-sm text-muted-foreground">
-              这一条只是为了让分隔条有东西可分隔。
-            </p>
-          </div>
-          <NowCard
-            song={{ title: "Merry Christmas Mr. Lawrence", artist: "坂本龍一" }}
-            shelf={{ type: "书", title: "《城市与狗》", meta: "巴尔加斯·略萨" }}
-            letters={[
-              { id: "l1", name: "阿远", body: "路过，祝好。", date: "11.05" },
-              { id: "l2", name: "小满", body: "这首歌我也在循环。", date: "11.02" },
-            ]}
-          />
+        <div className="mt-6">
+          <MonthTick label="十一月" count={3} />
+          <p className="text-sm text-muted-foreground">
+            这一条只是为了让刻度有东西可分隔。
+          </p>
         </div>
       </section>
     </div>

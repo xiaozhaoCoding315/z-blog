@@ -466,109 +466,47 @@ html {
   }
 }
 
-/* ============ 信笺与邮戳 ============ */
+/* ============ 主脊线 ============ */
 
 @layer components {
-/* 一张信笺。2px 圆角是裁切过的纸，不是卡片 */
-.paper-sheet {
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-}
-
-/*
- * 邮戳：全站唯一的签名元素。
- * 尺寸和角度由行内样式传进来，这里只管形状。
- */
-.postmark {
-  --pm-size: 88px;
-  --pm-rotate: -9deg;
-  position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  width: var(--pm-size);
-  height: var(--pm-size);
-  border: 1.5px solid currentColor;
-  border-radius: 50%;
-  color: var(--postmark);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  line-height: 1;
-  transform: rotate(var(--pm-rotate));
-  /* 邮戳本来就不是正的 */
-  flex: none;
-}
-
-/* 内圈：双环才像戳，单环像标签 */
-.postmark::before {
-  content: "";
+/* 主脊线：生活流的走线，也是时间轴。全站唯一的装饰性结构。 */
+.life-spine {
   position: absolute;
-  inset: 4px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  opacity: 0.5;
-}
-
-.postmark-date {
-  font-size: calc(var(--pm-size) * 0.19);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.postmark-label {
-  /* 64px 的小章上标签也要看清：字号与宽度按比例放大，不靠透明度压色 */
-  max-width: calc(var(--pm-size) * 0.78);
-  overflow: hidden;
-  font-size: calc(var(--pm-size) * 0.15);
-  letter-spacing: 0.06em;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 缩写字只刻在中大号上：64px 的小章挤不下第三行 */
-.postmark-monogram {
-  font-size: calc(var(--pm-size) * 0.09);
-  letter-spacing: 0.12em;
-  /* 抵消最后一个字后面的字距，视觉上才是居中 */
-  text-indent: 0.12em;
-}
-
-/*
- * 齿孔：照片和纸条的上下边各打一排半圆缺口。
- * 用纸色圆点盖住图片边缘，比 mask 兼容性好——Safari 的 mask-composite 关键字不同。
- * 注意：它假设图片直接铺在 --background 上，放进卡片的图片不要用。
- */
-.perforated {
-  position: relative;
-  --hole: 5px;
-  --step: 14px;
-}
-
-.perforated::before,
-.perforated::after {
-  content: "";
-  position: absolute;
+  top: 0;
+  bottom: 0;
   left: 0;
-  right: 0;
-  height: calc(var(--hole) * 2);
-  background-image: radial-gradient(
-    circle var(--hole) at 50% 50%,
-    var(--background) 97%,
-    transparent 100%
-  );
-  background-size: var(--step) calc(var(--hole) * 2);
-  background-repeat: repeat-x;
-  pointer-events: none;
+  width: 1px;
+  background: var(--rule);
 }
 
-.perforated::before {
-  top: calc(var(--hole) * -1);
+.life-spine-fill {
+  display: block;
+  width: 1px;
+  height: 100%;
+  background: var(--data);
 }
 
-.perforated::after {
-  bottom: calc(var(--hole) * -1);
+/*
+ * 滚动时脊线自上而下描出来。
+ * 关键：transform 只在支持滚动时间线的浏览器里才置零，
+ * 不支持时它就是一条完整静态的线——关 JS 也看得见。
+ */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .life-spine-fill {
+      transform-origin: top;
+      animation: spine-draw linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+}
+
+@keyframes spine-draw {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
 }
 }

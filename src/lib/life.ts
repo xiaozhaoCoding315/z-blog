@@ -1,5 +1,5 @@
 /**
- * 生活流的纯函数：分组、日期格式、邮戳角度。
+ * 生活流的纯函数：分组、日期格式、年月键。
  * 刻意不依赖 React 和数据库，这样可以直接用 node --test 跑。
  */
 
@@ -72,10 +72,16 @@ function parts(iso: string) {
   };
 }
 
-/** 邮戳上的日期：11.03 */
-export function formatPostmark(iso: string): string {
+/** 动态头部那行读数里的日期：11.03 */
+export function formatDay(iso: string): string {
   const { month, day } = parts(iso);
   return `${String(month).padStart(2, "0")}.${String(day).padStart(2, "0")}`;
+}
+
+/** 分组用的年月键：2026-11 */
+export function monthKeyOf(iso: string): string {
+  const { year, month } = parts(iso);
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
 /** 月份分隔上的字：十一月；不是今年就补上年份 */
@@ -102,8 +108,8 @@ export function groupByMonth(
 
   const groups: MonthGroup[] = [];
   for (const m of sorted) {
+    const key = monthKeyOf(m.publishedAt);
     const { year, month } = parts(m.publishedAt);
-    const key = `${year}-${String(month).padStart(2, "0")}`;
     let group = groups[groups.length - 1];
     if (!group || group.key !== key) {
       group = { key, label: monthLabel(year, month, currentYear), moments: [] };
@@ -112,16 +118,4 @@ export function groupByMonth(
     group.moments.push(m);
   }
   return groups;
-}
-
-/**
- * 邮戳的倾斜角：同一个日期永远得到同一个角度。
- * 范围 -12°~-8°，一屏之内不会显得乱七八糟。
- */
-export function rotateForSeed(seed: string): number {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) {
-    h = (h * 31 + seed.charCodeAt(i)) % 1000;
-  }
-  return -8 - (h % 5);
 }

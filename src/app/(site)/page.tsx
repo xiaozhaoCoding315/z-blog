@@ -1,11 +1,9 @@
-﻿import { Fragment } from "react";
-import { cacheLife } from "next/cache";
+﻿import { cacheLife } from "next/cache";
 import { siteConfig } from "@/config/site";
-import { mockMoments, mockNow } from "@/config/mock-moments";
+import { mockMoments } from "@/config/mock-moments";
 import { groupByMonth } from "@/lib/life";
-import { Moment } from "@/components/life/moment";
-import { MonthDivider } from "@/components/life/month-divider";
-import { NowCard } from "@/components/life/now-card";
+import { Moment, NODE_CLASS } from "@/components/life/moment";
+import { MonthTick } from "@/components/life/month-tick";
 
 /**
  * 当前年份。Cache Components 下预渲染期直接读时间是错误，
@@ -47,28 +45,32 @@ export default async function HomePage() {
       </header>
 
       <div className="grid gap-12 py-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-16">
-        <div className="min-w-0">
-          {groups.map((group, groupIndex) => (
-            <section key={group.key} className="mt-10 first:mt-0">
-              <MonthDivider label={group.label} />
-              <div className="flex flex-col gap-12">
-                {group.moments.map((moment, momentIndex) => (
-                  <Fragment key={moment.id}>
+        <div className="relative min-w-0 pl-6 sm:pl-8">
+          <div aria-hidden className="life-spine">
+            <span className="life-spine-fill" />
+          </div>
+
+          {groups.map((group) => (
+            <section key={group.key} className="mt-8 first:mt-0">
+              <MonthTick label={group.label} count={group.moments.length} />
+              <ul className="mt-6 flex flex-col gap-10">
+                {group.moments.map((moment) => (
+                  <li key={moment.id} className="relative">
+                    {/* 脊线在容器的 padding 里（x=0），li 在内容区；负偏移把节点拉回脊线上 */}
+                    <span
+                      aria-hidden
+                      className={`absolute -left-6 top-[6px] size-2 -translate-x-1/2 rounded-full sm:-left-8 ${NODE_CLASS[moment.kind]}`}
+                    />
                     <Moment moment={moment} />
-                    {groupIndex === 0 && momentIndex === 0 && (
-                      <div className="lg:hidden">
-                        <NowCard {...mockNow} compact />
-                      </div>
-                    )}
-                  </Fragment>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </section>
           ))}
         </div>
 
         <aside className="hidden lg:sticky lg:top-8 lg:block lg:self-start">
-          <NowCard {...mockNow} />
+          {/* 此刻面板在 Task 4 补上 */}
         </aside>
       </div>
     </div>

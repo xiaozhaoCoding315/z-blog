@@ -1,5 +1,5 @@
-import { formatPostmark, type Moment, type MomentKind } from "@/lib/life";
-import { Postmark } from "@/components/site/postmark";
+import type { Moment, MomentKind } from "@/lib/life";
+import { MomentMeta } from "./moment-meta";
 
 const KIND_LABEL: Record<MomentKind, string> = {
   text: "短记",
@@ -11,25 +11,28 @@ const KIND_LABEL: Record<MomentKind, string> = {
 };
 
 /**
- * 卡片：只有歌单、书架、摘录、链接才配住进一个盒子。
- * 邮戳贴在右上角，压住纸边。
+ * 读数卡：只有歌、书影音、摘录、链接才配住进一个面板。
+ * 面板底 + 左上角类型标签，不用边框强调——脊线上的节点已经说了类型。
  */
 export function MomentCard({ moment }: { moment: Moment }) {
   const card = moment.card;
   if (!card) return null;
 
   return (
-    <article className="relative max-w-[38rem]">
-      <time dateTime={moment.publishedAt} className="sr-only">
-        {formatPostmark(moment.publishedAt)}
-      </time>
-      <div className="paper-sheet p-6 pr-24">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+    <article className="max-w-[38rem]">
+      <MomentMeta moment={moment} />
+      <div className="mt-3 border border-rule bg-panel p-5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           {KIND_LABEL[moment.kind]}
         </p>
-        <h3 className="mt-3 font-heading text-[18px] font-bold leading-snug">
+        <h3 className="mt-2 font-heading text-[17px] font-bold leading-snug">
           {card.href ? (
-            <a href={card.href} className="link-underline" rel="noreferrer noopener" target="_blank">
+            <a
+              href={card.href}
+              className="link-underline"
+              rel="noreferrer noopener"
+              target="_blank"
+            >
               {card.title}
             </a>
           ) : (
@@ -38,20 +41,16 @@ export function MomentCard({ moment }: { moment: Moment }) {
         </h3>
         <p className="mt-1 text-[13px] text-muted-foreground">{card.meta}</p>
         {card.note && (
-          <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
+          <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
             {card.note}
           </p>
         )}
         {moment.body && (
-          <p className="mt-3 whitespace-pre-line text-[16px] leading-[1.85]">{moment.body}</p>
+          <p className="mt-3 whitespace-pre-line font-heading text-[16px] leading-[1.7]">
+            {moment.body}
+          </p>
         )}
       </div>
-      <Postmark
-        className="absolute right-4 top-4"
-        date={formatPostmark(moment.publishedAt)}
-        label={moment.place ?? KIND_LABEL[moment.kind]}
-        size="sm"
-      />
     </article>
   );
 }
