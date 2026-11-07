@@ -79,7 +79,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="zh-CN"
       suppressHydrationWarning
       className={cn(
-        "h-full antialiased",
+        // 观测台是默认模式：把 dark 写进服务端 HTML，
+        // 关掉 JS 时也还是观测台，而不是掉回报表模式。
+        "dark h-full antialiased",
         geistSans.variable,
         geistMono.variable
       )}

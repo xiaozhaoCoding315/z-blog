@@ -129,7 +129,7 @@ export default async function ArchivesPage() {
                 </div>
 
                 {/* 刻度行与柱行同样是 12 列，未画到的月份自然空着，对齐不跑偏 */}
-                <div className="mt-1 grid grid-cols-12 gap-1 border-t border-border/60 pt-1 font-mono text-[10px] tabular-nums text-muted-foreground/70 sm:gap-2">
+                <div className="mt-1 grid grid-cols-12 gap-1 border-t border-border/60 pt-1 font-mono text-[10px] tabular-nums text-muted-foreground sm:gap-2">
                   {counts.slice(startMonth - 1, visible).map((count, index) => (
                     <span
                       key={index}
@@ -159,7 +159,7 @@ export default async function ArchivesPage() {
               <div className="mb-2 flex items-baseline gap-3 border-b border-border pb-2">
                 <h2 className="font-heading text-lg font-bold tracking-tight tabular-nums">
                   {year}
-                  <span className="mx-1 text-muted-foreground/60">/</span>
+                  <span className="mx-1 text-muted-foreground">/</span>
                   {month}
                 </h2>
                 <span className="font-mono text-[11px] text-muted-foreground">
@@ -180,7 +180,7 @@ export default async function ArchivesPage() {
                       <span className="min-w-0 truncate text-[15px] transition-colors group-hover:text-primary">
                         {post.meta.title}
                         {post.meta.pinned && (
-                          <span className="ml-2 font-mono text-[10px] text-alert">
+                          <span className="ml-2 font-mono text-[10px] text-muted-foreground">
                             置顶
                           </span>
                         )}

@@ -133,7 +133,7 @@ export default function ChangelogPage() {
                         )}
 
                         {entry.tags && entry.tags.length > 0 && (
-                          <p className="mt-1.5 flex flex-wrap gap-x-2 font-mono text-[10px] text-muted-foreground/70">
+                          <p className="mt-1.5 flex flex-wrap gap-x-2 font-mono text-[10px] text-muted-foreground">
                             {entry.tags.map((tag) => (
                               <span key={tag}>#{tag}</span>
                             ))}

@@ -38,7 +38,7 @@ export default function StylePage() {
         </h2>
         <div className="mt-6 flex flex-wrap gap-6">
           {[
-            ["在线 / 已完成", "bg-ok"],
+            ["完成 / 成立", "bg-ok"],
             ["读数 / 链接", "bg-data"],
             ["待审 / 进行中", "bg-wait"],
             ["告警 / 未读", "bg-alert"],

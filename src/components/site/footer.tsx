@@ -46,7 +46,7 @@ export async function Footer() {
           </div>
         </div>
 
-        <p className="mt-8 flex flex-wrap items-center gap-x-2 font-mono text-[11px] text-muted-foreground/80">
+        <p className="mt-8 flex flex-wrap items-center gap-x-2 font-mono text-[11px] text-muted-foreground">
           <span>
             © <CurrentYear year={uptime.year} /> {siteConfig.name}
           </span>

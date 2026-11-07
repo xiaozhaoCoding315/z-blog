@@ -2114,3 +2114,21 @@ git commit -m "docs(sdd): 阶段 1.5 完成，记录验收结论与遗留"
 **未覆盖且有意留到后续阶段**：`/life/[id]`、`/notes`、`/journal`（阶段 2、5）；评论与审核（阶段 3）；`terminal-palette.tsx` 的去留（设计文档 §13 待定，本阶段不动）；`reveal.tsx` 在旧路由上的 `opacity: 0`（`/interview` 阶段 5 删除，本阶段不动，但首页不许用）。
 
 **类型一致性**：`formatDay` 在 Task 2 定义、测试与组件同名使用；`monthKeyOf` 由 Task 2 定义、Task 3 的 `countThisMonth` 使用；`Weather` 由 `weather-server.ts` 导出、`NowPanel` 与首页共用；`GithubActivity` 由 `github-server.ts` 导出、`ActivityStrip` 与观测条共用。
+
+---
+
+## 验收结果
+
+验收于 2026-11-08 在 HEAD `df792b2` 执行，工作树干净，未改产品代码。完整报告见 `.superpowers/sdd/task-7-report.md`（gitignored），截图同在 `.superpowers/sdd/`。
+
+**门禁**：`npm run type-check && npm run lint && npm test && node scripts/check-content.mjs && npm run build` 全绿（19/19 测试、30 篇内容 0 错、339 页构建，退出码 0）。路由表：`/` 5m/1h，`/shelf`、`/playlist`、`/letters`、`/style` 均 1h/1d；`/style` 生产产物为 404（设计内）。
+
+**关 JS**：正文、观测条五格读数、时钟 `--:--:--`、无 `opacity: 0` 隐藏内容均通过（构建产物 HTML + `curl` + CDP 禁用脚本读 DOM 三法互证）。脊线的 `--rule` 轨道完整（1522px），但 `--data` 填充为 0：`animation-timeline` 不依赖 JS，禁用脚本后动画仍生效，滚动位置为 0 即 `scaleY(0)`。因此「完整静态线」在"轨道"意义上成立、在"填充全显"意义上不成立。判定为 §2.4 措辞与「进度线」实现之间的冲突，未改代码；后续应把文档收窄为「轨道始终完整，填充表示阅读进度」，或把 `@media (scripting: none)` 纳入 `@supports`。
+
+**两模式两宽度**：375 首屏两条动态（top 504 / 705 < 812）；`scrollWidth === innerWidth === 375`；语义色无 ≥10000px² 铺色（暗亮均 0）；照片占位块为 1px `--rule` 边 + `--panel-2` 底。对比度：首页正文暗 15.92 / 亮 16.86，读数与标签全部达标；页脚 © 行 `text-muted-foreground/80` 暗 4.21 / 亮 3.76 不达标（全站每页）。`prefers-reduced-motion: reduce` 下脊线全显、无动画。控制台 0 错误、无第三方直连。首页新增客户端 JS 482 B gzip。
+
+**读数诚实**：失败分支实渲染确认观测条 Days/Commits/Weather 显示 `NOT AVAILABLE` 且不渲染单位、天气不为 0；「此刻」天气与 90 天密度格同样 `NOT AVAILABLE`；在听/在读各带「手动 · 更新于 10.30」。全站 `在线 / 心跳 / 实时` 命中 8 处：7 处为代码注释或文章/项目正文，唯一 UI 文案是 dev-only `/style` 的图例「在线 / 已完成」；首页与所有正式页渲染文本 0 命中。
+
+**缺陷**：1 个 Important —— 置顶徽标用 `text-alert`（`src/components/blog/post-card.tsx:107`、`src/app/(site)/archives/page.tsx:183`），`--alert` 语义（告警/失败/未读）被挪用，违反 §2.2，属阶段 1 遗留。Minor 15 项：页脚 © 行与 `/projects`、`/changelog`、`/archives` 的 `muted-foreground/70`–`/60` 低于 4.5:1（多为既有）；手机观测条 2+2+1 而非文档的 2×2（天气未并入杭州格）；手机脊线 16px / 正文 gutter 24px 而非 12px / 无 gutter；`/style` 图例含「在线」；页脚与静态数字未用 `tabular-nums`；天气失败标记 300s 而非 60s；GitHub 90 天按 UTC 分日；站名 15px 与 §2.3 的 24–28px 冲突（文档内部冲突）；§2.6 的「观测条上翻」「热图逐格点亮」未实现；手机「写一封」非常驻；右栏 `top-6` 而非 2rem；字距 0.14em 而非 0.12em；`/style` 路由表显示预渲染但产物 404；**关 JS 时默认退回报表模式（亮）**（`dark` 类由 next-themes 脚本写入，脚本禁用后 `:root` 亮色 token 生效，内容仍完整可读）。
+
+**判定**：DONE_WITH_CONCERNS —— 门禁与三条硬验收（关 JS 可读、手机首屏两条、读数诚实）全部通过；1 个 Important 语义色挪用与若干 Minor 需决定是否在本阶段收口。

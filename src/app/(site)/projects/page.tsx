@@ -46,7 +46,7 @@ export default function ProjectsPage() {
             </p>
 
             {project.context && (
-              <p className="mt-2 text-[13px] leading-6 text-muted-foreground/80">
+              <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
                 <span className="font-mono text-[11px] uppercase tracking-[0.1em]">
                   背景
                 </span>
