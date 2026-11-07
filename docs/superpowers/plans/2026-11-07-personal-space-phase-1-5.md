@@ -2131,4 +2131,13 @@ git commit -m "docs(sdd): 阶段 1.5 完成，记录验收结论与遗留"
 
 **缺陷**：1 个 Important —— 置顶徽标用 `text-alert`（`src/components/blog/post-card.tsx:107`、`src/app/(site)/archives/page.tsx:183`），`--alert` 语义（告警/失败/未读）被挪用，违反 §2.2，属阶段 1 遗留。Minor 15 项：页脚 © 行与 `/projects`、`/changelog`、`/archives` 的 `muted-foreground/70`–`/60` 低于 4.5:1（多为既有）；手机观测条 2+2+1 而非文档的 2×2（天气未并入杭州格）；手机脊线 16px / 正文 gutter 24px 而非 12px / 无 gutter；`/style` 图例含「在线」；页脚与静态数字未用 `tabular-nums`；天气失败标记 300s 而非 60s；GitHub 90 天按 UTC 分日；站名 15px 与 §2.3 的 24–28px 冲突（文档内部冲突）；§2.6 的「观测条上翻」「热图逐格点亮」未实现；手机「写一封」非常驻；右栏 `top-6` 而非 2rem；字距 0.14em 而非 0.12em；`/style` 路由表显示预渲染但产物 404；**关 JS 时默认退回报表模式（亮）**（`dark` 类由 next-themes 脚本写入，脚本禁用后 `:root` 亮色 token 生效，内容仍完整可读）。
 
-**判定**：DONE_WITH_CONCERNS —— 门禁与三条硬验收（关 JS 可读、手机首屏两条、读数诚实）全部通过；1 个 Important 语义色挪用与若干 Minor 需决定是否在本阶段收口。
+### 验收后立即收口（commit `7e2de34`）
+
+- **置顶徽标改中性色**：`post-card.tsx` 与 `archives/page.tsx` 的「置顶」从 `text-alert` 改成 `text-muted-foreground`。`--alert` 恢复只表示告警/失败/未读，徽标的含义由 `Pin` 图标承担，不再挪用语义色。
+- **弱字去掉透明度**：页脚 © 行、`/projects`、`/changelog`、`/archives` 的 `text-muted-foreground/80`–`/60` 全部改回 `text-muted-foreground`（5.22:1 / 5.36:1）。页脚 © 行实测由 4.21/3.76 提到达标线以上。
+- **`/style` 图例**：「在线 / 已完成」改为「完成 / 成立」，正式页与 dev 页都不再出现「在线」这种没有存活探测支撑的说法。
+- **默认模式写进服务端 HTML**：`layout.tsx` 的 `<html>` 加 `dark` 类。关 JS 时仍是观测台，不再掉回报表模式。
+
+**判定**：DONE —— 门禁与三条硬验收（关 JS 可读、手机首屏两条、读数诚实）全部通过；上述 1 个 Important 与 4 项 Minor 已在 `7e2de34` 收口。剩余 Minor 见下，均为「与文档措辞不符」或「既有页面遗留」，不阻塞本阶段。
+
+**留待后续阶段**：手机观测条 2+2+1 与文档 2×2 的差异；手机脊线 16px / gutter 24px 与文档 12px / 无 gutter 的差异；`§2.6` 的「观测条上翻」「热图逐格点亮」两项动效未实现（本阶段明确只做脊线一条）；站名 15px 与 §2.3 的 24–28px 是文档内部冲突，待写阶段 2 计划时统一；天气失败缓存 300s 而非文档 60s；GitHub 按 UTC 分日；手机「写一封」尚未常驻；`/style` 路由表显示预渲染但产物 404（`notFound()` 行为，非缺陷）。
