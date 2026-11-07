@@ -508,6 +508,14 @@ html {
   white-space: nowrap;
 }
 
+/* 缩写字只刻在中大号上：64px 的小章挤不下第三行 */
+.postmark-monogram {
+  font-size: calc(var(--pm-size) * 0.09);
+  letter-spacing: 0.12em;
+  /* 抵消最后一个字后面的字距，视觉上才是居中 */
+  text-indent: 0.12em;
+}
+
 /*
  * 齿孔：照片和纸条的上下边各打一排半圆缺口。
  * 用纸色圆点盖住图片边缘，比 mask 兼容性好——Safari 的 mask-composite 关键字不同。
