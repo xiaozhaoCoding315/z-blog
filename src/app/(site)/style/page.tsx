@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { Postmark } from "@/components/site/postmark";
 import { Moment } from "@/components/life/moment";
+import { MonthDivider } from "@/components/life/month-divider";
+import { NowCard } from "@/components/life/now-card";
 
 /**
  * 样式走廊：只在开发环境存在，生产构建时直接 404。
@@ -79,6 +81,28 @@ export default function StylePage() {
                 note: "每年入冬都会翻出来听一遍。",
               },
             }}
+          />
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          月份分隔与此刻卡
+        </h2>
+        <div className="mt-6 grid gap-10 sm:grid-cols-[minmax(0,1fr)_280px]">
+          <div>
+            <MonthDivider label="十一月" />
+            <p className="text-sm text-muted-foreground">
+              这一条只是为了让分隔条有东西可分隔。
+            </p>
+          </div>
+          <NowCard
+            song={{ title: "Merry Christmas Mr. Lawrence", artist: "坂本龍一" }}
+            shelf={{ type: "书", title: "《城市与狗》", meta: "巴尔加斯·略萨" }}
+            letters={[
+              { id: "l1", name: "阿远", body: "路过，祝好。", date: "11.05" },
+              { id: "l2", name: "小满", body: "这首歌我也在循环。", date: "11.02" },
+            ]}
           />
         </div>
       </section>
