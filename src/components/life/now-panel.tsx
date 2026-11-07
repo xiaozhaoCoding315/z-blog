@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Weather } from "@/lib/weather-server";
 import type { GithubActivity } from "@/lib/github-server";
+import { formatDay } from "@/lib/life";
 import { ActivityStrip } from "./activity-strip";
 
 export interface NowLetter {
@@ -58,7 +59,7 @@ export function NowPanel({
           {listening}
         </p>
         <p className="mt-2 font-mono text-[10px] text-muted-foreground">
-          手动 · 更新于 {updatedAt.slice(5).replace("-", ".")}
+          手动 · 更新于 {formatDay(updatedAt)}
         </p>
       </section>
 
@@ -67,14 +68,17 @@ export function NowPanel({
           Reading
         </h2>
         <ul className="mt-2 space-y-1">
-          {reading.map((item) => (
-            <li key={item} className="font-heading text-[15px] leading-snug">
+          {reading.map((item, index) => (
+            <li
+              key={`${index}-${item}`}
+              className="font-heading text-[15px] leading-snug"
+            >
               {item}
             </li>
           ))}
         </ul>
         <p className="mt-2 font-mono text-[10px] text-muted-foreground">
-          手动 · 更新于 {updatedAt.slice(5).replace("-", ".")}
+          手动 · 更新于 {formatDay(updatedAt)}
         </p>
       </section>
 
@@ -83,7 +87,7 @@ export function NowPanel({
           Commits · 90D
         </h2>
         <div className="mt-2">
-          <ActivityStrip days={activity.days} total={activity.total90} />
+          <ActivityStrip activity={activity} />
         </div>
       </section>
 

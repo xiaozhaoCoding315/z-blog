@@ -15,6 +15,15 @@ function subscribe(onTick: () => void) {
   return () => clearInterval(id);
 }
 
+// React 的开发检查会连着调两次 getSnapshot；跨过秒边界时两次结果会不同。
+// 缓存上一次的字符串，同一秒内始终返回同一个值。
+let cached = "";
+function getSnapshot() {
+  const next = fmt.format(new Date());
+  if (next !== cached) cached = next;
+  return cached;
+}
+
 /**
  * 全站唯一走秒的地方。
  *
@@ -22,11 +31,7 @@ function subscribe(onTick: () => void) {
  * 用 useSyncExternalStore 而不是 effect 里 setState，避免水合不匹配与多渲染一次。
  */
 export function LocalClock() {
-  const text = useSyncExternalStore(
-    subscribe,
-    () => fmt.format(new Date()),
-    () => "--:--:--"
-  );
+  const text = useSyncExternalStore(subscribe, getSnapshot, () => "--:--:--");
 
   return (
     <span
