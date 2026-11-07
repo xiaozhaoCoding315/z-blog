@@ -1,5 +1,6 @@
 import { cacheLife } from "next/cache";
 import { siteConfig } from "@/config/site";
+import { countCommitsByDay, type GithubEvent } from "@/lib/github-activity";
 
 export interface GithubActivity {
   days: { date: string; count: number }[];
@@ -8,9 +9,13 @@ export interface GithubActivity {
 }
 
 /**
- * 最近 90 天的 GitHub 公开活跃度。
+ * 最近 90 天的 GitHub 提交数。
  * 和 /api/github 共用这一份逻辑：那个路由只是它的 HTTP 外壳。
  * 1 小时一档——匿名 Events API 每小时只给 60 次。
+ *
+ * 数的是提交（PushEvent 的 payload.size），不是全部公开事件；
+ * IssuesEvent、WatchEvent 之类的活动不算进来。
+ * Events API 最多返回 100 条事件，所以活跃账号的 90 天数字是下限而非精确总数。
  *
  * 取不到就返回 available: false、total90: 0；
  * 调用方必须看 available 决定显示读数还是 NOT AVAILABLE，不许把 0 当读数。
@@ -34,12 +39,8 @@ export async function getGithubActivity(): Promise<GithubActivity> {
     );
     if (!res.ok) throw new Error(`GitHub API ${res.status}`);
 
-    const events: { created_at: string }[] = await res.json();
-    const counts = new Map<string, number>();
-    for (const event of events) {
-      const day = event.created_at.slice(0, 10);
-      counts.set(day, (counts.get(day) ?? 0) + 1);
-    }
+    const events: GithubEvent[] = await res.json();
+    const counts = countCommitsByDay(events);
 
     // 补齐最近 90 天（含空白天）
     const days: { date: string; count: number }[] = [];

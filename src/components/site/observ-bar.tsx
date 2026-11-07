@@ -33,7 +33,7 @@ export function ObservBar({ readings }: { readings: Reading[] }) {
                 NOT AVAILABLE
               </span>
             )}
-            {r.unit && (
+            {r.available && r.unit && (
               <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">
                 {r.unit}
               </span>
