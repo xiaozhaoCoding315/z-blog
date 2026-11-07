@@ -20,6 +20,9 @@ export function MomentCard({ moment }: { moment: Moment }) {
 
   return (
     <article className="relative max-w-[38rem]">
+      <time dateTime={moment.publishedAt} className="sr-only">
+        {formatPostmark(moment.publishedAt)}
+      </time>
       <div className="paper-sheet p-6 pr-24">
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           {KIND_LABEL[moment.kind]}
