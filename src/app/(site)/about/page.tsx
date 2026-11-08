@@ -122,12 +122,12 @@ export default async function AboutPage() {
         <h2 className="font-heading text-lg font-bold tracking-tight">关于本站</h2>
         <div className="mt-3 space-y-3 text-[15px] leading-7 text-muted-foreground">
           <p>
-            这个站是我从零手写的：文章用 MDX + Git 管理，构建时静态生成；
-            数据库承载浏览量与文章向量索引。⌘K 搜索能理解意思相近的查询，
+            这个站是我从零手写的：笔记用 MDX + Git 管理，构建时静态生成；
+            数据库承载浏览量与笔记向量索引。⌘K 搜索能理解意思相近的查询，
             右下角的助手回答问题时会标注引用来源。
           </p>
           <p>
-            实现细节都写在文章里，从
+            实现细节都写在笔记里，从
             <Link href="/notes/build-blog-with-nextjs" className="link-underline mx-1">
               建站过程
             </Link>
@@ -141,20 +141,14 @@ export default async function AboutPage() {
       </section>
 
       <p className="mt-12 border-t border-border pt-4 font-mono text-[11px] text-muted-foreground">
-        <Link href="/changelog" className="link-underline">
+        <Link href="/journal" className="link-underline">
           开发日志
         </Link>
         <span className="mx-2" aria-hidden>
           ·
         </span>
-        <Link href="/guestbook" className="link-underline">
-          留言板
-        </Link>
-        <span className="mx-2" aria-hidden>
-          ·
-        </span>
-        <Link href="/interview" className="link-underline">
-          面试题库
+        <Link href="/letters" className="link-underline">
+          信箱
         </Link>
       </p>
     </div>

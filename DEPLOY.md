@@ -2,7 +2,7 @@
 
 目标：在一台云服务器（Ubuntu/Debian）上，用 Docker Compose 把博客跑在 80 端口，数据持久化，更新只需 `git pull`。
 
-> 部署前请先把仓库推送到 GitHub（建议公开仓库，Giscus 评论依赖它）。
+> 部署前请先把仓库推送到 GitHub（建议公开仓库，便于版本管理与更新）。
 
 ## 0. 端口与资源规划（先看这里）
 
@@ -138,22 +138,7 @@ cd /opt/blog && git pull && docker load < /tmp/blog-app.tar.gz && docker compose
 
 写了新文章 → 部署新镜像 → 容器重启时入口脚本自动向量化新增文章（未变更的文章按哈希跳过，秒级）。
 
-## 4. Giscus 评论（可选）
-
-1. 博客仓库需为**公开**仓库：Settings → General → Features → 勾选 **Discussions**
-2. 打开 [giscus.app](https://giscus.app/zh-CN)，填入仓库名，选 `Announcements` 分类
-3. 把页面生成的 `data-repo-id` 和 `data-category-id` 填进服务器 `.env`：
-
-```ini
-NEXT_PUBLIC_GISCUS_REPO=你的用户名/你的仓库
-NEXT_PUBLIC_GISCUS_REPO_ID=R_xxxxxxx
-NEXT_PUBLIC_GISCUS_CATEGORY=Announcements
-NEXT_PUBLIC_GISCUS_CATEGORY_ID=DIC_xxxxxxx
-```
-
-4. `docker compose up -d --build` 后文章页出现评论区。
-
-## 5. 数据备份
+## 4. 数据备份
 
 ```bash
 # 手动备份（建议加到 crontab 每日执行）
@@ -163,7 +148,7 @@ docker compose exec db pg_dump -U blog blog | gzip > ~/backup_$(date +%F).sql.gz
 gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog blog
 ```
 
-## 6. 以后买了域名怎么加 HTTPS
+## 5. 以后买了域名怎么加 HTTPS
 
 1. 域名 A 记录指向服务器 IP（国内服务器需备案）
 2. 在 compose 中加一个 Caddy 服务并删掉 app 的 80 端口映射：

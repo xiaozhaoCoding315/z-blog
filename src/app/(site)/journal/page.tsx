@@ -8,11 +8,11 @@ import { buildActivityDays } from "@/lib/activity";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "开发日志",
+  title: "日志",
   description: `这个博客从 ${siteConfig.startedAt} 开始，每一行代码都有据可查：功能迭代、修复与设计决策的完整时间线。`,
 };
 
-export default function ChangelogPage() {
+export default function JournalPage() {
   const entries = getChangelog();
   const stats = getChangelogStats();
   const notes = getAllNotes();

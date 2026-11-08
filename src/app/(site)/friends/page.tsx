@@ -83,8 +83,8 @@ export default function FriendsPage() {
               >
                 <GithubIcon className="size-3.5" /> GitHub Issue
               </a>
-              <Link href="/guestbook" className="link-underline">
-                留言板
+              <Link href="/letters" className="link-underline">
+                信箱
               </Link>
             </p>
           </div>

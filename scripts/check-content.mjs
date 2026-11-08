@@ -71,7 +71,7 @@ for (const file of files) {
     if (!Array.isArray(data.tags)) {
       fail(file, "tags 必须是数组，例如 tags: [AI, Agent]");
     } else if (data.tags.length === 0) {
-      warnings.push(`${file}: tags 为空，笔记不会出现在任何标签页`);
+      warnings.push(`${file}: tags 为空，标签筛选在笔记列表页内完成`);
     } else if (data.tags.length > 5) {
       warnings.push(`${file}: tags 有 ${data.tags.length} 个，卡片上只显示前 3 个`);
     }

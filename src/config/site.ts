@@ -53,23 +53,13 @@ export const siteConfig = {
   footerNav: [
     { title: "笔记", href: "/notes" },
     { title: "项目", href: "/projects" },
-    { title: "日志", href: "/changelog" },
+    { title: "日志", href: "/journal" },
     { title: "友链", href: "/friends" },
     { title: "关于", href: "/about" },
   ],
   footer: {
     icp: "", // 备案号（有域名备案后填写）
     beianUrl: "",
-  },
-  /** Giscus 评论：部署后到 https://giscus.app 生成配置，填入 .env */
-  giscus: {
-    repo: process.env.NEXT_PUBLIC_GISCUS_REPO ?? "",
-    repoId: process.env.NEXT_PUBLIC_GISCUS_REPO_ID ?? "",
-    category: process.env.NEXT_PUBLIC_GISCUS_CATEGORY ?? "Announcements",
-    categoryId: process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID ?? "",
-    enabled:
-      Boolean(process.env.NEXT_PUBLIC_GISCUS_REPO) &&
-      Boolean(process.env.NEXT_PUBLIC_GISCUS_REPO_ID),
   },
 } as const;
 

@@ -1,7 +1,7 @@
 /**
  * 迭代活跃度热力图数据：开发日志 + 笔记发布日期。
  *
- * 抽到 lib 里是因为首页和 /changelog 都要用，避免两处各算一遍导致数字对不上。
+ * 抽到 lib 里是因为首页和 /journal 都要用，避免两处各算一遍导致数字对不上。
  */
 import { getAllNotes } from "@/content";
 import { getChangelog } from "@/config/changelog";

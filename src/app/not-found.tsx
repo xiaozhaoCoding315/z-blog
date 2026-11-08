@@ -10,14 +10,14 @@ export default function NotFound() {
         这一页不在
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        可能链接打错了，也可能文章还在草稿箱里。
+        可能链接打错了，也可能笔记还在草稿箱里。
       </p>
       <p className="mt-8 flex gap-5 font-mono text-[11px]">
         <Link href="/" className="link-underline">
           ← 回首页
         </Link>
         <Link href="/notes" className="link-underline">
-          浏览文章
+          浏览笔记
         </Link>
       </p>
     </div>
