@@ -147,11 +147,17 @@ export function sessionSecret(): string | null {
 
 /**
  * 只接受站内相对路径，防止 `next` 参数被当成开放重定向
- * （`//evil.com` 和 `https://evil.com` 都是常见绕过手法）。
+ * （`//evil.com`、`https://evil.com` 都是常见绕过手法；
+ * `/\evil.com` 也会被 URL 规范化成 `https://evil.com/`，所以反斜杠一律拒绝）。
  */
 export function sanitizeNext(raw: string | null): string {
   if (!raw) return "/";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+  // 反斜杠和控制字符都是 URL 解析器的坑，出现任何一个都不放行
+  const unsafe = [...raw].some((ch) => {
+    const code = ch.charCodeAt(0);
+    return ch === "\\" || code < 0x20 || code === 0x7f;
+  });
+  if (!raw.startsWith("/") || raw.startsWith("//") || unsafe) return "/";
   return raw;
 }
 

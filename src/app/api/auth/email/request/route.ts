@@ -22,17 +22,28 @@ export async function POST(request: Request) {
 
   const cfg = mailConfig();
   const secret = sessionSecret();
-  if (!cfg.enabled || !secret) {
+  if (!secret) {
+    return NextResponse.json(
+      { error: "登录暂未开放：服务器还没配置密钥" },
+      { status: 503 }
+    );
+  }
+  if (!cfg.enabled) {
     return NextResponse.json(
       { error: "登录暂未开放：服务器还没配置发信" },
       { status: 503 }
     );
   }
 
-  let body: { email?: string };
+  let body: { email?: string } | null;
   try {
     body = await request.json();
   } catch {
+    return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
+  }
+
+  // `JSON.parse("null")` 也会成功，body 可能是 null；不拦住会在取属性时抛成 500
+  if (body === null || typeof body !== "object") {
     return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
   }
 
@@ -41,7 +52,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "邮箱看起来不对" }, { status: 400 });
   }
 
-  // 按 IP 限频：单实例内存桶够用（容器重启清零，可接受）
+  // 按 IP 限频：单实例内存桶够用（容器重启清零，可接受）。
+  // 但它只是尽力而为——compose 里应用直接暴露 80 端口、没有可信反代改写 XFF，
+  // 客户端可伪造 X-Forwarded-For 换桶，或干脆不带而所有人共用 "local" 桶；
+  // 真正防刷的是下面的按邮箱数据库限额。
   if (!rateLimit(`${getClientIp(request)}:email-code`, 20, 3_600_000)) {
     return NextResponse.json(
       { error: "请求太频繁了，过会儿再试" },
@@ -65,6 +79,7 @@ export async function POST(request: Request) {
     // 清理失败不影响发码
   }
 
+  // 下面的冷却与小时限额都是先查后写：并发请求可能同时通过，按邮箱的上限只是尽力而为。
   const [latest] = await db
     .select({ createdAt: loginCodes.createdAt })
     .from(loginCodes)
@@ -96,18 +111,29 @@ export async function POST(request: Request) {
   }
 
   const code = generateCode();
+  let codeId: number;
   try {
-    await db.insert(loginCodes).values({
-      email,
-      codeHash: hashCode(code, secret),
-      expiresAt: codeExpiry(now),
-    });
+    const [inserted] = await db
+      .insert(loginCodes)
+      .values({
+        email,
+        codeHash: hashCode(code, secret),
+        expiresAt: codeExpiry(now),
+      })
+      .returning({ id: loginCodes.id });
+    codeId = inserted.id;
   } catch {
     return NextResponse.json({ error: "保存验证码失败" }, { status: 500 });
   }
 
   const sent = await sendLoginCode(email, code);
   if (!sent) {
+    // 发信失败就删掉刚插入的码：否则用户没收到的码会白占 60 秒冷却和一小时额度
+    try {
+      await db.delete(loginCodes).where(eq(loginCodes.id, codeId));
+    } catch {
+      // 删不掉也无妨：这条码没人收到，过期后会被清理
+    }
     return NextResponse.json(
       { error: "验证码没发出去，请稍后再试" },
       { status: 502 }

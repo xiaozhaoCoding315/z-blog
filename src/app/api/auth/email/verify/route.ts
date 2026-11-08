@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connection } from "next/server";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { loginCodes, users } from "@/db/schema";
 import {
@@ -24,13 +24,21 @@ export async function POST(request: Request) {
 
   const secret = sessionSecret();
   if (!secret) {
-    return NextResponse.json({ error: "登录暂未开放" }, { status: 503 });
+    return NextResponse.json(
+      { error: "登录暂未开放：服务器还没配置密钥" },
+      { status: 503 }
+    );
   }
 
-  let body: { email?: string; code?: string; next?: string };
+  let body: { email?: string; code?: string; next?: string } | null;
   try {
     body = await request.json();
   } catch {
+    return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
+  }
+
+  // `JSON.parse("null")` 也会成功，body 可能是 null；不拦住会在取属性时抛成 500
+  if (body === null || typeof body !== "object") {
     return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
   }
 
@@ -61,7 +69,18 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (record.attempts >= MAX_ATTEMPTS) {
+  // 比对前先原子扣一次尝试次数：条件 UPDATE 只有 attempts < MAX_ATTEMPTS 才成功，
+  // 并发请求也绕不过去；成功的那次同样占一格，所以第 6 次尝试一律拒绝。
+  // 必须计数：六位数只有一百万种，不限制次数就能慢慢试出来。
+  const [consumed] = await db
+    .update(loginCodes)
+    .set({ attempts: sql`${loginCodes.attempts} + 1` })
+    .where(
+      and(eq(loginCodes.id, record.id), lt(loginCodes.attempts, MAX_ATTEMPTS))
+    )
+    .returning({ attempts: loginCodes.attempts });
+
+  if (!consumed) {
     return NextResponse.json(
       { error: "这条验证码试太多次了，重新申请一封" },
       { status: 400 }
@@ -69,11 +88,6 @@ export async function POST(request: Request) {
   }
 
   if (!codeMatches(code, record.codeHash, secret)) {
-    // 失败也要计数：六位数只有一百万种，不计数就能慢慢试出来
-    await db
-      .update(loginCodes)
-      .set({ attempts: sql`${loginCodes.attempts} + 1` })
-      .where(eq(loginCodes.id, record.id));
     return NextResponse.json({ error: "验证码不对" }, { status: 400 });
   }
 

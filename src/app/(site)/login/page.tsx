@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { mailConfig } from "@/lib/mailer";
+import { sessionSecret } from "@/lib/auth";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = { title: "登录" };
@@ -14,6 +15,9 @@ export default async function LoginPage() {
   await connection();
   const user = await getSessionUser();
   const mail = mailConfig();
+  const secret = sessionSecret();
+  // 和两个路由的实际条件保持一致：签发会话要密钥，发信要 SMTP，缺一不可
+  const loginReady = Boolean(secret) && mail.enabled;
   const ownerConfigured = Boolean(process.env.OWNER_EMAIL?.trim());
 
   return (
@@ -52,7 +56,7 @@ export default async function LoginPage() {
             </button>
           </form>
         </div>
-      ) : !mail.enabled ? (
+      ) : !loginReady ? (
         <div className="mt-8 border border-rule bg-panel p-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-wait">
             Not Available
@@ -61,7 +65,9 @@ export default async function LoginPage() {
             登录暂未开放
           </h2>
           <p className="mt-2 max-w-[38rem] text-[14px] leading-relaxed text-muted-foreground">
-            服务器还没配置发信账号（SMTP_USER / SMTP_PASS），验证码发不出去。浏览不受影响。
+            {!secret
+              ? "服务器还没配置会话密钥（AUTH_SECRET / SYNC_SECRET），登录签不出会话。浏览不受影响。"
+              : "服务器还没配置发信账号（SMTP_USER / SMTP_PASS），验证码发不出去。浏览不受影响。"}
           </p>
         </div>
       ) : (
