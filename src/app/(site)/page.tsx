@@ -2,18 +2,24 @@ import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
+import { DeskObjects } from "@/components/desktop/desk-objects";
 import {
   DesktopHome,
   OpenSettingsButton,
 } from "@/components/desktop/desktop-home";
+import { StatusWidget } from "@/components/desktop/status-widget";
 import { StickyNote } from "@/components/desktop/sticky-note";
+import { GalleryView } from "@/components/gallery/gallery-view";
 import { Moment, NODE_CLASS } from "@/components/life/moment";
 import { NotYetOpen } from "@/components/site/not-yet-open";
 import { getChangelogStats } from "@/config/changelog";
-import { friends, projects } from "@/config/portfolio";
+import { now as portfolioNow, friends, projects } from "@/config/portfolio";
 import { siteConfig } from "@/config/site";
+import { collectGalleryImages, type GalleryImage } from "@/lib/gallery";
+import { getGithubActivity } from "@/lib/github-server";
 import { getMoments, type MomentsResult } from "@/lib/moments-server";
 import { getPinnedMoment, getStatusSentence } from "@/lib/settings-server";
+import { getWeather } from "@/lib/weather-server";
 
 /**
  * 桌面主屏要读站长的状态句与生活流，所以停在请求期。
@@ -85,19 +91,46 @@ function LifeWindowContent({ life }: { life: MomentsResult }) {
   );
 }
 
-/** 生活胶囊：真实媒体数据在 Phase 3 接入，现在只给出诚实说明和入口。 */
-function GalleryWindowContent() {
+/**
+ * 生活胶囊窗口：最近 24 张真实照片，灯箱铺满窗口内容区。
+ * 读不到库时不拿空相册冒充「还没发过」。
+ */
+function GalleryWindowContent({
+  life,
+  images,
+}: {
+  life: MomentsResult;
+  images: GalleryImage[];
+}) {
+  if (!life.available) {
+    return (
+      <div className="os-window-pane">
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-wait">
+          Not Available
+        </p>
+        <h2 className="font-heading text-[17px] font-bold">
+          生活胶囊暂时读不到
+        </h2>
+        <p className="text-[13px] leading-6 text-muted-foreground">
+          照片和动态存在数据库里，现在连不上。不拿空相册冒充「还没发过」。
+        </p>
+        <Link href="/gallery" className="os-pane-link">
+          <span>打开完整相册</span>
+          <span aria-hidden>→</span>
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="os-window-pane">
-      <NotYetOpen
-        title="生活胶囊"
-        phase="阶段 3 上线"
-        description="带照片的瞬间会在这里按时间铺开。现在还没有真实照片数据，不拿占位图冒充内容。"
-      />
-      <Link href="/gallery" className="os-pane-link">
-        <span>打开生活胶囊</span>
-        <span aria-hidden>→</span>
-      </Link>
+    <div>
+      <GalleryView images={images} variant="window" />
+      <div className="px-4 pb-4">
+        <Link href="/gallery" className="os-pane-link">
+          <span>全部照片</span>
+          <span aria-hidden>→</span>
+        </Link>
+      </div>
     </div>
   );
 }
@@ -257,16 +290,33 @@ function MoreWindowContent({ hasFriends }: { hasFriends: boolean }) {
 
 export default async function HomePage() {
   await connection();
-  const [status, life, pinned] = await Promise.all([
+  const [status, life, pinned, weather, activity] = await Promise.all([
     getStatusSentence(),
     getMoments(),
     getPinnedMoment(),
+    getWeather(),
+    getGithubActivity(),
   ]);
+
+  const galleryImages = life.available
+    ? collectGalleryImages(life.moments)
+    : [];
+  // 首页窗口只铺最近 24 张；完整相册在 /gallery。
+  const windowGallery = galleryImages.slice(0, 24);
+  const photo = galleryImages[0]
+    ? {
+        src: galleryImages[0].src,
+        momentId: galleryImages[0].momentId,
+      }
+    : null;
+  const commits14 = activity.days
+    .slice(-14)
+    .reduce((sum, day) => sum + day.count, 0);
 
   // 终端/助理不在这里：它们由 DesktopShell 的 GlobalWindows 挂载（Task 4/5）。
   const windowContent: Record<string, ReactNode> = {
     life: <LifeWindowContent life={life} />,
-    gallery: <GalleryWindowContent />,
+    gallery: <GalleryWindowContent life={life} images={windowGallery} />,
     projects: <ProjectsWindowContent />,
     snippets: <SnippetsWindowContent />,
     about: <AboutWindowContent />,
@@ -277,6 +327,17 @@ export default async function HomePage() {
     <DesktopHome
       status={status}
       windowContent={windowContent}
+      statusWidget={
+        <StatusWidget
+          weather={weather}
+          listening={portfolioNow.listening}
+          reading={portfolioNow.reading}
+          activity={activity}
+          commits14={commits14}
+          updatedAt={portfolioNow.updatedAt}
+        />
+      }
+      deskObjects={<DeskObjects photo={photo} />}
       {...(pinned ? { stickyNote: <StickyNote moment={pinned} /> } : {})}
     />
   );

@@ -2538,3 +2538,507 @@ html {
     }
   }
 }
+
+/* ============ 生活胶囊（Phase 3） ============ */
+@layer components {
+  .os-gallery-tile {
+    position: relative;
+    cursor: zoom-in;
+  }
+
+  /* 悬停/聚焦才露出的日期条；不遮住图片主体，不做圆角卡片 */
+  .os-gallery-tile-date {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    padding: 2px 6px;
+    background: color-mix(in srgb, var(--desk) 82%, transparent);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0;
+    transition: opacity 160ms ease;
+  }
+
+  .os-gallery-tile:hover .os-gallery-tile-date,
+  .os-gallery-tile:focus-visible .os-gallery-tile-date {
+    opacity: 1;
+  }
+
+  /* 灯箱背景：--desk 95%；fixed/absolute 由组件按变体决定 */
+  .os-gallery-lightbox {
+    display: flex;
+    flex-direction: column;
+    background: color-mix(in srgb, var(--desk) 95%, transparent);
+    color: var(--ink);
+  }
+
+  .os-gallery-nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--rule);
+    background: color-mix(in srgb, var(--window) 88%, transparent);
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease;
+  }
+
+  .os-gallery-nav:hover,
+  .os-gallery-nav:focus-visible {
+    border-color: var(--phosphor);
+    background: var(--window);
+    color: var(--ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .os-gallery-tile-date,
+    .os-gallery-nav {
+      transition: none;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .os-gallery-lightbox {
+      background: var(--desk);
+    }
+
+    .os-gallery-nav {
+      background: var(--window);
+    }
+  }
+}
+
+/* ============ 桌面状态组件（Phase 3） ============ */
+@layer components {
+  .os-status-widget {
+    right: 24px;
+    bottom: 64px;
+    width: 280px;
+    z-index: 12;
+  }
+
+  .os-status-card {
+    border: 1px solid var(--rule);
+    background: color-mix(in srgb, var(--window) 96%, transparent);
+    font-family: var(--font-mono);
+    transition:
+      width 200ms ease,
+      margin-left 200ms ease,
+      background-color 200ms ease;
+  }
+
+  /* 展开时向左长到 360px，右边缘保持不动 */
+  .os-status-card[data-expanded="true"] {
+    width: 360px;
+    margin-left: -80px;
+  }
+
+  .os-status-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 180ms ease;
+  }
+
+  .os-status-toggle:hover {
+    background: color-mix(in srgb, var(--window-2) 78%, transparent);
+  }
+
+  .os-status-toggle:focus-visible {
+    outline: 1px solid var(--phosphor);
+    outline-offset: -1px;
+  }
+
+  .os-status-clockline {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .os-status-clock {
+    color: var(--ink);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+
+  .os-status-date {
+    color: var(--ink-dim);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .os-status-chevron {
+    margin-left: auto;
+    color: var(--phosphor);
+    font-size: 10px;
+  }
+
+  .os-status-readings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    color: var(--ink-dim);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .os-status-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px 12px;
+    border-top: 1px solid var(--rule);
+    background: color-mix(in srgb, var(--window-2) 55%, transparent);
+  }
+
+  .os-status-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+    color: var(--ink-dim);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .os-status-value {
+    margin: 3px 0 0;
+    color: var(--ink);
+    font-family: var(--font-heading);
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .os-status-list {
+    margin: 3px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .os-status-list .os-status-value {
+    margin-top: 2px;
+  }
+
+  .os-status-na {
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  .os-status-manual {
+    padding: 0 4px;
+    border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--rule));
+    color: var(--warn);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+  }
+
+  .os-status-updated {
+    margin: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--rule);
+    color: var(--ink-dim);
+    font-size: 9px;
+    letter-spacing: 0.02em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .os-status-card,
+    .os-status-toggle {
+      transition: none;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .os-status-card,
+    .os-status-panel,
+    .os-status-toggle:hover {
+      background: var(--window);
+    }
+  }
+}
+
+/* ============ 桌面物件（Phase 3） ============ */
+@layer components {
+  /* 物件层铺满桌面，但自己不吃指针事件，只有三件东西可点 */
+  .os-desk-objects {
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .os-objects {
+    position: absolute;
+    inset: 0;
+  }
+
+  .os-objects > * {
+    pointer-events: auto;
+  }
+
+  html[data-desk-objects="off"] .os-desk-objects {
+    display: none;
+  }
+
+  /* ---------- 咖啡杯 ---------- */
+  .os-coffee {
+    position: absolute;
+    left: 24px;
+    bottom: 72px;
+    width: 48px;
+    height: 52px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .os-coffee:focus-visible {
+    outline: 1px solid var(--phosphor);
+    outline-offset: 3px;
+  }
+
+  .os-coffee-cup {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    width: 28px;
+    height: 26px;
+    border: 1px solid var(--ink-dim);
+    border-bottom-color: var(--rule);
+    background: var(--window-2);
+    transition: border-color 180ms ease;
+  }
+
+  .os-coffee-cup::after {
+    content: "";
+    position: absolute;
+    top: 5px;
+    right: -9px;
+    width: 8px;
+    height: 12px;
+    border: 1px solid var(--ink-dim);
+    border-left: 0;
+  }
+
+  .os-coffee-liquid {
+    position: absolute;
+    top: 3px;
+    right: 2px;
+    left: 2px;
+    height: 2px;
+    background: var(--phosphor);
+    opacity: 0.85;
+  }
+
+  .os-coffee-saucer {
+    position: absolute;
+    left: 3px;
+    bottom: 4px;
+    width: 40px;
+    height: 2px;
+    background: var(--rule);
+    transition: background-color 180ms ease;
+  }
+
+  .os-coffee:hover .os-coffee-cup,
+  .os-coffee:focus-visible .os-coffee-cup {
+    border-color: var(--phosphor);
+  }
+
+  .os-coffee:hover .os-coffee-saucer,
+  .os-coffee:focus-visible .os-coffee-saucer {
+    background: var(--phosphor);
+  }
+
+  .os-coffee-steam {
+    position: absolute;
+    top: 0;
+    left: 13px;
+    display: flex;
+    gap: 5px;
+  }
+
+  .os-coffee-steam span {
+    width: 2px;
+    height: 12px;
+    background: var(--ink-dim);
+    animation: os-steam-rise 2s ease-out forwards;
+  }
+
+  .os-coffee-steam span:nth-child(2) {
+    animation-delay: 160ms;
+  }
+
+  .os-coffee-steam span:nth-child(3) {
+    animation-delay: 320ms;
+  }
+
+  @keyframes os-steam-rise {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+
+    25% {
+      opacity: 0.7;
+    }
+
+    to {
+      opacity: 0;
+      transform: translateY(-24px);
+    }
+  }
+
+  /* ---------- 拍立得 ---------- */
+  .os-polaroid {
+    position: absolute;
+    right: 24px;
+    bottom: 148px;
+    display: block;
+    width: 86px;
+    padding: 4px 4px 15px;
+    border: 1px solid var(--rule);
+    background: var(--window-2);
+    transform: rotate(2deg);
+    transition:
+      transform 180ms ease-out,
+      border-color 180ms ease;
+  }
+
+  .os-polaroid:hover,
+  .os-polaroid:focus-visible {
+    border-color: var(--phosphor);
+    transform: rotate(0deg);
+  }
+
+  .os-polaroid-photo {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+
+  .os-polaroid-label {
+    position: absolute;
+    right: 0;
+    bottom: 3px;
+    left: 0;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-align: center;
+  }
+
+  /* ---------- 磁带 ---------- */
+  .os-mixtape {
+    position: absolute;
+    left: 54%;
+    bottom: 84px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transform: rotate(-1deg);
+    transition: transform 180ms ease-out;
+  }
+
+  .os-mixtape:hover,
+  .os-mixtape:focus-visible {
+    transform: rotate(0deg) translateY(-2px);
+  }
+
+  .os-mixtape-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 56px;
+    height: 34px;
+    border: 1px solid var(--rule);
+    background: var(--window-2);
+    transition: border-color 180ms ease;
+  }
+
+  .os-mixtape:hover .os-mixtape-body,
+  .os-mixtape:focus-visible .os-mixtape-body {
+    border-color: var(--phosphor);
+  }
+
+  .os-mixtape-reel {
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--ink-dim);
+    border-radius: 50%;
+    background: var(--desk);
+  }
+
+  .os-mixtape-label {
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    transition: color 180ms ease;
+  }
+
+  .os-mixtape:hover .os-mixtape-label,
+  .os-mixtape:focus-visible .os-mixtape-label {
+    color: var(--phosphor);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .os-coffee-cup,
+    .os-coffee-saucer,
+    .os-polaroid,
+    .os-mixtape,
+    .os-mixtape-body,
+    .os-mixtape-label {
+      transition: none;
+    }
+
+    .os-coffee-steam {
+      display: none;
+    }
+
+    .os-polaroid:hover,
+    .os-polaroid:focus-visible {
+      transform: rotate(2deg);
+    }
+
+    .os-mixtape:hover,
+    .os-mixtape:focus-visible {
+      transform: rotate(-1deg);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .os-coffee-cup,
+    .os-polaroid,
+    .os-mixtape-body {
+      background: var(--window);
+    }
+  }
+}
