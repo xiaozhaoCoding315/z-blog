@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { desktopTileApps } from "@/config/apps";
+import { desktopTileApps, type LinkedApp } from "@/config/apps";
 import { siteConfig } from "@/config/site";
 import { AppIcon } from "./icons";
 
@@ -14,6 +14,11 @@ type IconStyle = CSSProperties & { "--i": number };
  * 现在它是服务端组件，桌面首屏不为此多加载 JS。
  */
 export function DesktopHome({ status }: { status: string }) {
+  // 过渡期：窗口系统尚未接入，只渲染有路径的图标，避免死链。
+  const linkedApps = desktopTileApps.filter(
+    (app): app is LinkedApp => typeof app.path === "string"
+  );
+
   return (
     <div className="os-desktop">
       <header className="os-identity">
@@ -22,7 +27,7 @@ export function DesktopHome({ status }: { status: string }) {
       </header>
 
       <nav className="os-icon-grid" aria-label="应用">
-        {desktopTileApps.map((app, index) => (
+        {linkedApps.map((app, index) => (
           <Link
             key={app.id}
             href={app.path}

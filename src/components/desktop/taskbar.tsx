@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { findAppByPath, launcherApps } from "@/config/apps";
+import { findAppByPath, launcherApps, type LinkedApp } from "@/config/apps";
 import { AppIcon } from "./icons";
 import { Clock } from "./clock";
 import { Launcher } from "./launcher";
@@ -21,6 +21,10 @@ export function Taskbar({
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const current = findAppByPath(pathname);
+  // 过渡期：窗口型应用尚未接入运行时，启动器先只列有路径的项。
+  const linkedLauncherApps = launcherApps.filter(
+    (app): app is LinkedApp => typeof app.path === "string"
+  );
 
   // 回到桌面或切换应用时，外层滚动容器与移动端 window 都立即回到顶部
   useEffect(() => {
@@ -116,7 +120,7 @@ export function Taskbar({
           </button>
         </div>
 
-        {launcherOpen && <Launcher apps={launcherApps} />}
+        {launcherOpen && <Launcher apps={linkedLauncherApps} />}
         {menuOpen && (
           <SystemMenu accountMenu={accountMenu} hasFriends={hasFriends} />
         )}
