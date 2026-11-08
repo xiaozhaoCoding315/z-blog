@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { GitCommitHorizontal, Sparkles, Timer, Zap } from "lucide-react";
-import { getAllPosts } from "@/content";
+import { getAllNotes } from "@/content";
 import { getChangelog, getChangelogStats, changeTypeMeta } from "@/config/changelog";
 import { siteConfig } from "@/config/site";
 import { ActivityHeatmap } from "@/components/changelog/activity-heatmap";
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function ChangelogPage() {
   const entries = getChangelog();
   const stats = getChangelogStats();
-  const posts = getAllPosts();
+  const notes = getAllNotes();
 
   // 按年月分组
   const groups = new Map<string, typeof entries>();
@@ -29,7 +29,7 @@ export default function ChangelogPage() {
   const overview = [
     { label: "记录迭代", value: stats.entries, unit: "次", icon: GitCommitHorizontal },
     { label: "活跃天数", value: stats.activeDays, unit: "天", icon: Timer },
-    { label: "沉淀文章", value: posts.length, unit: "篇", icon: Sparkles },
+    { label: "沉淀文章", value: notes.length, unit: "篇", icon: Sparkles },
     {
       label: "最近更新",
       value: stats.lastUpdated?.slice(5).replace("-", "/") ?? "—",

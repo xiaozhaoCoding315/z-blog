@@ -1,4 +1,4 @@
-import { getAllPosts } from "@/content";
+import { getAllNotes } from "@/content";
 import { siteConfig } from "@/config/site";
 
 
@@ -11,11 +11,11 @@ function escapeXml(str: string) {
 }
 
 export async function GET() {
-  const posts = getAllPosts().filter((p) => !p.meta.draft);
+  const notes = getAllNotes().filter((p) => !p.meta.draft);
 
-  const items = posts
+  const items = notes
     .map((post) => {
-      const url = `${siteConfig.url}/blog/${post.slug}`;
+      const url = `${siteConfig.url}/notes/${post.slug}`;
       return `    <item>
       <title>${escapeXml(post.meta.title)}</title>
       <link>${url}</link>

@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAllPosts, getPostBySlug, getAdjacentPosts } from "@/content";
+import { connection } from "next/server";
+import { getAllNotes, getNoteBySlug, getAdjacentNotes } from "@/content";
 import { extractHeadings } from "@/lib/content-core";
 import { RenderMDX } from "@/lib/mdx";
 import { siteConfig } from "@/config/site";
+import { getVisibleComments } from "@/lib/comments-server";
+import { getSessionUser } from "@/lib/session";
+import { loginReady } from "@/lib/login-status";
 import { Separator } from "@/components/ui/separator";
 import { ReadingProgress } from "@/components/blog/reading-progress";
 import { TableOfContents } from "@/components/blog/toc";
@@ -12,16 +16,17 @@ import { ViewCounter } from "@/components/blog/view-counter";
 import { LikeButton } from "@/components/blog/like-button";
 import { SummaryFallback } from "@/components/blog/summary-fallback";
 import { RelatedPosts } from "@/components/blog/related-posts";
-import { Giscus } from "@/components/blog/giscus";
 import { ArticleTools } from "@/components/blog/article-tools";
+import { CommentList } from "@/components/life/comment-list";
+import { CommentForm } from "@/components/life/comment-form";
 
 export function generateStaticParams() {
-  return getAllPosts()
-    .filter((p) => !p.meta.draft)
-    .map((post) => ({ slug: post.slug }));
+  return getAllNotes()
+    .filter((note) => !note.meta.draft)
+    .map((note) => ({ slug: note.slug }));
 }
 
-// 文章内容依赖 params 生成，禁用 instant shell 以换取完整首屏
+// 笔记正文与评论都依赖 params 生成，禁用 instant shell 以换取完整首屏
 export const instant = false;
 
 export async function generateMetadata({
@@ -30,43 +35,51 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
-  if (!post) return {};
+  const note = getNoteBySlug(slug);
+  if (!note) return {};
   return {
-    title: post.meta.title,
-    description: post.meta.description,
-    keywords: post.meta.tags,
+    title: note.meta.title,
+    description: note.meta.description,
+    keywords: note.meta.tags,
     openGraph: {
       type: "article",
-      title: post.meta.title,
-      description: post.meta.description,
-      publishedTime: post.meta.date,
-      tags: post.meta.tags,
+      title: note.meta.title,
+      description: note.meta.description,
+      publishedTime: note.meta.date,
+      tags: note.meta.tags,
     },
   };
 }
 
-export default async function PostPage({
+export default async function NotePage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  // connection() 必须在任何 cookies 读取或时间计算之前
+  await connection();
   const { slug } = await params;
-  const post = getPostBySlug(slug);
-  if (!post || post.meta.draft) notFound();
+  const note = getNoteBySlug(slug);
+  if (!note || note.meta.draft) notFound();
 
-  const headings = extractHeadings(post.content);
-  const { prev, next } = getAdjacentPosts(slug);
-  const relatedFallback = getAllPosts()
+  const [comments, user] = await Promise.all([
+    getVisibleComments("note", slug),
+    getSessionUser(),
+  ]);
+  const ready = loginReady();
+
+  const headings = extractHeadings(note.content);
+  const { prev, next } = getAdjacentNotes(slug);
+  const relatedFallback = getAllNotes()
     .filter(
-      (p) =>
-        p.slug !== slug && p.meta.tags.some((t) => post.meta.tags.includes(t)),
+      (n) =>
+        n.slug !== slug && n.meta.tags.some((t) => note.meta.tags.includes(t)),
     )
     .slice(0, 3)
-    .map((p) => ({ slug: p.slug, title: p.meta.title }));
+    .map((n) => ({ slug: n.slug, title: n.meta.title }));
 
   // 中文字数：正文去掉代码块后的字符数，比「字数」更能反映阅读量
-  const charCount = post.content.replace(/\s+/g, "").length;
+  const charCount = note.content.replace(/\s+/g, "").length;
 
   return (
     <>
@@ -82,57 +95,53 @@ export default async function PostPage({
           </aside>
 
           <div className="mx-auto w-full max-w-3xl">
-            {/* 文章头部 */}
+            {/* 笔记头部 */}
             <header>
               <Link
-                href="/blog"
+                href="/notes"
                 className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
               >
-                ← 文章
+                ← 笔记
               </Link>
               <h1 className="mt-4 font-heading text-2xl font-bold leading-tight tracking-[-0.02em] text-balance sm:text-3xl">
-                {post.meta.title}
+                {note.meta.title}
               </h1>
 
               {/* 元信息栏：一行等宽小字，不画盒子 */}
               <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border pb-3 font-mono text-[11px] text-muted-foreground">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <time dateTime={post.meta.date}>
-                    {post.meta.date.replace(/-/g, ".")}
+                  <time dateTime={note.meta.date}>
+                    {note.meta.date.replace(/-/g, ".")}
                   </time>
                   <span aria-hidden>·</span>
-                  <span>{post.readingText}</span>
+                  <span>{note.readingText}</span>
                   <span aria-hidden>·</span>
                   <span className="tabular-nums">
                     {charCount.toLocaleString()} 字
                   </span>
                   <span aria-hidden>·</span>
                   <ViewCounter slug={slug} />
-                  {post.meta.tags.map((tag) => (
-                    <Link
-                      key={tag}
-                      href={`/blog/tag/${encodeURIComponent(tag)}`}
-                      className="text-foreground/60 transition-colors hover:text-primary hover:underline hover:underline-offset-4"
-                    >
+                  {note.meta.tags.map((tag) => (
+                    <span key={tag} className="text-foreground/60">
                       {tag}
-                    </Link>
+                    </span>
                   ))}
                 </div>
                 <LikeButton slug={slug} />
               </div>
 
-              {post.meta.cover && (
+              {note.meta.cover && (
                 <figure className="mt-6">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={post.meta.cover}
+                    src={note.meta.cover}
                     alt=""
                     className="w-full rounded-sm border border-border object-cover"
                   />
                 </figure>
               )}
 
-              {!post.meta.description && <SummaryFallback slug={slug} />}
+              {!note.meta.description && <SummaryFallback slug={slug} />}
             </header>
 
             <div className="my-8">
@@ -140,13 +149,13 @@ export default async function PostPage({
             </div>
 
             <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none">
-              <RenderMDX source={post.content} />
+              <RenderMDX source={note.content} />
             </div>
 
             {/* 上一篇 / 下一篇 */}
             <nav className="mt-14 grid gap-x-6 border-t border-border pt-4 sm:grid-cols-2">
               {prev ? (
-                <Link href={`/blog/${prev.slug}`} className="group py-2">
+                <Link href={`/notes/${prev.slug}`} className="group py-2">
                   <span className="font-mono text-[11px] text-muted-foreground">
                     ← 上一篇
                   </span>
@@ -159,7 +168,7 @@ export default async function PostPage({
               )}
               {next && (
                 <Link
-                  href={`/blog/${next.slug}`}
+                  href={`/notes/${next.slug}`}
                   className="group py-2 sm:text-right"
                 >
                   <span className="font-mono text-[11px] text-muted-foreground">
@@ -174,12 +183,41 @@ export default async function PostPage({
 
             <RelatedPosts slug={slug} fallback={relatedFallback} />
 
-            {/* 评论 */}
-            <section className="mt-14">
-              <h2 className="mb-5 font-heading text-lg font-bold tracking-tight">
+            {/* 评论：复用阶段 3 的站内评论系统，目标类型为 note */}
+            <section className="mt-14 border-t border-border pt-8">
+              <h2 className="font-heading text-lg font-bold tracking-tight">
                 评论
               </h2>
-              <Giscus />
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                {comments.available
+                  ? `${comments.comments.length} 条`
+                  : "Not Available"}
+              </p>
+              <div className="mt-4">
+                <CommentList
+                  comments={comments.comments}
+                  available={comments.available}
+                />
+              </div>
+              <div className="mt-8">
+                {user ? (
+                  <CommentForm targetType="note" targetId={slug} />
+                ) : ready ? (
+                  <p className="text-[14px] leading-relaxed text-muted-foreground">
+                    登录后可以评论。
+                    <Link
+                      href="/login"
+                      className="ml-1 border border-data px-2 py-0.5 font-mono text-[11px] text-data transition-colors hover:text-foreground"
+                    >
+                      去登录
+                    </Link>
+                  </p>
+                ) : (
+                  <p className="text-[14px] leading-relaxed text-muted-foreground">
+                    登录暂未开放（服务器还没配好发信），浏览不受影响。
+                  </p>
+                )}
+              </div>
             </section>
           </div>
         </div>
@@ -191,10 +229,10 @@ export default async function PostPage({
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "BlogPosting",
-            headline: post.meta.title,
-            datePublished: post.meta.date,
+            headline: note.meta.title,
+            datePublished: note.meta.date,
             author: { "@type": "Person", name: siteConfig.author.name },
-            keywords: post.meta.tags.join(", "),
+            keywords: note.meta.tags.join(", "),
           }),
         }}
       />

@@ -136,7 +136,7 @@ ${
     slug: chunk.post_slug,
     title: chunk.title,
     heading: chunk.heading,
-    href: `/blog/${chunk.post_slug}${
+    href: `/notes/${chunk.post_slug}${
       chunk.heading ? `#${githubSlug(chunk.heading)}` : ""
     }`,
   }));

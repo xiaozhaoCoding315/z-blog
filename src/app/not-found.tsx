@@ -16,7 +16,7 @@ export default function NotFound() {
         <Link href="/" className="link-underline">
           ← 回首页
         </Link>
-        <Link href="/blog" className="link-underline">
+        <Link href="/notes" className="link-underline">
           浏览文章
         </Link>
       </p>

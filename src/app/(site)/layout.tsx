@@ -5,11 +5,11 @@ import { Footer } from "@/components/site/footer";
 import { AccountMenu } from "@/components/site/account-menu";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { SearchPalette } from "@/components/search/search-palette";
-import { getAllPosts } from "@/content";
+import { getAllNotes } from "@/content";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
-  const posts = getAllPosts().filter((p) => !p.meta.draft);
-  const searchable = posts.map((p) => ({
+  const notes = getAllNotes().filter((p) => !p.meta.draft);
+  const searchable = notes.map((p) => ({
     slug: p.slug,
     title: p.meta.title,
     tags: p.meta.tags,

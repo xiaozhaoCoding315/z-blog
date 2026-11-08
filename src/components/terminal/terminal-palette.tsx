@@ -129,7 +129,7 @@ export function TerminalPalette({
         navigate("/", "首页");
         break;
       case "blog":
-        navigate("/blog", "博客");
+        navigate("/notes", "笔记");
         break;
       case "projects":
         navigate("/projects", "项目");
@@ -161,7 +161,7 @@ export function TerminalPalette({
         const byIndex = posts[Number(arg) - 1];
         const target =
           byIndex ?? posts.find((p) => p.slug === arg || p.slug.includes(arg));
-        if (target) navigate(`/blog/${target.slug}`, target.title);
+        if (target) navigate(`/notes/${target.slug}`, target.title);
         else print("error", `没有找到文章：${arg}`);
         break;
       }

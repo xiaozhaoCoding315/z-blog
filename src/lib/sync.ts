@@ -2,7 +2,7 @@ import { inArray, notInArray, sql } from "drizzle-orm";
 import { embedMany, generateText } from "ai";
 import { getDb, ensureSchema } from "@/db/client";
 import { chunks, posts as postsTable } from "@/db/schema";
-import { listRawPosts } from "@/lib/content-core";
+import { listRawNotes } from "@/lib/content-core";
 import { chunkMarkdown } from "@/lib/chunk";
 import {
   chatEnabled,
@@ -43,7 +43,7 @@ export async function syncPosts(options?: {
   }
   await ensureSchema();
 
-  const fsPosts = listRawPosts().filter((p) => !p.meta.draft);
+  const fsPosts = listRawNotes().filter((p) => !p.meta.draft);
   const existing = await db.select().from(postsTable);
   const existingBySlug = new Map(existing.map((row) => [row.slug, row]));
 

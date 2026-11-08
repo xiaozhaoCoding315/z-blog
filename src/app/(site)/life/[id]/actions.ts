@@ -7,7 +7,7 @@ import { getSessionUser } from "@/lib/session";
 import { parseCommentInput } from "@/lib/community-input";
 import { rateLimit } from "@/lib/rate-limit";
 import { getMomentById } from "@/lib/moments-server";
-import { getPostBySlug } from "@/content";
+import { getNoteBySlug } from "@/content";
 
 export interface CommentFormState {
   error?: string;
@@ -38,8 +38,7 @@ export async function submitComment(
     if (!target.available) return { error: "动态暂时读不到，稍后再试" };
     if (!target.moment) return { error: "这条动态不存在" };
   } else {
-    // 阶段 5 会改名为 getNoteBySlug，本阶段先用现有接口
-    const note = getPostBySlug(targetId);
+    const note = getNoteBySlug(targetId);
     // 草稿也在磁盘上，但草稿不能成为评论目标
     if (!note || note.meta.draft) return { error: "这篇笔记不存在" };
   }

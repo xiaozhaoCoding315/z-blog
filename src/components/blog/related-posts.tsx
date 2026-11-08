@@ -58,7 +58,7 @@ export function RelatedPosts({
         {items.map((item) => (
           <Link
             key={item.slug}
-            href={`/blog/${item.slug}`}
+            href={`/notes/${item.slug}`}
             className="card-surface-hover rounded-lg p-4 text-sm font-medium leading-snug"
           >
             {item.title}

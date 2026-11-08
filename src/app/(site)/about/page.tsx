@@ -128,11 +128,11 @@ export default async function AboutPage() {
           </p>
           <p>
             实现细节都写在文章里，从
-            <Link href="/blog/build-blog-with-nextjs" className="link-underline mx-1">
+            <Link href="/notes/build-blog-with-nextjs" className="link-underline mx-1">
               建站过程
             </Link>
             到
-            <Link href="/blog/rag-powered-blog" className="link-underline mx-1">
+            <Link href="/notes/rag-powered-blog" className="link-underline mx-1">
               RAG 检索
             </Link>
             都有拆解。

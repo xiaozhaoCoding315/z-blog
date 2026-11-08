@@ -121,7 +121,7 @@ export function SearchPalette({ posts }: { posts: SearchablePost[] }) {
               <CommandItem
                 key={`s-${item.post_slug}`}
                 value={`semantic-${item.post_slug}`}
-                onSelect={() => navigate(`/blog/${item.post_slug}`)}
+                onSelect={() => navigate(`/notes/${item.post_slug}`)}
               >
                 <Sparkles className="size-4 shrink-0 text-primary" />
                 <div className="min-w-0 flex-1">
@@ -144,7 +144,7 @@ export function SearchPalette({ posts }: { posts: SearchablePost[] }) {
             <CommandItem
               key={post.slug}
               value={`local-${post.slug}`}
-              onSelect={() => navigate(`/blog/${post.slug}`)}
+              onSelect={() => navigate(`/notes/${post.slug}`)}
             >
               <FileText className="size-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0 flex-1">

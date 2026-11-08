@@ -51,7 +51,7 @@ export const siteConfig = {
     { title: "信箱", href: "/letters" },
   ],
   footerNav: [
-    { title: "笔记", href: "/blog" },
+    { title: "笔记", href: "/notes" },
     { title: "项目", href: "/projects" },
     { title: "日志", href: "/changelog" },
     { title: "友链", href: "/friends" },

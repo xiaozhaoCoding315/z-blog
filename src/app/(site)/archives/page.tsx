@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAllPosts } from "@/content";
+import { getAllNotes } from "@/content";
 import { siteConfig } from "@/config/site";
 import { getUptimeSnapshot } from "@/lib/uptime-server";
 
@@ -20,7 +20,7 @@ function monthLabel(month: number) {
 }
 
 export default async function ArchivesPage() {
-  const posts = getAllPosts();
+  const posts = getAllNotes();
   const uptime = await getUptimeSnapshot();
 
   // 年份 → 12 个月的篇数。空月份保留为 0：空白本身也是信息，
@@ -171,7 +171,7 @@ export default async function ArchivesPage() {
                 {list.map((post) => (
                   <li key={post.slug}>
                     <Link
-                      href={`/blog/${post.slug}`}
+                      href={`/notes/${post.slug}`}
                       className="group grid grid-cols-[4rem_minmax(0,1fr)_auto] items-baseline gap-x-4 border-b border-border/60 py-3"
                     >
                       <span className="font-mono text-[11px] tabular-nums text-muted-foreground">

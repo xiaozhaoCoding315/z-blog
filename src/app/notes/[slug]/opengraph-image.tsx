@@ -1,10 +1,10 @@
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { getAllPosts, getPostBySlug } from "@/content";
+import { getAllNotes, getNoteBySlug } from "@/content";
 import { siteConfig } from "@/config/site";
 
-export const alt = "文章分享卡片";
+export const alt = "笔记分享卡片";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -46,9 +46,9 @@ async function loadFont(name: string, cache: "serif" | "sans") {
 }
 
 export function generateStaticParams() {
-  return getAllPosts()
-    .filter((p) => !p.meta.draft)
-    .map((post) => ({ slug: post.slug }));
+  return getAllNotes()
+    .filter((note) => !note.meta.draft)
+    .map((note) => ({ slug: note.slug }));
 }
 
 export default async function PostOgImage({
@@ -57,16 +57,16 @@ export default async function PostOgImage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const note = getNoteBySlug(slug);
 
   const [serif, sans] = await Promise.all([
     loadFont("NotoSerifSC-Bold.ttf", "serif"),
     loadFont("NotoSansSC-Bold.ttf", "sans"),
   ]);
 
-  const title = post?.meta.title ?? siteConfig.title;
-  const tags = post?.meta.tags.slice(0, 3) ?? [];
-  const date = post?.meta.date ?? "";
+  const title = note?.meta.title ?? siteConfig.title;
+  const tags = note?.meta.tags.slice(0, 3) ?? [];
+  const date = note?.meta.date ?? "";
   const fonts = [
     ...(serif ? [{ name: "Serif SC", data: serif, weight: 700 as const }] : []),
     ...(sans ? [{ name: "Sans SC", data: sans, weight: 700 as const }] : []),
@@ -89,7 +89,7 @@ export default async function PostOgImage({
           padding: "64px 72px",
         }}
       >
-        {/* 左侧竖线：文章页的页边线搬到卡片上，是这套视觉里最认得出来的一个记号 */}
+        {/* 左侧竖线：笔记页的页边线搬到卡片上，是这套视觉里最认得出来的一个记号 */}
         <div
           style={{
             width: 2,

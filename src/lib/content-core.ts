@@ -1,5 +1,5 @@
 /**
- * 内容层核心：读取与解析 content/posts 下的 MDX 文章。
+ * 内容层核心：读取与解析 content/notes 下的 MDX 笔记。
  * 纯 Node 模块，RSC 与同步脚本（scripts/sync.ts）共用。
  */
 import fs from "node:fs";
@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import matter from "gray-matter";
 import { z } from "zod";
 
-export const POSTS_DIR = path.join(process.cwd(), "content", "posts");
+export const NOTES_DIR = path.join(process.cwd(), "content", "notes");
 
 /** 兼容加引号的字符串日期与 YAML 原生 Date 两种写法 */
 const dateSchema = z
@@ -18,7 +18,7 @@ const dateSchema = z
     message: "日期格式应为 YYYY-MM-DD",
   });
 
-export const postMetaSchema = z.object({
+export const noteMetaSchema = z.object({
   title: z.string().min(1),
   date: dateSchema,
   // YAML 中 `description:` 留空会解析为 null，这里一并放行（null 视为未写，AI 摘要兜底）
@@ -29,20 +29,20 @@ export const postMetaSchema = z.object({
   tags: z.array(z.string()).default([]),
   pinned: z.boolean().default(false),
   draft: z.boolean().default(false),
-  /** 封面图：/images/... 下的相对路径；不写则文章顶部直接进正文 */
+  /** 封面图：/images/... 下的相对路径；不写则笔记顶部直接进正文 */
   cover: z.string().nullish(),
 });
 
-export type PostMeta = z.infer<typeof postMetaSchema>;
+export type NoteMeta = z.infer<typeof noteMetaSchema>;
 
-export interface Post {
+export interface Note {
   slug: string;
-  meta: PostMeta;
+  meta: NoteMeta;
   content: string;
   /** 原始 markdown 字符数（用于同步时的内容哈希） */
   readingMinutes: number;
   readingText: string;
-  /** 内容哈希：同步脚本用它跳过未变更的文章 */
+  /** 内容哈希：同步脚本用它跳过未变更的笔记 */
   hash: string;
 }
 
@@ -68,14 +68,14 @@ export function contentHash(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
 }
 
-function parseFile(filepath: string): Post | null {
+function parseFile(filepath: string): Note | null {
   const slug = path.basename(filepath, ".mdx");
   const raw = fs.readFileSync(filepath, "utf-8");
   const { data, content } = matter(raw);
-  const parsed = postMetaSchema.safeParse(data);
+  const parsed = noteMetaSchema.safeParse(data);
   if (!parsed.success) {
     console.warn(
-      `[content] 文章 ${slug} 的 frontmatter 不合法，已跳过：`,
+      `[content] 笔记 ${slug} 的 frontmatter 不合法，已跳过：`,
       parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
     );
     return null;
@@ -91,37 +91,37 @@ function parseFile(filepath: string): Post | null {
   };
 }
 
-/** 列出所有文章（含草稿），按日期倒序 */
-export function listRawPosts(): Post[] {
-  if (!fs.existsSync(POSTS_DIR)) return [];
+/** 列出所有笔记（含草稿），按日期倒序 */
+export function listRawNotes(): Note[] {
+  if (!fs.existsSync(NOTES_DIR)) return [];
   return fs
-    .readdirSync(POSTS_DIR)
+    .readdirSync(NOTES_DIR)
     .filter((f) => f.endsWith(".mdx"))
-    .map((f) => parseFile(path.join(POSTS_DIR, f)))
-    .filter((p): p is Post => p !== null)
+    .map((f) => parseFile(path.join(NOTES_DIR, f)))
+    .filter((p): p is Note => p !== null)
     .sort(
       (a, b) =>
         new Date(b.meta.date).getTime() - new Date(a.meta.date).getTime()
     );
 }
 
-export function getRawPost(slug: string): Post | null {
-  const filepath = path.join(POSTS_DIR, `${slug}.mdx`);
+export function getRawNote(slug: string): Note | null {
+  const filepath = path.join(NOTES_DIR, `${slug}.mdx`);
   if (!fs.existsSync(filepath)) return null;
   return parseFile(filepath);
 }
 
-export function getAllTags(posts: Post[]): { tag: string; count: number }[] {
+export function getAllTags(notes: Note[]): { tag: string; count: number }[] {
   const map = new Map<string, number>();
-  for (const p of posts) {
-    for (const t of p.meta.tags) map.set(t, (map.get(t) ?? 0) + 1);
+  for (const note of notes) {
+    for (const t of note.meta.tags) map.set(t, (map.get(t) ?? 0) + 1);
   }
   return [...map.entries()]
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count);
 }
 
-/** 从 markdown 提取二级/三级标题，用于文章目录 TOC */
+/** 从 markdown 提取二级/三级标题，用于笔记目录 TOC */
 export function extractHeadings(markdown: string): {
   level: 2 | 3;
   text: string;
