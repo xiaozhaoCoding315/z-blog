@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { getSessionUser } from "@/lib/session";
 
 /**
@@ -6,6 +7,10 @@ import { getSessionUser } from "@/lib/session";
  * 关 JS 也能展开，键盘焦点天然可达。
  */
 export async function AccountMenu() {
+  // 会话过期判断会读 Date.now()，属于预渲染时的不稳定值；
+  // 必须先声明请求时渲染，菜单不进静态预渲染，布局里的 Suspense 边界保住站点外壳静态。
+  await connection();
+
   const user = await getSessionUser();
   if (!user) {
     return (
