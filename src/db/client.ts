@@ -134,6 +134,10 @@ export async function ensureSchema() {
   await db.execute(
     sql`CREATE INDEX IF NOT EXISTS moments_published_idx ON moments (published_at DESC)`
   );
+  // 老库的 moments 建表早于 tags 列，CREATE TABLE IF NOT EXISTS 不会补列
+  await db.execute(
+    sql`ALTER TABLE moments ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]'::jsonb`
+  );
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS interview_mastery (
       user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -56,6 +56,19 @@ test("images 只留 /media/ 开头的路径", () => {
   assert.deepEqual(m.images, ["/media/2026/11/a.webp"]);
 });
 
+test("tags 非空才赋字段，空数组与缺省都不出现", () => {
+  const tagged = toMoment(row({ tags: ["杭州", "雨天"] }));
+  assert.deepEqual(tagged.tags, ["杭州", "雨天"]);
+
+  const empty = toMoment(row({ tags: [] }));
+  assert.equal(empty.tags, undefined);
+  assert.equal("tags" in empty, false);
+
+  const legacy = toMoment(row());
+  assert.equal(legacy.tags, undefined);
+  assert.equal("tags" in legacy, false);
+});
+
 test("card 只有四类形态才带，且字段必须齐", () => {
   const card = { title: "Merry Christmas Mr. Lawrence", meta: "坂本龍一" };
   assert.ok(toMoment(row({ kind: "song", card })).card);

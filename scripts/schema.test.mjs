@@ -88,6 +88,11 @@ test("moments 有发布时间的倒序索引，且卡片数据能落库", () => 
     ddl,
     /CREATE INDEX IF NOT EXISTS moments_published_idx ON moments \(published_at DESC\)/
   );
+  // 已有部署走不到 CREATE TABLE：标签列必须靠幂等 ALTER 补上
+  assert.match(
+    ddl,
+    /ALTER TABLE moments ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '\[\]'::jsonb/
+  );
 });
 
 test("drizzle schema 与 DDL 逐列对得上", () => {
