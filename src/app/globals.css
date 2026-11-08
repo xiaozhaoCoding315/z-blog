@@ -951,6 +951,8 @@ html {
     border: 1px solid transparent;
     color: var(--ink);
     text-align: center;
+    /* 触屏双击不缩放：图标本身的双击是“打开”，不需要浏览器的 300ms 缩放判定 */
+    touch-action: manipulation;
     animation: os-icon-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: calc(var(--i) * 30ms);
     transition:

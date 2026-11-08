@@ -35,7 +35,6 @@ interface DesktopHomeProps {
 
 const HINT_KEY = "z-os:hint";
 const MOBILE_QUERY = "(max-width: 767px)";
-const GRID_COLUMNS = 3;
 
 function isMobileViewport() {
   return window.matchMedia(MOBILE_QUERY).matches;
@@ -137,15 +136,17 @@ export function DesktopHome({
   };
 
   const onGridKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    // 桌面 3 列、移动端 CSS 是 4 列；在按键时取当前布局，避免渲染期读 matchMedia。
+    const columns = isMobileViewport() ? 4 : 3;
     const delta =
       event.key === "ArrowLeft"
         ? -1
         : event.key === "ArrowRight"
           ? 1
           : event.key === "ArrowUp"
-            ? -GRID_COLUMNS
+            ? -columns
             : event.key === "ArrowDown"
-              ? GRID_COLUMNS
+              ? columns
               : 0;
     if (delta === 0) return;
 

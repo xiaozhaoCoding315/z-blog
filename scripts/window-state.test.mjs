@@ -28,6 +28,30 @@ test("minimize 保留窗口，restore 重新置顶", () => {
   assert.ok(state.windows.life.z > 2);
 });
 
+test("minimize 聚焦窗口后焦点落到剩余可见窗口", () => {
+  let state = windowReducer(initialWindowStore, { type: "open", id: "life", rect });
+  state = windowReducer(state, { type: "open", id: "gallery", rect });
+  assert.equal(state.windows.gallery.z, state.zCounter);
+
+  state = windowReducer(state, { type: "minimize", id: "gallery" });
+  assert.equal(state.windows.gallery.minimized, true);
+  assert.equal(state.windows.life.z, state.zCounter);
+});
+
+test("close 聚焦窗口后焦点回落；关闭最后一个不崩溃", () => {
+  let state = windowReducer(initialWindowStore, { type: "open", id: "life", rect });
+  state = windowReducer(state, { type: "open", id: "gallery", rect });
+  assert.equal(state.windows.gallery.z, state.zCounter);
+
+  state = windowReducer(state, { type: "close", id: "gallery" });
+  assert.equal(state.windows.gallery, undefined);
+  assert.equal(state.windows.life.z, state.zCounter);
+
+  state = windowReducer(state, { type: "close", id: "life" });
+  assert.deepEqual(state.windows, {});
+  assert.equal(state.zCounter, 2);
+});
+
 test("maximize 保存 restoreRect，还原回原 rect", () => {
   let state = windowReducer(initialWindowStore, { type: "open", id: "life", rect });
   state = windowReducer(state, { type: "toggleMaximize", id: "life" });
