@@ -51,11 +51,15 @@ export function AppFrame({ children }: { children: ReactNode }) {
   const titleId = useId();
   const canFocus = /^\/notes\/[^/]+$/.test(pathname);
 
-  // 窗口内部滚动，Next 默认的 window 滚动复位够不到；进应用时手动回到顶部
+  // 窗口内部滚动，Next 默认的 window 滚动复位够不到；进应用时手动回到顶部。
+  // 必须用 instant：CSS 的 scroll-behavior: smooth 会让 behavior: "auto" 也走平滑动画，
+  // 新页面会从上一页的偏移量慢慢滚上来。
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
-    scrollRef.current?.closest<HTMLElement>(".os-main")?.scrollTo({ top: 0 });
-    window.scrollTo({ top: 0 });
+    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+    scrollRef.current
+      ?.closest<HTMLElement>(".os-main")
+      ?.scrollTo({ top: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, behavior: "instant" });
   }, [pathname]);
 
   useEffect(() => {
