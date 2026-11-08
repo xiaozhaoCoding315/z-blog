@@ -545,7 +545,7 @@ git commit -m "docs(phase-5): 验收结果——迁移、旧链接、RSS 与上�
 
 ## 验收结果
 
-验收时间：2026-11-08 至 2026-11-09。环境：Windows 11、Node 24、Next.js 16.4.3、本地生产构建 + 本地 Postgres 17（pgvector，`zb-check-db`）。分支 `refactor/personal-space`，HEAD `f101f8e`，工作树干净；未推送、未部署、未合并 `main`。
+验收时间：2026-11-08 至 2026-11-09。环境：Windows 11、Node 24、Next.js 16.4.3、本地生产构建 + 本地 Postgres 17（pgvector，`zb-check-db`）。分支 `refactor/personal-space`；验收时 HEAD `f101f8e`，最终评审修复后代码 HEAD `333b379`，工作树干净；未推送、未部署、未合并 `main`。
 
 ### 1. 门禁
 
@@ -553,9 +553,9 @@ git commit -m "docs(phase-5): 验收结果——迁移、旧链接、RSS 与上�
 | --- | --- |
 | `npm run type-check` | exit 0，`✓ Types generated successfully` |
 | `npm run lint` | exit 0，无输出 |
-| `npm test` | exit 0：78 tests / 78 pass / 0 fail |
+| `npm test` | exit 0：81 tests / 81 pass / 0 fail（验收时 78；最终评审新增 3 条 slug 测试） |
 | `node scripts/check-content.mjs` | exit 0：「检查了 10 篇笔记：0 个错误，0 个提醒」 |
-| `npm run build` | exit 0；Turbopack 构建成功，56/56 静态页生成 |
+| `npm run build` | exit 0；Turbopack 构建成功，55/55 静态页生成（`/archives` 页面删除后；验收时为 56/56） |
 
 构建路由表关键项：`/notes`、`/journal`、`/shelf`、`/playlist`、`/letters`、`/notes/[slug]`（10 个 `generateStaticParams` 路径）、`/feed.xml`（ƒ）、`/sitemap.xml`（ƒ）、`/robots.txt`（○）、`/blog/[slug]`（ƒ，旧链接兜底）、`/admin`（ƒ）。构建日志有两条既有 `uploads-server.ts` 文件系统 tracing 警告，与阶段 5 无关。
 
@@ -620,7 +620,7 @@ git commit -m "docs(phase-5): 验收结果——迁移、旧链接、RSS 与上�
 **已知偏差（需在最终评审/上线时定夺，不在验收中擅自改代码）**
 
 1. **未知笔记是软 404**：`/notes/kafka-exactly-once-truth` 返回 HTTP 200 + 「这一页不在」404 UI + `noindex`，不是硬 404。原因是 `cacheComponents` 下 `/notes/[slug]` 仍先发出静态壳，流式渲染中的 `notFound()` 无法再改状态码；阶段 2 的 `/life/[id]` 已记录同一 PPR 取舍。页面表现与抓取语义（noindex）正确，硬 404 需要让路由退出 PPR 或增加 Proxy 级存在性检查，留待最终评审决定。另：该响应同时带有 `notFound()` 注入的 `noindex` 与布局的 `index, follow` 两个 robots meta，按搜索引擎「取最严格」规则应以 noindex 为准，但两条并存本身是 Minor。
-2. **`/archives` 页面文件仍保留**：计划文件结构曾列「删除 `src/app/(site)/archives/page.tsx`」，Task 2 评审时明确保留该文件并由 `next.config.ts` 的 308 重定向覆盖；本次构建仍生成 `/archives` 静态页，但运行时请求先命中重定向。若最终决定严格按计划删除，只需删文件并保留重定向，不影响 `/archives` 的 308 行为。
+2. **`/archives` 页面文件曾保留（已处理）**：Task 2 评审时曾保留该文件并由 `next.config.ts` 的 308 重定向覆盖，构建仍会生成 `/archives` 静态页。最终评审修复 `bf17ff8` 已删除 `src/app/(site)/archives/page.tsx`，只保留 308 重定向；构建路由表不再生成 `/archives`。
 
 **未完成项（实际部署未执行）**
 
@@ -629,6 +629,19 @@ git commit -m "docs(phase-5): 验收结果——迁移、旧链接、RSS 与上�
 - 上线前必须在**本地构建机**用 `NEXT_PUBLIC_SITE_URL=https://…` 与 `NEXT_PUBLIC_CONTACT_EMAIL=…` 重新构建镜像；只改服务器 `.env` 或只重启容器不生效。详见 `DEPLOY.md` §6。
 - 分支未推送、未部署、未合并 `main`；完整改版仍等待用户决定推送与上线时间。
 
-### 7. 结论
+### 7. 最终评审与修复
 
-阶段 5 的代码、内容迁移、旧链接、RSS/sitemap、死链与后台权限均通过本地验收；可以进入最终整枝评审。两处已知偏差（软 404、`/archives` 页面保留）不影响站内可用性，但应在合并/上线前由最终评审明确处理方式。
+- 整枝评审：opus，范围 `6dbb500..1496d00`（22 个提交），结论 **With fixes**：0 Critical / 4 Important / 6 Minor。
+- 第一轮修复 `bf17ff8`：
+  1. 笔记 slug 路径穿越：新增 `isValidNoteSlug` 白名单与目录边界断言，运行镜像只保留 `content/notes`；
+  2. `/api/sync` 缺少 `SYNC_SECRET` 时由 fail-open 改为 fail-closed（503），入口脚本跳过自动同步；
+  3. 五处表单按钮由语义色底改为描边样式；
+  4. `DEPLOY.md` 修正 XFF 覆盖写入、本地构建机 `NEXT_PUBLIC_*` 前提等；
+  5. Minor：删除 `/archives` 死页面（保留 308）、草稿元数据与 OG 不泄露标题、驳回歌曲同时取消置顶、信件提交成功清空草稿、README 措辞与 301→308 修正。
+- 二次复审：Important 1–3 通过；Important 4 仍不完整（`DEPLOY.md` §0、§2 方式 A 与 OOM FAQ 仍指导 2C2G 在服务器构建），另发现脚手架与内容检查的 slug 正则不一致。
+- 第二轮修复 `333b379`：DEPLOY 全篇统一为「2C2G 一律本地构建，仅内存 ≥ 4G 才可选择服务器构建」；`new-post.mjs` 与 `check-content.mjs` 对齐 `isValidNoteSlug` 规则，坏文件名在构建前被拦截。
+- 聚焦复审：**Approved**，0 Critical / 0 Important；2 条文档措辞 Minor 已在验收文档提交中顺手澄清（构建缓存指此前服务器构建遗留；FAQ 区分 2C2G 与 ≥4G）。最终门禁：81/81 测试、`check-content` 10 篇 0 错误、构建 55/55 静态页。
+
+### 8. 结论
+
+阶段 5 的代码、内容迁移、旧链接、RSS/sitemap、死链与后台权限均通过本地验收；最终整枝评审的 4 项 Important 与新增 Minor 均已关闭。唯一保留的已知偏差是 PPR 下的软 404（与阶段 2 `/life/[id]` 同一取舍），页面显示与 noindex 语义正确，不影响站内可用性。实际部署仍未执行，分支未推送、未部署、未合并 `main`。

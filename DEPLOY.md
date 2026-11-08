@@ -209,11 +209,11 @@ gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog bl
 4. **`uploads` 命名卷可写、重启后图片仍在**
    发布一条图文动态，确认图片能正常显示；`docker compose restart app` 后再次访问，图片仍在。`docker volume inspect blog_uploads` 应能看到挂载点，重建容器不会清空卷。
 5. **2C2G 服务器不构建镜像**
-   始终在本地构建并用 `scripts/deploy.sh` 上传，服务器只 `docker load` + `docker compose up -d --no-build`。上线前清理 Docker 构建缓存（服务器当前剩余 16G，缓存约 7.7G）：`docker system df` 查看占用，`docker builder prune -af` 清理后再次确认磁盘余量。
+   始终在本地构建并用 `scripts/deploy.sh` 上传，服务器只 `docker load` + `docker compose up -d --no-build`。上线前清理服务器上此前构建遗留的 Docker 构建缓存（当时服务器剩余 16G，缓存约 7.7G）：`docker system df` 查看占用，`docker builder prune -af` 清理后再次确认磁盘余量。
 
 ## 常见问题
 
-**Q：改了 `.env` 不生效？** 环境变量在构建期（NEXT_PUBLIC_*）和运行期都会用到：本地重新构建并用 `scripts/deploy.sh` 发布；服务器只执行 `docker compose up -d --no-build`（2C2G 禁止在服务器构建）。
+**Q：改了 `.env` 不生效？** 环境变量在构建期（NEXT_PUBLIC_*）和运行期都会用到：本地重新构建并用 `scripts/deploy.sh` 发布；2C2G 服务器只执行 `docker compose up -d --no-build`（禁止在服务器构建）；内存 ≥ 4G 且选择服务器直接构建的，按 §2/§3 方式 A 重新构建。
 
 **Q：AI 问答报「AI 功能未启用」？** 检查 `.env` 的 `AI_API_KEY`（智谱）和 `EMBEDDING_API_KEY`（百炼），然后 `docker compose restart app`。
 
