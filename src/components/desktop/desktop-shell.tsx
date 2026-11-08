@@ -1,17 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, type ReactNode } from "react";
+import dynamic from "next/dynamic";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { publicApps } from "@/config/apps";
 import type {
   TerminalNote,
   TerminalSnippet,
 } from "@/components/terminal/commands";
+import type { SearchableNote } from "@/components/search/search-local";
 import { DesktopRuntimeContext } from "./desktop-runtime";
 import { GlobalWindows } from "./global-windows";
 import { Taskbar } from "./taskbar";
 import { useDesktopSettings } from "./use-desktop-settings";
 import { useWindowManager } from "./use-window-manager";
 import { Wallpaper } from "./wallpaper";
+
+// cmdk 与 Spotlight 只在这个 chunk 里；首屏不加载。
+const SearchPalette = dynamic(
+  () =>
+    import("@/components/search/search-palette").then(
+      (mod) => mod.SearchPalette
+    ),
+  { ssr: false }
+);
 
 /**
  * 桌面外壳：窗口系统与桌面预设的唯一状态源。
@@ -43,17 +60,26 @@ export function DesktopShell({
   const windows = useWindowManager();
   const settings = useDesktopSettings();
   const { openApp } = windows;
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
 
   const openTerminal = useCallback(() => openApp("terminal"), [openApp]);
   const openAssistant = useCallback(() => openApp("assistant"), [openApp]);
-  // Spotlight 在 Task 5 重写：本任务只广播事件，不挂载旧面板。
-  const openSpotlight = useCallback(() => {
-    window.dispatchEvent(new Event("blog:open-search"));
-  }, []);
+  const openSpotlight = useCallback(() => setSpotlightOpen(true), []);
   // Phase 2 没有独立设置面板：让任务栏把系统菜单打开；Phase 4 再换成完整面板。
   const openSettings = useCallback(() => {
     window.dispatchEvent(new Event("z-os:open-settings"));
   }, []);
+
+  // 终端与 Spotlight 共用笔记索引；Spotlight 需要非可选标签数组。
+  const searchNotes = useMemo<SearchableNote[]>(
+    () =>
+      notes.map((note) => ({
+        slug: note.slug,
+        title: note.title,
+        tags: note.tags ?? [],
+      })),
+    [notes]
+  );
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -72,11 +98,19 @@ export function DesktopShell({
       }
     };
     const onOpenTerminal = () => openTerminal();
+    // Phase 1 的旧入口仍广播 blog:open-search；Spotlight 自己关闭时广播
+    // z-os:close-spotlight，本组件只负责挂载/卸载，不接收 onClose 函数 prop。
+    const onOpenSearch = () => openSpotlight();
+    const onCloseSpotlight = () => setSpotlightOpen(false);
     window.addEventListener("keydown", onKey);
     window.addEventListener("blog:open-terminal", onOpenTerminal);
+    window.addEventListener("blog:open-search", onOpenSearch);
+    window.addEventListener("z-os:close-spotlight", onCloseSpotlight);
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("blog:open-terminal", onOpenTerminal);
+      window.removeEventListener("blog:open-search", onOpenSearch);
+      window.removeEventListener("z-os:close-spotlight", onCloseSpotlight);
     };
   }, [openSpotlight, openTerminal]);
 
@@ -110,6 +144,7 @@ export function DesktopShell({
           snippets={snippets}
           uptimeDays={uptimeDays}
         />
+        {spotlightOpen && <SearchPalette notes={searchNotes} />}
         <Taskbar accountMenu={accountMenu} hasFriends={hasFriends} />
         <noscript>
           <nav className="os-noscript" aria-label="站点导航">

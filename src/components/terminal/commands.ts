@@ -24,6 +24,8 @@ export interface TerminalApp {
 export interface TerminalNote {
   slug: string;
   title: string;
+  /** Spotlight 本地过滤用；内容层传入 note.meta.tags，缺省视为空数组 */
+  tags?: string[];
 }
 
 export interface TerminalSnippet {

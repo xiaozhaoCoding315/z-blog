@@ -33,6 +33,7 @@ export default async function SiteLayout({
   const notes: TerminalNote[] = getAllNotes().map((note) => ({
     slug: note.slug,
     title: note.meta.title,
+    tags: note.meta.tags ?? [],
   }));
   // Phase 3 才引入代码片段数据模型；这里先给空数组，不编造数据。
   const snippets: TerminalSnippet[] = [];
