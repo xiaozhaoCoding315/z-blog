@@ -1,26 +1,27 @@
 import { cacheLife } from "next/cache";
 import { siteConfig } from "@/config/site";
 import { daysSince } from "@/lib/uptime";
-import { countThisMonth } from "@/lib/life";
 import { getGithubActivity } from "@/lib/github-server";
-import { mockMoments } from "@/config/mock-moments";
 
 export interface Observation {
   days: string | null;
-  moments: number;
-  thisMonth: number;
   commits90: number | null;
   city: string;
+  /** 北京时间当前年 / 月：分组与「本月条数」共用这一份口径 */
+  year: number;
+  month: number;
 }
 
 /**
- * 观测条的四条读数（天气单独 5 分钟一档，不放进这里）。
+ * 观测条里不依赖生活流的那三条读数（建站天数、90 天提交、城市），
+ * 外加一个北京时间年月——天气仍单独走 5 分钟一档，不放进这里。
+ *
+ * 动态条数与本月条数**不在这里算**：它们必须和首页正在渲染的那一份生活流
+ * 用同一份数据，否则两个缓存各自过期时会互相打架（条数说 27，列表只有 26）。
+ * 调用方拿 `year` / `month` 配 `countThisMonth()` 自己算。
  *
  * 「建站第 N 天」读的是 siteConfig.startedAt，不是服务器存活时间——
  * 所以面板上不许出现「在线 / 心跳」这类字样。
- *
- * 每个读数都可能无源：days 为 null（起始日期非法）、commits90 为 null
- * （GitHub 取不到）。调用方据此显示 NOT AVAILABLE，不许拿 0 顶替。
  */
 export async function getObservation(): Promise<Observation> {
   "use cache";
@@ -36,15 +37,13 @@ export async function getObservation(): Promise<Observation> {
   const month = Number(parts.find((p) => p.type === "month")?.value);
 
   const github = await getGithubActivity();
+  const days = daysSince(siteConfig.startedAt);
 
   return {
-    days: (() => {
-      const d = daysSince(siteConfig.startedAt);
-      return d === null ? null : String(d);
-    })(),
-    moments: mockMoments.length,
-    thisMonth: countThisMonth(mockMoments, year, month),
+    days: days === null ? null : String(days),
     commits90: github.available ? github.total90 : null,
     city: siteConfig.weather.city,
+    year,
+    month,
   };
 }
