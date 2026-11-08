@@ -59,7 +59,7 @@
 - `findAppById(id: string): AppDefinition | undefined`
 - `desktopTileApps: AppDefinition[]`（全部 12 个桌面图标，不再过滤 path）
 - `launcherApps: AppDefinition[]`（全部 `launcher: true`，含无 path 的终端/助理/更多）
-- `window-state.ts`：`Rect`、`DesktopBounds`、`WindowState`、`WindowStore`、`initialWindowStore`、`clampRect`、`windowReducer`、`WINDOW_STORAGE_KEY`、`DEFAULT_BOUNDS`
+- `window-state.ts`：`Rect`、`DesktopBounds`、`WindowState`、`WindowStore`、`initialWindowStore`、`clampRect`、`preferredRect`、`windowReducer`、`WINDOW_STORAGE_KEY`、`DEFAULT_BOUNDS`
 
 - [ ] **Step 1: 写失败的 reducer 测试**
 
@@ -71,6 +71,7 @@ import assert from "node:assert/strict";
 import {
   clampRect,
   initialWindowStore,
+  preferredRect,
   windowReducer,
 } from "../src/components/desktop/window-state.ts";
 
@@ -113,14 +114,18 @@ test("close 删除窗口但保留 saved 位置", () => {
   assert.equal(state.saved.life.x, 240);
 });
 
-test("hydrate 只恢复位置，下一次 open 使用保存值", () => {
+test("hydrate 只恢复位置，preferredRect 用保存值并 clamp", () => {
   let state = windowReducer(initialWindowStore, {
     type: "hydrate",
     saved: { life: { x: 20, y: 40, w: 480, h: 600 } },
   });
   assert.equal(state.windows.life, undefined);
+  assert.deepEqual(
+    preferredRect(state.saved.life, rect, bounds, 420, 360),
+    { x: 20, y: 40, w: 480, h: 600 }
+  );
   state = windowReducer(state, { type: "open", id: "life", rect });
-  assert.deepEqual(state.windows.life.rect, { x: 20, y: 40, w: 480, h: 600 });
+  assert.deepEqual(state.windows.life.rect, rect);
   assert.deepEqual(state.saved.life, { x: 20, y: 40, w: 480, h: 600 });
 });
 
@@ -183,6 +188,17 @@ export function clampRect(
   return { x, y, w, h };
 }
 
+/** 打开窗口时的最终 rect：优先用上次保存的位置，再按当前视口 clamp。 */
+export function preferredRect(
+  saved: Rect | undefined,
+  fallback: Rect,
+  bounds: DesktopBounds,
+  minWidth: number,
+  minHeight: number
+): Rect {
+  return clampRect(saved ?? fallback, bounds, minWidth, minHeight);
+}
+
 type Action =
   | { type: "open"; id: string; rect: Rect }
   | { type: "close"; id: string }
@@ -210,7 +226,6 @@ export function windowReducer(state: WindowStore, action: Action): WindowStore {
           },
         };
       }
-      const preferred = state.saved[action.id] ?? action.rect;
       return {
         ...state,
         zCounter: z,
@@ -218,7 +233,7 @@ export function windowReducer(state: WindowStore, action: Action): WindowStore {
           ...state.windows,
           [action.id]: {
             id: action.id,
-            rect: preferred,
+            rect: action.rect,
             restoreRect: null,
             z,
             minimized: false,
@@ -332,8 +347,8 @@ import { findAppById } from "@/config/apps";
 import {
   DEFAULT_BOUNDS,
   WINDOW_STORAGE_KEY,
-  clampRect,
   initialWindowStore,
+  preferredRect,
   windowReducer,
   type Rect,
   type DesktopBounds,
@@ -381,8 +396,13 @@ export function useWindowManager() {
     }
     const config = app.window;
     if (!config) return;
-    const preferred = store.saved[id] ?? config.defaultRect;
-    const rect = clampRect(preferred, bounds, config.minWidth, config.minHeight);
+    const rect = preferredRect(
+      store.saved[id],
+      config.defaultRect,
+      bounds,
+      config.minWidth,
+      config.minHeight
+    );
     dispatch({ type: "open", id, rect });
   }, [bounds, pathname, router, store.saved]);
 
