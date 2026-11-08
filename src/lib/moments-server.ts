@@ -13,8 +13,10 @@ import type { Moment } from "@/lib/life";
  * 生活流读取层。
  *
  * 三条纪律：
- * 1. 全部 `use cache` + `cacheTag("moments")`：发布一条之后 Server Action 里
- *    `updateTag("moments")` 立刻失效，读的人马上看到新条目。
+ * 1. 所有查库的内层函数都 `use cache` + `cacheTag("moments")`：发布一条之后
+ *    Server Action 里 `updateTag("moments")` 立刻失效，读的人马上看到新条目。
+ *    按 id 读的两个入口外面还有一层非缓存壳：先把 id 校成规范十进制再进缓存，
+ *    否则每个垃圾 id 都会成为缓存键（`/life/1e30` 还会把 bigint 溢出报成「库连不上」）。
  * 2. 取不到就是 available: false，调用方显示 NOT AVAILABLE，
  *    不许拿空数组冒充「还没发过」。
  * 3. 调用方必须在 `connection()` 之后调用。否则构建期（本地构建时没有
