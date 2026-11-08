@@ -3,8 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { getMomentById, getMomentNeighbors } from "@/lib/moments-server";
+import { getVisibleComments } from "@/lib/comments-server";
+import { getSessionUser } from "@/lib/session";
+import { loginReady } from "@/lib/login-status";
 import { formatDay } from "@/lib/life";
 import { Moment, NODE_CLASS } from "@/components/life/moment";
+import { CommentList } from "@/components/life/comment-list";
+import { CommentForm } from "@/components/life/comment-form";
 
 // 读数据库，每次请求现算
 export const instant = false;
@@ -45,10 +50,12 @@ export default async function MomentPage({
 }) {
   await connection();
   const { id } = await params;
-  const [result, neighbors] = await Promise.all([
+  const [result, neighbors, user] = await Promise.all([
     getMomentById(id),
     getMomentNeighbors(id),
+    getSessionUser(),
   ]);
+  const ready = loginReady();
 
   if (!result.available) {
     return (
@@ -70,6 +77,10 @@ export default async function MomentPage({
 
   const moment = result.moment;
   if (!moment) notFound();
+
+  // 评论目标一律用规范 id；路由参数里的别名不能进评论表
+  const canonicalId = String(moment.id);
+  const comments = await getVisibleComments("moment", canonicalId);
 
   const tags = [
     moment.mood ? { label: "MOOD", value: moment.mood } : null,
@@ -116,6 +127,38 @@ export default async function MomentPage({
           <Moment moment={moment} linked={false} />
         </div>
       </article>
+
+      <section className="mt-12 border-t border-rule pt-8">
+        <h2 className="font-heading text-lg font-bold">评论</h2>
+        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+          {comments.available ? `${comments.comments.length} 条` : "Not Available"}
+        </p>
+        <div className="mt-4">
+          <CommentList
+            comments={comments.comments}
+            available={comments.available}
+          />
+        </div>
+        <div className="mt-8">
+          {user ? (
+            <CommentForm targetType="moment" targetId={canonicalId} />
+          ) : ready ? (
+            <p className="text-[14px] leading-relaxed text-muted-foreground">
+              登录后可以评论。
+              <Link
+                href="/login"
+                className="ml-1 border border-data px-2 py-0.5 font-mono text-[11px] text-data transition-colors hover:text-foreground"
+              >
+                去登录
+              </Link>
+            </p>
+          ) : (
+            <p className="text-[14px] leading-relaxed text-muted-foreground">
+              登录暂未开放（服务器还没配好发信），浏览不受影响。
+            </p>
+          )}
+        </div>
+      </section>
 
       <nav className="mt-12 flex items-center justify-between border-t border-rule pt-4 font-mono text-[11px]">
         {neighbors.prev ? (
