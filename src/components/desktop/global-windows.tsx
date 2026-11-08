@@ -1,15 +1,36 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { findAppById } from "@/config/apps";
-import { AssistantWindow } from "@/components/assistant/assistant-window";
 import type {
   TerminalNote,
   TerminalSnippet,
 } from "@/components/terminal/commands";
-import { TerminalWindow } from "@/components/terminal/terminal-window";
 import { useDesktopRuntime } from "./desktop-runtime";
 import { Window } from "./window";
+
+/*
+ * 终端与助理不属于首屏 shell：AI SDK 与命令表只在对应窗口打开后进入
+ * 客户端 chunk（§8.5）。窗框和开合状态仍留在 GlobalWindows；懒加载期间
+ * 只渲染标题栏。`z-os:ask` 先由本组件暂存问题，助理 chunk 到达挂载后
+ * 再从 `initialQuestion` 发送，因此动态拆分不影响「ask 打开即提问」。
+ */
+const TerminalWindow = dynamic(
+  () =>
+    import("@/components/terminal/terminal-window").then(
+      (mod) => mod.TerminalWindow
+    ),
+  { ssr: false }
+);
+
+const AssistantWindow = dynamic(
+  () =>
+    import("@/components/assistant/assistant-window").then(
+      (mod) => mod.AssistantWindow
+    ),
+  { ssr: false }
+);
 
 interface GlobalWindowsProps {
   aiEnabled: boolean;
