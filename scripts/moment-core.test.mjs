@@ -6,7 +6,11 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isMomentKind, toMoment } from "../src/lib/moment-core.ts";
+import {
+  isMomentKind,
+  parseMomentId,
+  toMoment,
+} from "../src/lib/moment-core.ts";
 
 const row = (over = {}) => ({
   id: 7,
@@ -57,6 +61,31 @@ test("card 只有四类形态才带，且字段必须齐", () => {
   assert.ok(toMoment(row({ kind: "song", card })).card);
   assert.equal(toMoment(row({ kind: "text", card })).card, undefined);
   assert.equal(toMoment(row({ kind: "song", card: { title: "x" } })).card, undefined);
+});
+
+test("parseMomentId 接受规范十进制", () => {
+  assert.equal(parseMomentId("1"), 1);
+  assert.equal(parseMomentId("999"), 999);
+  assert.equal(parseMomentId("9007199254740991"), 9007199254740991);
+});
+
+test("parseMomentId 拒绝别名、溢出和非数字", () => {
+  for (const bad of [
+    "0",
+    "-1",
+    "1.0",
+    "01",
+    "0x10",
+    "1e3",
+    " 1",
+    "1 ",
+    "9007199254740993",
+    "12345678901234567",
+    "abc",
+    "",
+  ]) {
+    assert.equal(parseMomentId(bad), null, `${JSON.stringify(bad)} 不该被当成 id`);
+  }
 });
 
 test("没有正文也没有图片的条目仍然映射，不在这里做业务裁剪", () => {

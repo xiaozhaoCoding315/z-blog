@@ -15,9 +15,17 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const { moment } = await getMomentById(id);
-  if (!moment) return { title: "动态" };
-  const excerpt = moment.body.slice(0, 60) || moment.card?.title || "一条动态";
+  const { available, moment } = await getMomentById(id);
+  if (!available || !moment) {
+    return { title: "动态", robots: { index: false } };
+  }
+  // 折叠空白，避免正文里的换行钻进 <title>；按码点截 60，避免劈开代理对
+  const excerpt =
+    Array.from(moment.body.replace(/\s+/g, " ").trim())
+      .slice(0, 60)
+      .join("") ||
+    moment.card?.title ||
+    "一条动态";
   return {
     title: `${formatDay(moment.publishedAt)} · ${excerpt}`,
     description: excerpt,

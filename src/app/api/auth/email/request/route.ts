@@ -53,10 +53,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "邮箱看起来不对" }, { status: 400 });
   }
 
-  // 按 IP 限频：单实例内存桶够用（容器重启清零，可接受）。
-  // 但它只是尽力而为——compose 里应用直接暴露 80 端口、没有可信反代改写 XFF，
+  // 按 IP 的桶可以被伪造的 X-Forwarded-For 绕过，真正兜底的是这条进程级全局限额：
+  // 单实例一小时最多发 60 封，超出就拒绝，避免 SMTP 配额和发信信誉被刷穿。
+  if (!rateLimit("email-code:global", 60, 3_600_000)) {
+    return NextResponse.json(
+      { error: "请求太频繁了，过会儿再试" },
+      { status: 429 }
+    );
+  }
+
+  // 按 IP 限频只作尽力而为——compose 里应用直接暴露 80 端口、没有可信反代改写 XFF，
   // 客户端可伪造 X-Forwarded-For 换桶，或干脆不带而所有人共用 "local" 桶；
-  // 真正防刷的是下面的按邮箱数据库限额。
+  // 真正防刷的是上面的全局限额和下面的按邮箱数据库限额。
   if (!rateLimit(`${getClientIp(request)}:email-code`, 20, 3_600_000)) {
     return NextResponse.json(
       { error: "请求太频繁了，过会儿再试" },

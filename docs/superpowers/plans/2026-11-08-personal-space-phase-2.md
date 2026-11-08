@@ -3602,7 +3602,7 @@ git commit -m "docs(phase-2): 验收结果——门禁、三种库状态、关 J
 | 有库、空表 | 3502 | MOMENTS `0`、MONTH `0`（真实零，不是 NOT AVAILABLE）；左栏「还没有第一条」。 |
 | 有库、有数据 | 3503 | 观测条 129 / 5 / 5 / 25 / 17°；首页恰好 5 条 `/life/<id>` 链接，与 MOMENTS 读数一致；`/life/5` 返回 200，正文与卡片（蓝莲花 / 许巍 / 没有什么能够阻挡）正确。 |
 
-**软 404（已知取舍）**：`/life/[id]` 是 `◐ Partial Prerender`，静态壳先以 200 发出，动态段里的 `notFound()` 无法再改状态码。缺失 id 的响应因此是 **200 + 「这一页不在」404 UI**（body 里能读到自定义 not-found 文案），而不是 HTTP 404。页面表现正确，抓取器会看到软 404；若要硬 404，需要让该路由退出 PPR，留待后续阶段评估。
+**软 404（已知取舍）**：`/life/[id]` 是 `◐ Partial Prerender`，静态壳先以 200 发出，动态段里的 `notFound()` 无法再改状态码。缺失 id 的响应因此是 **200 + 「这一页不在」404 UI**（body 里能读到自定义 not-found 文案），而不是 HTTP 404。页面表现正确，抓取器会看到软 404；为免软 404 被索引，`generateMetadata` 对缺失/不可读的 id 输出 `robots: { index: false }`——HTTP 状态码仍按 PPR 的设计保持 200。若要硬 404，需要让该路由退出 PPR，留待后续阶段评估。
 
 ### 关 JS 与两套模式
 
@@ -3617,6 +3617,13 @@ git commit -m "docs(phase-2): 验收结果——门禁、三种库状态、关 J
 - `grep -rn "mockMoments\|mock-moments" src/ scripts/` → 无匹配（假数据已删净）。
 - `grep -rn "在线\|心跳\|实时" src/app src/components` → 只剩 `src/app/api/_shared/no-store.ts:2` 的注释，没有 UI 文案。
 - 观测条的 `NOT AVAILABLE` 都对应真实缺失的数据源；空库显示的是真实 `0`。
+
+### 上线前（阶段 5 曝光之前）的硬门槛
+
+- 用 HTTPS 提供服务，并设置 `NEXT_PUBLIC_SITE_URL=https://...`，会话 cookie 才会带上 `Secure`（该值构建时内联，改完要重新构建）。
+- 把应用放到可信反代之后，或接受 `X-Forwarded-For` 只是参考值——按 IP 的限频可被绕过，滥发由进程级全局限额兜住。
+- 验证真实 SMTP 投递（不能只看接口返回 ok）。
+- 验证 Docker 命名卷 `uploads` 首次挂载可写。
 
 ### 遗留项
 

@@ -2,7 +2,11 @@ import { cacheLife, cacheTag } from "next/cache";
 import { asc, desc, eq, gt, lt } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { moments as momentsTable } from "@/db/schema";
-import { toMoment, type MomentDbRowLike } from "@/lib/moment-core";
+import {
+  parseMomentId,
+  toMoment,
+  type MomentDbRowLike,
+} from "@/lib/moment-core";
 import type { Moment } from "@/lib/life";
 
 /**
@@ -48,14 +52,18 @@ export async function getMomentById(id: string): Promise<{
   available: boolean;
   moment: Moment | null;
 }> {
+  const numeric = parseMomentId(id);
+  if (numeric === null) return { available: true, moment: null };
+  return getMomentByIdCached(numeric);
+}
+
+async function getMomentByIdCached(numeric: number): Promise<{
+  available: boolean;
+  moment: Moment | null;
+}> {
   "use cache";
   cacheLife("minutes");
   cacheTag("moments");
-
-  const numeric = Number(id);
-  if (!Number.isInteger(numeric) || numeric <= 0) {
-    return { available: true, moment: null };
-  }
 
   const db = getDb();
   if (!db) return { available: false, moment: null };
@@ -83,15 +91,21 @@ export async function getMomentNeighbors(id: string): Promise<{
   prev: Moment | null;
   next: Moment | null;
 }> {
+  const numeric = parseMomentId(id);
+  if (numeric === null) return { prev: null, next: null };
+  return getMomentNeighborsCached(numeric);
+}
+
+async function getMomentNeighborsCached(numeric: number): Promise<{
+  prev: Moment | null;
+  next: Moment | null;
+}> {
   "use cache";
   cacheLife("minutes");
   cacheTag("moments");
 
-  const numeric = Number(id);
   const db = getDb();
-  if (!db || !Number.isInteger(numeric) || numeric <= 0) {
-    return { prev: null, next: null };
-  }
+  if (!db) return { prev: null, next: null };
 
   try {
     const [self] = await db

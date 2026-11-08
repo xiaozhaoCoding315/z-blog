@@ -27,6 +27,17 @@ export function isMomentKind(value: unknown): value is MomentKind {
 /** 卡片形态只认这四种，其余 kind 即使库里带了 card 也不渲染 */
 const CARD_KINDS = new Set<MomentKind>(["song", "shelf", "quote", "link"]);
 
+/**
+ * 单条动态的 id 只认规范十进制：`/life/5` 可以，`/life/05`、`/life/0x10`、
+ * `/life/1e3` 都不行——它们要么是同一行的别名，要么根本不是行号。
+ */
+export function parseMomentId(raw: string): number | null {
+  if (!/^[1-9]\d{0,15}$/.test(raw)) return null;
+  const n = Number(raw);
+  if (!Number.isSafeInteger(n) || String(n) !== raw) return null;
+  return n;
+}
+
 export interface MomentDbRowLike {
   id: number;
   kind: string;
