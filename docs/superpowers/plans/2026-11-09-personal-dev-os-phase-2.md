@@ -332,8 +332,8 @@ export const launcherApps = apps.filter((app) => app.launcher);
 
 **Interfaces:**
 - `useWindowManager(): { store; boundsRef; bounds; openApp(id); close(id); focus(id); minimize(id); restore(id); toggleMaximize(id); move(id, rect); resize(id, rect); resetLayout() }`
-- `<DesktopRuntimeProvider value={runtime}>` + `useDesktopRuntime()`
-- `<Window state app focused onFocus onClose onMinimize onToggleMaximize onMove onResize>{children}</Window>`
+- `DesktopRuntimeContext` + `useDesktopRuntime()`；不包一层带函数字段的自定义 Provider（直接在 DesktopShell 用 `DesktopRuntimeContext.Provider`）
+- `<Window id app>{children}</Window>`（窗口状态与关闭/聚焦/拖拽/缩放动作全部从 `useDesktopRuntime()` 读取，不再把回调函数当 props 传进 `"use client"` 入口文件）
 
 - [ ] **Step 1: 实现 `use-window-manager.ts`**
 
@@ -428,7 +428,7 @@ export function useWindowManager() {
 
 ```tsx
 "use client";
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext } from "react";
 import type { useWindowManager } from "./use-window-manager";
 import type { useDesktopSettings } from "./use-desktop-settings";
 
@@ -444,11 +444,7 @@ export interface DesktopRuntime {
   openAssistant: () => void;
 }
 
-const DesktopRuntimeContext = createContext<DesktopRuntime | null>(null);
-
-export function DesktopRuntimeProvider({ value, children }: { value: DesktopRuntime; children: ReactNode }) {
-  return <DesktopRuntimeContext.Provider value={value}>{children}</DesktopRuntimeContext.Provider>;
-}
+export const DesktopRuntimeContext = createContext<DesktopRuntime | null>(null);
 
 export function useDesktopRuntime() {
   const runtime = useContext(DesktopRuntimeContext);
@@ -460,13 +456,15 @@ export function useDesktopRuntime() {
 - [ ] **Step 3: 实现 `window.tsx`**
 
 必须实现的行为：
-- props：`state: WindowState`、`app: AppDefinition`、`focused: boolean`、`onFocus`、`onClose`、`onMinimize`、`onToggleMaximize`、`onMove(rect)`、`onResize(rect)`、`children`。
+- props：`id: string`、`app: AppDefinition`、`children: ReactNode`。不要接收回调函数 props：Next 16 会把 `"use client"` 入口文件上的函数 props 当成不可序列化边界。所有动作从 `useDesktopRuntime()` 取：
+  `const { windows } = useDesktopRuntime(); const state = windows.store.windows[id]; const focused = state?.z === windows.store.zCounter;`
 - 根节点 `.os-window`，`style={{ left, top, width, height, zIndex }}`；最大化时 `inset: 0`（用 `data-maximized` + CSS）。
-- 标题栏：`aria-labelledby` 的标题 id（`useId`）；左侧 `AppIcon` + 应用名 + `~/life` 路径；右侧 `↗`（仅 app.path）、`—`、`□`、`×`。
-- 拖拽：标题栏 `onPointerDown` 忽略按钮/链接；`setPointerCapture`；move 时 `el.style.transform = translate3d(dx,dy,0)`；up 时 `onMove({...rect,x+dx,y+dy})` 并清 transform。最大化时禁用。
-- 缩放：右下角 `.os-window-resize`，pointerdown 记录起点；move 更新 `el.style.width/height`；up 调用 `onResize`。最小尺寸来自 `app.window`。
-- clamp：拖拽/缩放松手提交前调用 `clampRect`（min 来自 app.window，bounds 来自窗口层），保证至少 80px 标题栏留在视口内；最大化时禁用拖拽/缩放。
-- 双击标题栏 `onToggleMaximize`；`onPointerDown` 冒泡调用 `onFocus`。
+- 标题栏：`aria-labelledby` 的标题 id（`useId`）；左侧 `AppIcon` + 应用名 + `~${app.path ?? "/" + app.id}` 路径；右侧 `↗`（仅 app.path）、`—`、`□`、`×`。
+- 拖拽：标题栏 `onPointerDown` 忽略按钮/链接；`setPointerCapture`；move 时 `el.style.transform = translate3d(dx,dy,0)`；up 时用 `clampRect`（min 来自 `app.window`，bounds 来自 `windows.bounds`）计算最终 rect，调用 `windows.move(id, rect)` 并清 transform。最大化时禁用。
+- 缩放：右下角 `.os-window-resize`，pointerdown 记录起点；move 更新 `el.style.width/height`；up 用 `clampRect` 后调用 `windows.resize(id, rect)`。最小尺寸来自 `app.window`。
+- 拖拽/缩放松手提交前必须 clamp，保证至少 80px 标题栏留在视口内；最大化时禁用拖拽/缩放。
+- 双击标题栏调用 `windows.toggleMaximize(id)`；根节点 `onPointerDown` 调用 `windows.focus(id)`；关闭 `windows.close(id)`、最小化 `windows.minimize(id)`。
+- `↗` 是 `<Link href={app.path}>`；关闭/最小化/最大化控件是 `<button type="button">`。
 - 控件全部是 `button`/`Link`，有 `aria-label`；关闭按钮 hover `--danger`。
 - 窗口内容 `.os-window-body` 独立滚动。
 - 打开动画 class `.is-open`；减少动效时无。
@@ -502,9 +500,10 @@ export function GlobalWindows({ aiEnabled }: { aiEnabled: boolean }) {
 **Files:** Modify `src/components/desktop/desktop-shell.tsx`、`desktop-home.tsx`、`taskbar.tsx`、`launcher.tsx`、`system-menu.tsx`、`src/app/(site)/layout.tsx`、`src/app/(site)/page.tsx`、`src/app/globals.css`。
 
 **Interfaces:**
-- `DesktopShell` props 增加 `notes: {slug,title}[]`、`aiEnabled: boolean`。
+- `DesktopShell` props 增加 `notes: {slug,title,tags}[]`、`aiEnabled: boolean`。
 - `DesktopHome` 改为客户端组件，接收 `status`、`windowContent: Record<string, ReactNode>`、`statusWidget`、`stickyNote`、`deskObjects` 插槽。
-- `Taskbar` 从 `useDesktopRuntime()` 读取窗口与 open/restore/focus。
+- `Taskbar` 从 `useDesktopRuntime()` 读取窗口、open/restore/focus 与 `openSettings`；不要接收函数 props。
+- Spotlight 通过 `z-os:close-spotlight` 事件通知 DesktopShell 关闭；`openSettings` 通过 `z-os:open-settings` 事件让 Taskbar 打开系统菜单。
 
 - [ ] **Step 1: 改造 `DesktopShell`**
 
@@ -514,7 +513,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useWindowManager } from "./use-window-manager";
 import { useDesktopSettings } from "./use-desktop-settings";
-import { DesktopRuntimeProvider } from "./desktop-runtime";
+import { DesktopRuntimeContext } from "./desktop-runtime";
 import { GlobalWindows } from "./global-windows";
 import { Taskbar } from "./taskbar";
 import { Wallpaper } from "./wallpaper";
@@ -525,12 +524,14 @@ export function DesktopShell({ accountMenu, hasFriends, notes, aiEnabled, childr
   const windows = useWindowManager();
   const settings = useDesktopSettings();
   const [spotlightOpen, setSpotlightOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const openTerminal = useCallback(() => windows.openApp("terminal"), [windows]);
   const openAssistant = useCallback(() => windows.openApp("assistant"), [windows]);
   const openSpotlight = useCallback(() => setSpotlightOpen(true), []);
-  const openSettings = useCallback(() => setSettingsOpen(true), []);
+  // Phase 2 没有独立设置面板：让任务栏把系统菜单打开；Phase 4 再换成完整面板
+  const openSettings = useCallback(() => {
+    window.dispatchEvent(new Event("z-os:open-settings"));
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -541,34 +542,37 @@ export function DesktopShell({ accountMenu, hasFriends, notes, aiEnabled, childr
     };
     const onOpenSearch = () => openSpotlight();
     const onOpenTerminal = () => openTerminal();
+    const onCloseSpotlight = () => setSpotlightOpen(false);
     window.addEventListener("keydown", onKey);
     window.addEventListener("blog:open-search", onOpenSearch);
     window.addEventListener("blog:open-terminal", onOpenTerminal);
+    window.addEventListener("z-os:close-spotlight", onCloseSpotlight);
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("blog:open-search", onOpenSearch);
       window.removeEventListener("blog:open-terminal", onOpenTerminal);
+      window.removeEventListener("z-os:close-spotlight", onCloseSpotlight);
     };
   }, [openSpotlight, openTerminal]);
 
   const runtime = useMemo(() => ({ windows, settings, openSpotlight, openSettings, openTerminal, openAssistant }), [windows, settings, openSpotlight, openSettings, openTerminal, openAssistant]);
 
   return (
-    <DesktopRuntimeProvider value={runtime}>
+    <DesktopRuntimeContext.Provider value={runtime}>
       <div className="os-shell">
         <Wallpaper />
         <main className="os-main">{children}</main>
         <GlobalWindows aiEnabled={aiEnabled} />
-        <Taskbar accountMenu={accountMenu} hasFriends={hasFriends} onOpenSettings={openSettings} />
-        {spotlightOpen && <SearchPalette notes={notes} onClose={() => setSpotlightOpen(false)} />}
+        <Taskbar accountMenu={accountMenu} hasFriends={hasFriends} />
+        {spotlightOpen && <SearchPalette notes={notes} />}
         <noscript>…沿用阶段 1 的列表…</noscript>
       </div>
-    </DesktopRuntimeProvider>
+    </DesktopRuntimeContext.Provider>
   );
 }
 ```
 
-`(site)/layout.tsx`：读取 `getAllNotes()` 的 slug/title，`chatEnabled`，传给 `DesktopShell`。
+`(site)/layout.tsx`：读取 `getAllNotes()` 的 slug/title/tags，`chatEnabled`，传给 `DesktopShell`。
 
 - [ ] **Step 2: 重写 `DesktopHome`**
 
@@ -585,7 +589,7 @@ export function DesktopShell({ accountMenu, hasFriends, notes, aiEnabled, childr
   - 单击选中（`selectedId`），双击打开；触屏 `pointerType === "touch"` 单击打开；`Enter`/`Space` 打开。
   - `Tab` 焦点；方向键在 3 列网格移动（左右 ±1，上下 ±3，边界 clamp）。
   - 图标 `title`/tooltip 400ms（可用 `title` 属性作为最小实现，后续可做自定义 tooltip）。
-  - 窗口层 `ref={windows.boundsRef}`，渲染 `store.windows` 中非 minimized 的窗口；每个窗口内容用 `windowContent[id]`。
+  - 窗口层 `ref={windows.boundsRef}`，渲染 `store.windows` 中非 minimized 的窗口：`<Window key={w.id} id={w.id} app={findAppById(w.id)!}>{windowContent[id]}</Window>`，不传任何回调函数；每个窗口内容用 `windowContent[id]`。
   - 首次提示：`按 \` 打开终端 · ⌘K 搜索 · 双击图标打开`，打开任一窗口/终端后写入 `z-os:hint` 并消失。
   - 点击空白取消选中；`Esc` 关闭聚焦窗口（由 Window/Taskbar 处理）。
   - 移动端：图标直接打开（路由型跳转，窗口型调用 `openApp`，窗口型在移动端应跳转 `app.path`，无窗口）。
@@ -598,8 +602,8 @@ export function DesktopShell({ accountMenu, hasFriends, notes, aiEnabled, childr
 - 从 `useDesktopRuntime()` 拿 `windows.store.windows`。
 - 左侧 Z 后渲染当前路由应用 + 所有打开窗口（最多 180px 截断），活动窗口底部 2px 琥珀线，最小化降透明度。
 - 点击窗口项：若当前路由不是 `/`，`router.push("/")`；随后 `windows.restore(id)`/`focus(id)`。
-- 系统菜单 `onOpenSettings` 打开设置面板（Phase 4 完整；Phase 2 先复用 `SystemMenu` 的桌面段）。
-- 打开启动器时用 `launcherApps`，`Launcher` 增加 `onOpen(id)`：`settings` 调用 `runtime.openSettings()`，窗口型调用 `openApp`，路由型 `router.push`。`Launcher` 的 `apps` 类型改为 `AppDefinition[]`（不再要求 `path` 非空）。
+- 任务栏自己监听 `z-os:open-settings`：收到后 `setMenuOpen(true)` 并关闭启动器，不接收 `onOpenSettings` 函数 prop（Phase 4 再换成完整设置面板）。
+- 打开启动器时用 `launcherApps`，`Launcher` 内部用 `useDesktopRuntime()`：`settings` 调用 `runtime.openSettings()`，窗口型调用 `windows.openApp(id)`，路由型 `router.push(app.path)`；不要接收 `onOpen(id)` 回调。`Launcher` 的 `apps` 类型改为 `AppDefinition[]`（不再要求 `path` 非空）。
 
 - [ ] **Step 4: 更新阶段 1 测试**
 
@@ -629,7 +633,7 @@ export function DesktopShell({ accountMenu, hasFriends, notes, aiEnabled, childr
   - 输入框自动聚焦；输出区滚动到底部；`coffee` 触发 dispatch `z-os:coffee` 自定义事件（桌面杯子监听，Phase 3）。
   - `ask` 调用 runtime.openAssistant + `z-os:ask` 事件携带问题（助理监听）。
   - `theme` 调用 settings.setPreset；`open` 调用 windows.openApp 或 router.push。
-- [ ] **Step 5: 在 `GlobalWindows` 渲染终端窗口**：state 为 `windows.store.windows.terminal`，用 `<Window app={terminalApp} ...>` 包 `<TerminalWindow />`；最小化/最大化可用，关闭后 state 删除。`Esc` 关闭聚焦窗口。
+- [ ] **Step 5: 在 `GlobalWindows` 渲染终端窗口**：state 为 `windows.store.windows.terminal`，用 `<Window id="terminal" app={terminalApp}><TerminalWindow /></Window>` 包内容；Window 自己从 runtime 取状态与动作，不传回调。最小化/最大化可用，关闭后 state 删除。`Esc` 关闭聚焦窗口。
 - [ ] **Step 6: 测试与提交** — `node --test scripts/terminal-commands.test.mjs`（预计 8+ pass）；`git commit -m "feat(terminal): 命令表与终端浮窗"`。
 
 ---
@@ -639,22 +643,23 @@ export function DesktopShell({ accountMenu, hasFriends, notes, aiEnabled, childr
 **Files:** Rewrite `src/components/search/search-palette.tsx`；Create `src/components/assistant/assistant-window.tsx`；Modify `global-windows.tsx`、`desktop-shell.tsx`、`globals.css`；Test `scripts/search-local.test.mjs`（可选，若抽纯函数）。
 
 **Interfaces:**
-- `SearchPalette({ notes, onClose })`；`notes: {slug,title,tags}[]`。
-- `AssistantWindow({ aiEnabled, initialQuestion? })`。
+- `SearchPalette({ notes })`；`notes: {slug,title,tags}[]`。关闭时 dispatch `z-os:close-spotlight`，不接收 `onClose` 函数 prop。
+- `AssistantWindow({ aiEnabled })`；关闭时用 `runtime.windows.close("assistant")`，不接收 `onClose` 函数 prop。
 - 事件：`z-os:ask`（detail `{question}`）、`z-os:coffee`、`z-os:open-app`（detail `{id}`）。
 
 - [ ] **Step 1: 重写 Spotlight**
   - 用 `cmdk`；`⌘K`/`Ctrl+K` 由 DesktopShell 打开；输入 200ms 防抖调用 `/api/search?q=`（只查 notes），本地过滤 apps（`title/keywords/id`）与 snippets（`title/tags/id`）。
   - 分组顺序：应用 / 笔记 / 代码片段；无结果文案「没有找到。试试直接问助理。」+ 打开助理按钮。
   - ↑/↓/Enter/Esc；应用结果 `runtime.openApp`；笔记 `router.push("/notes/"+slug)`；片段 `router.push("/snippets?s="+id)`（Phase 3 页面）。
+  - 选中结果、按 Esc、点遮罩或 cmdk `onOpenChange(false)` 时都 `window.dispatchEvent(new Event("z-os:close-spotlight"))`；DesktopShell 监听后卸载组件。不要接收 `onClose` 函数 prop。
   - 面板 640px、顶部 18%、`--window` 95% + 1px `--rule` + blur(14px)；`role="dialog" aria-modal="true"`；焦点自动进输入框；关闭归还焦点；减少透明时纯色。
   - 动态导入已在 DesktopShell，首屏不加载 cmdk。
 - [ ] **Step 2: 创建助理窗口**
-  - `useChat` + `/api/chat`；`messages` 渲染：用户 `> 问题`，助理 `· 文本`；引用来源 `data-sources` 渲染为 `[1]` 琥珀链接，点击 `onClose` + `router.push(`/notes/${slug}#${anchor}`)`（无 anchor 时 `/notes/${slug}`）。
+  - `useChat` + `/api/chat`；`messages` 渲染：用户 `> 问题`，助理 `· 文本`；引用来源 `data-sources` 渲染为 `[1]` 琥珀链接，点击 `runtime.windows.close("assistant")` + `router.push(`/notes/${slug}#${anchor}`)`（无 anchor 时 `/notes/${slug}`）。
   - 流式；停止按钮；清空；建议问题 3 个；AI 未配置显示 `AI 未配置：在 .env 填 AI_API_KEY`，不显示输入框。
   - 无头像、无气泡、无 Sparkles；错误行 `! 请求失败：...`。
   - `z-os:ask` 事件：打开助理并发送问题。
-- [ ] **Step 3: 在 `GlobalWindows` 渲染助理**，`aiEnabled` 由 layout 传入。
+- [ ] **Step 3: 在 `GlobalWindows` 渲染助理**，`aiEnabled` 由 layout 传入：`<Window id="assistant" app={assistantApp}><AssistantWindow aiEnabled={aiEnabled} /></Window>`；Window 自己从 runtime 取状态与关闭动作，不传回调。
 - [ ] **Step 4: 手动验收** — `⌘K` 搜索应用/笔记/片段；终端 `ask` 打开助理并发送；AI 未配置文案；引用点击跳笔记；Esc 关闭；焦点归还；减小透明时面板纯色。
 - [ ] **Step 5: 提交** — `git commit -m "feat(search): Spotlight 与终端式助理"`
 
