@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, Search } from "lucide-react";
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { siteConfig, navItems, allNavItems } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { GithubIcon } from "@/components/icons/github";
@@ -21,7 +22,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
  * 顶部导航：一条细线，四个入口。
  * 不吸顶浮动、不做玻璃——滚动时它只是安静地留在页面顶部。
  */
-export function Navbar() {
+export function Navbar({ accountMenu }: { accountMenu?: ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -82,12 +83,7 @@ export function Navbar() {
             >
               <GithubIcon className="size-4" />
             </Button>
-            <Link
-              href="/login"
-              className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              登录
-            </Link>
+            {accountMenu}
             <ThemeToggle />
   
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -123,6 +119,9 @@ export function Navbar() {
                     </Link>
                   ))}
                 </nav>
+                <div className="px-4" onClick={() => setMobileOpen(false)}>
+                  {accountMenu}
+                </div>
               </SheetContent>
             </Sheet>
           </div>
