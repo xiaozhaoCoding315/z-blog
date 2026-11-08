@@ -87,12 +87,14 @@ export function DesktopHome({
   }, [openCount]);
 
   // ?open=id：等 useWindowManager 先 hydrate 完 saved rect，再开窗并清掉参数。
+  // ≤767px 没有窗口层：与图标一致，带路径的应用直接去全屏路由，其余不响应。
   useEffect(() => {
     if (!hydrated) return;
     const params = new URLSearchParams(window.location.search);
     const id = params.get("open");
     if (!id) return;
-    openApp(id);
+    // 先清参数再导航：router.push 之后同步 replaceState 会覆盖掉
+    // Next 尚未提交的导航，移动端会留在原页。
     params.delete("open");
     const query = params.toString();
     window.history.replaceState(
@@ -100,7 +102,13 @@ export function DesktopHome({
       "",
       `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
     );
-  }, [hydrated, openApp]);
+    if (isMobileViewport()) {
+      const app = findAppById(id);
+      if (app?.path) router.push(app.path);
+    } else {
+      openApp(id);
+    }
+  }, [hydrated, openApp, router]);
 
   const openAppFromDesktop = useCallback(
     (app: AppDefinition) => {
@@ -121,7 +129,7 @@ export function DesktopHome({
 
   const onWindowIconClick = (
     app: AppDefinition,
-    event: ReactMouseEvent<HTMLButtonElement>
+    event: ReactMouseEvent<HTMLElement>
   ) => {
     // 键盘 Enter/Space 的 click detail 为 0；触屏单击直接打开。
     if (
@@ -220,6 +228,39 @@ export function DesktopHome({
               >
                 {icon}
               </Link>
+            );
+          }
+
+          // 有真实路由的窗口型应用也是链接：无 JS 时直接跳到全屏应用页。
+          // 有 JS 时拦下默认导航，保留单击选择、双击开窗、Enter/触屏开窗。
+          if (app.kind === "window" && app.path) {
+            return (
+              <a
+                key={app.id}
+                href={app.path}
+                className="os-icon"
+                title={app.description}
+                style={style}
+                data-app-index={index}
+                data-selected={selectedId === app.id ? "true" : undefined}
+                ref={(node) => {
+                  iconRefs.current[index] = node;
+                }}
+                onPointerDown={(event) => {
+                  pointerTypeRef.current = event.pointerType;
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onWindowIconClick(app, event);
+                }}
+                onDoubleClick={() => {
+                  if (pointerTypeRef.current !== "touch") {
+                    openAppFromDesktop(app);
+                  }
+                }}
+              >
+                {icon}
+              </a>
             );
           }
 

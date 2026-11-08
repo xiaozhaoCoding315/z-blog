@@ -14,6 +14,17 @@ import {
 } from "./window-state";
 
 /**
+ * 移动端不渲染窗口层：≤767px 时开窗入口改为跳转到应用的全屏路由。
+ * 与 desktop-home 的断点保持一致。
+ */
+function isMobileViewport() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 767px)").matches
+  );
+}
+
+/**
  * 窗口系统的唯一状态源。
  *
  * 开合状态不持久化，只保存每个应用最后一次的位置/尺寸；刷新后窗口不会
@@ -84,6 +95,10 @@ export function useWindowManager() {
       const app = findAppById(id);
       if (!app) return;
       if (app.kind === "route") {
+        if (app.path) router.push(app.path);
+        return;
+      }
+      if (isMobileViewport()) {
         if (app.path) router.push(app.path);
         return;
       }

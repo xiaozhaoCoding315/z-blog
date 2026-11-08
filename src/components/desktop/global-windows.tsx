@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { findAppById } from "@/config/apps";
 import type {
   TerminalNote,
@@ -58,6 +58,7 @@ export function GlobalWindows({
 }: GlobalWindowsProps) {
   const { windows } = useDesktopRuntime();
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const assistantWasOpenRef = useRef(false);
   const open = windows.store.windows;
   const terminalApp = findAppById("terminal");
   const assistantApp = findAppById("assistant");
@@ -78,6 +79,20 @@ export function GlobalWindows({
       window.removeEventListener("z-os:ask-consumed", onConsumed);
     };
   }, []);
+
+  // 窗口在懒加载 chunk 到达前就被关掉时，暂存的问题必须作废，否则下次
+  // 打开助理会补发一个旧问题。用 wasOpen 只处理「开 → 关」：ask 从子路由
+  // 发出时会先跳回 "/?open=assistant" 再置开窗状态，若在仍为 false 时
+  // 直接清空，会把刚缓冲、正在等导航送达的问题丢掉。
+  useEffect(() => {
+    if (open.assistant) {
+      assistantWasOpenRef.current = true;
+      return;
+    }
+    if (!assistantWasOpenRef.current) return;
+    assistantWasOpenRef.current = false;
+    setPendingQuestion(null);
+  }, [open.assistant]);
 
   return (
     <div className="os-global-windows">
