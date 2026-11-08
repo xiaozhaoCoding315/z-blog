@@ -91,6 +91,44 @@ test("schema 单独可用（给将来的编辑接口留口子）", () => {
   );
 });
 
+test("校验失败时给中文提示", () => {
+  const mood = parseMomentInput(
+    fd({ kind: "text", body: "x", mood: "字".repeat(21) })
+  );
+  assert.equal(mood.ok, false);
+  assert.equal(mood.error, "心情最多 20 字");
+
+  const image = parseMomentInput(
+    fd({ kind: "photo", body: "x", images: "https://evil.example/x.png" })
+  );
+  assert.equal(image.ok, false);
+  assert.equal(image.error, "图片路径不对");
+
+  const kind = parseMomentInput(fd({ kind: "video", body: "x" }));
+  assert.equal(kind.ok, false);
+  assert.equal(kind.error, "不认识的形态");
+
+  const tooMany = parseMomentInput(
+    fd({ kind: "photo", body: "x", images: Array(10).fill(MEDIA) })
+  );
+  assert.equal(tooMany.ok, false);
+  assert.equal(tooMany.error, "最多放 9 张图");
+});
+
+test("外链只收 http(s)：javascript: 拒绝，https:// 放行", () => {
+  const card = { kind: "link", cardTitle: "首页", cardMeta: "示例" };
+
+  const bad = parseMomentInput(fd({ ...card, cardHref: "javascript:alert(1)" }));
+  assert.equal(bad.ok, false);
+  assert.equal(bad.error, "外链要以 http:// 或 https:// 开头");
+
+  const good = parseMomentInput(
+    fd({ ...card, cardHref: "https://example.com" })
+  );
+  assert.equal(good.ok, true);
+  assert.equal(good.value.card.href, "https://example.com");
+});
+
 test("kind 清单与读取层那份必须一致", () => {
   // 两份清单不能合并：moment-input.ts 要被 node --test 直接加载，
   // 而 Node 不解析无扩展名的相对导入，所以它没法 import moment-core.ts。

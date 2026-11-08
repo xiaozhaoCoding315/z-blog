@@ -21,26 +21,33 @@ const CARD_KINDS = new Set<string>(["song", "shelf", "quote", "link"]);
 
 const MEDIA_PATH = /^\/media\/\d{4}\/\d{2}\/[a-f0-9]{32}\.(webp|jpg|png)$/;
 
-const optionalText = (max: number) =>
+const optionalText = (max: number, label: string) =>
   z
     .string()
     .trim()
-    .max(max)
+    .max(max, `${label}最多 ${max} 字`)
     .optional()
     .transform((v) => (v ? v : undefined));
 
 export const momentInputSchema = z
   .object({
-    kind: z.enum(MOMENT_KIND_VALUES),
-    body: z.string().trim().max(2000).default(""),
-    images: z.array(z.string().regex(MEDIA_PATH)).max(9).default([]),
-    mood: optionalText(20),
-    weather: optionalText(20),
-    place: optionalText(40),
-    cardTitle: optionalText(120),
-    cardMeta: optionalText(120),
-    cardNote: optionalText(400),
-    cardHref: optionalText(500),
+    kind: z.enum(MOMENT_KIND_VALUES, "不认识的形态"),
+    body: z.string().trim().max(2000, "正文最多 2000 字").default(""),
+    images: z
+      .array(z.string().regex(MEDIA_PATH, "图片路径不对"))
+      .max(9, "最多放 9 张图")
+      .default([]),
+    mood: optionalText(20, "心情"),
+    weather: optionalText(20, "天气"),
+    place: optionalText(40, "地点"),
+    cardTitle: optionalText(120, "标题"),
+    cardMeta: optionalText(120, "来源"),
+    cardNote: optionalText(400, "推荐语"),
+    // 外链只允许 http(s)：javascript: / data: 之类贴进来直接拒掉
+    cardHref: optionalText(500, "外链").refine(
+      (v) => !v || /^https?:\/\//i.test(v),
+      "外链要以 http:// 或 https:// 开头"
+    ),
   })
   .superRefine((value, ctx) => {
     const hasBody = value.body.length > 0;

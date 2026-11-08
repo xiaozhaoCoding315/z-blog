@@ -30,13 +30,28 @@ export function MomentForm() {
   const [state, formAction, pending] = useActionState(createMoment, initialState);
   const [kind, setKind] = useState<string>("text");
   const [images, setImages] = useState<string[]>([]);
+  // 文本字段受控：Action 返回错误时 React 会重置非受控字段，草稿不能丢
+  const [draft, setDraft] = useState({
+    body: "",
+    cardTitle: "",
+    cardMeta: "",
+    cardNote: "",
+    cardHref: "",
+    mood: "",
+    weather: "",
+    place: "",
+  });
+  const bind = (name: keyof typeof draft) => ({
+    value: draft[name],
+    onChange: (v: string) => setDraft((d) => ({ ...d, [name]: v })),
+  });
   const isCard = CARD_KINDS.has(kind);
 
   return (
     <form action={formAction} className="divide-y divide-rule border-y border-rule">
       <fieldset className="py-4">
         <legend className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          Kind
+          形态
         </legend>
         <div className="mt-3 flex flex-wrap gap-2">
           {KINDS.map((k) => (
@@ -64,14 +79,30 @@ export function MomentForm() {
 
       {isCard ? (
         <div className="space-y-4 py-4">
-          <Field label="标题 / 曲名" name="cardTitle" maxLength={120} />
-          <Field label="作者 / 艺人 / 出处" name="cardMeta" maxLength={120} />
-          <Field label="一句推荐（可选）" name="cardNote" maxLength={400} />
+          <Field
+            label="标题 / 曲名"
+            name="cardTitle"
+            maxLength={120}
+            {...bind("cardTitle")}
+          />
+          <Field
+            label="作者 / 艺人 / 出处"
+            name="cardMeta"
+            maxLength={120}
+            {...bind("cardMeta")}
+          />
+          <Field
+            label="一句推荐（可选）"
+            name="cardNote"
+            maxLength={400}
+            {...bind("cardNote")}
+          />
           <Field
             label="外链（可选，https://）"
             name="cardHref"
             type="url"
             maxLength={500}
+            {...bind("cardHref")}
           />
         </div>
       ) : null}
@@ -88,6 +119,8 @@ export function MomentForm() {
           name="body"
           rows={5}
           maxLength={2000}
+          value={draft.body}
+          onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))}
           className="mt-2 min-h-28 rounded-none border-rule bg-transparent font-heading text-[16px] leading-[1.7]"
           placeholder="一两句话就够。"
         />
@@ -96,7 +129,7 @@ export function MomentForm() {
       {kind === "photo" && (
         <div className="py-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            Images
+            图片
           </p>
           <div className="mt-3">
             <ImagePicker value={images} onChange={setImages} />
@@ -108,9 +141,14 @@ export function MomentForm() {
       )}
 
       <div className="grid gap-4 py-4 sm:grid-cols-3">
-        <Field label="心情（可选）" name="mood" maxLength={20} />
-        <Field label="天气（可选）" name="weather" maxLength={20} />
-        <Field label="地点（可选）" name="place" maxLength={40} />
+        <Field label="心情（可选）" name="mood" maxLength={20} {...bind("mood")} />
+        <Field
+          label="天气（可选）"
+          name="weather"
+          maxLength={20}
+          {...bind("weather")}
+        />
+        <Field label="地点（可选）" name="place" maxLength={40} {...bind("place")} />
       </div>
 
       {state.error && (
@@ -140,11 +178,15 @@ function Field({
   name,
   type = "text",
   maxLength,
+  value,
+  onChange,
 }: {
   label: string;
   name: string;
   type?: string;
   maxLength?: number;
+  value: string;
+  onChange: (value: string) => void;
 }) {
   return (
     <div>
@@ -159,6 +201,8 @@ function Field({
         name={name}
         type={type}
         maxLength={maxLength}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         className="mt-2 h-9 rounded-none border-rule bg-transparent font-mono text-[13px]"
       />
     </div>
