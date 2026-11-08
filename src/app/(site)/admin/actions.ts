@@ -6,11 +6,12 @@ import { getDb } from "@/db/client";
 import {
   comments as commentsTable,
   letters as lettersTable,
+  shelfItems,
   siteSettings,
   songs as songsTable,
 } from "@/db/schema";
 import { getSessionUser } from "@/lib/session";
-import { parseStatusInput } from "@/lib/community-input";
+import { parseShelfInput, parseStatusInput } from "@/lib/community-input";
 import { STATUS_KEY } from "@/lib/settings-server";
 
 /**
@@ -86,5 +87,29 @@ export async function moderateComment(formData: FormData): Promise<void> {
   if (!db) return;
   await db.update(commentsTable).set({ status }).where(eq(commentsTable.id, id));
   updateTag("comments");
+  refresh();
+}
+
+/** 收录一条书影音；校验与站内其它表单共用纯函数层。 */
+export async function addShelfItem(formData: FormData): Promise<void> {
+  if (!(await requireOwner())) return;
+  const parsed = parseShelfInput(formData);
+  if (!parsed.ok) return;
+  const db = getDb();
+  if (!db) return;
+  await db.insert(shelfItems).values(parsed.value);
+  updateTag("shelf");
+  refresh();
+}
+
+/** 删除一条书架条目；id 必须是正的安全整数。 */
+export async function deleteShelfItem(formData: FormData): Promise<void> {
+  if (!(await requireOwner())) return;
+  const id = idFrom(formData);
+  if (!id) return;
+  const db = getDb();
+  if (!db) return;
+  await db.delete(shelfItems).where(eq(shelfItems.id, id));
+  updateTag("shelf");
   refresh();
 }

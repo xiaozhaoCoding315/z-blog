@@ -138,3 +138,77 @@ export function parseStatusInput(fd: FormData): ParseResult<{ status: string }> 
   if ([...status].length > 40) return { ok: false, error: "状态句最多 40 字" };
   return { ok: true, value: { status } };
 }
+
+export type ShelfType = "book" | "film" | "music";
+
+export interface ShelfInput {
+  type: ShelfType;
+  title: string;
+  creator: string;
+  rating: number | null;
+  note: string;
+  coverUrl: string | null;
+  finishedAt: string | null;
+}
+
+const shelfTypeSchema = z.enum(["book", "film", "music"]);
+
+const dateOnly = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "日期格式应为 YYYY-MM-DD")
+  .refine((v) => {
+    const d = new Date(`${v}T00:00:00Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+  }, "日期不存在");
+
+const coverSchema = z
+  .string()
+  .max(500, "封面地址太长")
+  .refine(
+    (v) => v.startsWith("/images/") || /^https?:\/\//i.test(v),
+    "封面必须是 http(s) 地址或 /images/ 下的路径"
+  );
+
+export function parseShelfInput(fd: FormData): ParseResult<ShelfInput> {
+  const type = shelfTypeSchema.safeParse(fd.get("type"));
+  if (!type.success) return { ok: false, error: "类型只能是书、影、音" };
+
+  const title = String(fd.get("title") ?? "").trim();
+  const creator = String(fd.get("creator") ?? "").trim();
+  if (!title || [...title].length > 120) {
+    return { ok: false, error: "标题要填，最多 120 字" };
+  }
+  if ([...creator].length > 120) return { ok: false, error: "作者/艺人最多 120 字" };
+
+  const rawRating = String(fd.get("rating") ?? "").trim();
+  const rating = rawRating ? Number(rawRating) : null;
+  if (rating !== null && (!Number.isInteger(rating) || rating < 1 || rating > 5)) {
+    return { ok: false, error: "评分只能是 1 到 5" };
+  }
+
+  const note = String(fd.get("note") ?? "").trim();
+  if ([...note].length > 200) return { ok: false, error: "短评最多 200 字" };
+
+  const rawCover = String(fd.get("coverUrl") ?? "").trim();
+  if (rawCover && !coverSchema.safeParse(rawCover).success) {
+    return { ok: false, error: "封面必须是 http(s) 地址或 /images/ 下的路径" };
+  }
+
+  const rawDate = String(fd.get("finishedAt") ?? "").trim();
+  if (rawDate && !dateOnly.safeParse(rawDate).success) {
+    return { ok: false, error: "完成日期格式应为 YYYY-MM-DD" };
+  }
+
+  return {
+    ok: true,
+    value: {
+      type: type.data,
+      title,
+      creator,
+      rating,
+      note,
+      coverUrl: rawCover || null,
+      finishedAt: rawDate || null,
+    },
+  };
+}

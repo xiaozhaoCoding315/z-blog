@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
   comments as commentsTable,
   letters as lettersTable,
+  shelfItems as shelfTable,
   siteSettings,
   songs as songsTable,
   users,
@@ -14,6 +15,8 @@ import { getSessionUser } from "@/lib/session";
 import { getStatusSentence, STATUS_KEY } from "@/lib/settings-server";
 import { formatDay } from "@/lib/life";
 import {
+  addShelfItem,
+  deleteShelfItem,
   moderateComment,
   moderateLetter,
   moderateSong,
@@ -58,6 +61,29 @@ interface AdminComment {
   body: string;
   status: string;
 }
+
+interface AdminShelfItem {
+  id: number;
+  type: string;
+  title: string;
+  creator: string;
+  rating: number | null;
+  finishedAt: string | null;
+}
+
+const SHELF_TYPE_LABEL: Record<string, string> = {
+  book: "书",
+  film: "影",
+  music: "音",
+};
+
+const shelfLabelClass =
+  "font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground";
+const shelfFieldClass =
+  "mt-1.5 h-9 w-full min-w-0 rounded-none border border-rule bg-transparent px-2.5 font-mono text-[13px] outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring";
+const shelfSelectClass = `${shelfFieldClass} [&>option]:bg-panel [&>option]:text-foreground`;
+const shelfTextareaClass =
+  "mt-1.5 w-full min-w-0 rounded-none border border-rule bg-transparent px-2.5 py-2 font-mono text-[13px] outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring";
 
 function unavailable<T>(): SectionData<T> {
   return { available: false };
@@ -177,6 +203,35 @@ async function loadRecentComments(db: Db): Promise<SectionData<AdminComment[]>> 
   }
 }
 
+/**
+ * 书架条目：与公开读层同一排序，finishedAt 空值后置。
+ * 后台直连数据库，不走缓存——站长改完必须立即看到真实结果。
+ */
+async function loadShelfItems(db: Db): Promise<SectionData<AdminShelfItem[]>> {
+  try {
+    const rows = await db
+      .select({
+        id: shelfTable.id,
+        type: shelfTable.type,
+        title: shelfTable.title,
+        creator: shelfTable.creator,
+        rating: shelfTable.rating,
+        finishedAt: shelfTable.finishedAt,
+      })
+      .from(shelfTable)
+      .orderBy(
+        sql`${shelfTable.finishedAt} DESC NULLS LAST`,
+        desc(shelfTable.createdAt),
+        desc(shelfTable.id)
+      );
+
+    return { available: true, data: rows };
+  } catch (err) {
+    console.error("[admin] 书架读取失败：", err);
+    return unavailable();
+  }
+}
+
 export default async function AdminPage() {
   await connection();
   const user = await getSessionUser();
@@ -186,7 +241,7 @@ export default async function AdminPage() {
       <header>
         <h1 className="font-heading text-3xl font-bold">审核后台</h1>
         <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-          状态句 · 待审留言 · 待审歌曲 · 评论
+          状态句 · 待审留言 · 待审歌曲 · 评论 · 书架
         </p>
       </header>
 
@@ -224,6 +279,7 @@ async function AdminSections() {
   const letters = db ? await loadPendingLetters(db) : unavailable<AdminLetter[]>();
   const songs = db ? await loadPendingSongs(db) : unavailable<AdminSong[]>();
   const comments = db ? await loadRecentComments(db) : unavailable<AdminComment[]>();
+  const shelf = db ? await loadShelfItems(db) : unavailable<AdminShelfItem[]>();
 
   return (
     <>
@@ -432,6 +488,163 @@ async function AdminSections() {
               </li>
             ))}
           </ul>
+        )}
+      </Section>
+
+      <Section title="书架">
+        {!shelf.available ? (
+          <NotAvailable what="书架" />
+        ) : (
+          <>
+            <form action={addShelfItem} className="mt-3 border-y border-rule py-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                添加一条
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="shelf-type" className={shelfLabelClass}>
+                    类型
+                  </label>
+                  <select
+                    id="shelf-type"
+                    name="type"
+                    defaultValue="book"
+                    className={shelfSelectClass}
+                  >
+                    <option value="book">书</option>
+                    <option value="film">影</option>
+                    <option value="music">音</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="shelf-title" className={shelfLabelClass}>
+                    标题
+                  </label>
+                  <input
+                    id="shelf-title"
+                    name="title"
+                    type="text"
+                    required
+                    maxLength={120}
+                    className={shelfFieldClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="shelf-creator" className={shelfLabelClass}>
+                    作者 / 艺人
+                  </label>
+                  <input
+                    id="shelf-creator"
+                    name="creator"
+                    type="text"
+                    maxLength={120}
+                    className={shelfFieldClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="shelf-rating" className={shelfLabelClass}>
+                    评分
+                  </label>
+                  <select
+                    id="shelf-rating"
+                    name="rating"
+                    defaultValue=""
+                    className={shelfSelectClass}
+                  >
+                    <option value="">不评分</option>
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="shelf-finished" className={shelfLabelClass}>
+                    完成日期
+                  </label>
+                  <input
+                    id="shelf-finished"
+                    name="finishedAt"
+                    type="date"
+                    className={shelfFieldClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="shelf-cover" className={shelfLabelClass}>
+                    封面地址
+                  </label>
+                  <input
+                    id="shelf-cover"
+                    name="coverUrl"
+                    type="text"
+                    maxLength={500}
+                    placeholder="https://… 或 /images/…"
+                    className={shelfFieldClass}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="shelf-note" className={shelfLabelClass}>
+                    短评
+                  </label>
+                  <textarea
+                    id="shelf-note"
+                    name="note"
+                    rows={3}
+                    maxLength={200}
+                    className={shelfTextareaClass}
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="mt-3 rounded-none border border-data px-3 py-1.5 font-mono text-[11px] text-data transition-colors hover:text-foreground"
+              >
+                添加
+              </button>
+            </form>
+
+            {shelf.data.length === 0 ? (
+              <Empty>书架还空着</Empty>
+            ) : (
+              <ul className="mt-3 divide-y divide-rule border-y border-rule">
+                {shelf.data.map((item) => {
+                  const meta = [
+                    SHELF_TYPE_LABEL[item.type] ?? item.type,
+                    item.creator,
+                    item.rating ? `${item.rating}/5` : "未评分",
+                    item.finishedAt
+                      ? item.finishedAt.replaceAll("-", ".")
+                      : "未标注日期",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex flex-wrap items-start justify-between gap-3 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="break-words text-[15px]">{item.title}</p>
+                        <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                          {meta}
+                        </p>
+                      </div>
+                      <form action={deleteShelfItem}>
+                        <input type="hidden" name="id" value={item.id} />
+                        <button
+                          type="submit"
+                          className="rounded-none border border-rule px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:border-alert hover:text-alert"
+                        >
+                          删除
+                        </button>
+                      </form>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
         )}
       </Section>
     </>
