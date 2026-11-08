@@ -14,13 +14,19 @@ const KIND_LABEL: Record<MomentKind, string> = {
  * 读数卡：只有歌、书影音、摘录、链接才配住进一个面板。
  * 面板底 + 左上角类型标签，不用边框强调——脊线上的节点已经说了类型。
  */
-export function MomentCard({ moment }: { moment: Moment }) {
+export function MomentCard({
+  moment,
+  linked = true,
+}: {
+  moment: Moment;
+  linked?: boolean;
+}) {
   const card = moment.card;
   if (!card) return null;
 
   return (
     <article className="max-w-[38rem]">
-      <MomentMeta moment={moment} />
+      <MomentMeta moment={moment} linked={linked} />
       <div className="mt-3 border border-rule bg-panel p-5">
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           {KIND_LABEL[moment.kind]}

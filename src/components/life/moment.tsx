@@ -19,8 +19,16 @@ export const NODE_CLASS: Record<MomentKind, string> = {
 /**
  * 分发顺序：先看 moment.card，有则走卡片；再看 kind === "photo"，是则走图文；其余一律走短记。
  */
-export function Moment({ moment }: { moment: MomentData }) {
-  if (moment.card) return <MomentCard moment={moment} />;
-  if (moment.kind === "photo") return <MomentPhoto moment={moment} />;
-  return <MomentText moment={moment} />;
+export function Moment({
+  moment,
+  linked = true,
+}: {
+  moment: MomentData;
+  linked?: boolean;
+}) {
+  if (moment.card) return <MomentCard moment={moment} linked={linked} />;
+  if (moment.kind === "photo") {
+    return <MomentPhoto moment={moment} linked={linked} />;
+  }
+  return <MomentText moment={moment} linked={linked} />;
 }

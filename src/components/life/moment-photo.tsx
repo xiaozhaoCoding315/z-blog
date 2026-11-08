@@ -7,11 +7,17 @@ import { MomentMeta } from "./moment-meta";
  * hover 只抬 2px 并把边染成 --data，不加深阴影（层级不靠阴影）。
  * 没有照片时画一块占位——阶段 1 的假数据没有真实图片。
  */
-export function MomentPhoto({ moment }: { moment: Moment }) {
+export function MomentPhoto({
+  moment,
+  linked = true,
+}: {
+  moment: Moment;
+  linked?: boolean;
+}) {
   const images = moment.images ?? [];
   return (
     <article className="max-w-[38rem]">
-      <MomentMeta moment={moment} />
+      <MomentMeta moment={moment} linked={linked} />
 
       {images.length === 0 ? (
         <div className="mt-3 flex aspect-[4/3] items-center justify-center border border-rule bg-panel-2">
