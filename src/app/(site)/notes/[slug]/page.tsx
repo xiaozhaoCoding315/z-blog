@@ -36,7 +36,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const note = getNoteBySlug(slug);
-  if (!note) return {};
+  // 草稿也在磁盘上：没发布的内容不能把标题写进 <head> 或搜索引擎
+  if (!note || note.meta.draft) {
+    return { robots: { index: false, follow: false } };
+  }
   return {
     title: note.meta.title,
     description: note.meta.description,

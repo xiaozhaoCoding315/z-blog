@@ -122,7 +122,7 @@ export default async function AboutPage() {
         <h2 className="font-heading text-lg font-bold tracking-tight">关于本站</h2>
         <div className="mt-3 space-y-3 text-[15px] leading-7 text-muted-foreground">
           <p>
-            这个站是我从零手写的：笔记用 MDX + Git 管理，构建时静态生成；
+            这个站是我从零手写的：笔记用 MDX + Git 管理，预渲染，评论按请求补齐；
             数据库承载浏览量与笔记向量索引。⌘K 搜索能理解意思相近的查询，
             右下角的助手回答问题时会标注引用来源。
           </p>

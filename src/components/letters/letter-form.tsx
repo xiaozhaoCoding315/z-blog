@@ -17,13 +17,23 @@ const initialState: LetterFormState = {};
  * 客户端不做联动禁用——用户填到一半时把输入框锁掉只会更烦。
  */
 export function LetterForm() {
-  const [state, formAction, pending] = useActionState(submitLetter, initialState);
   const [draft, setDraft] = useState({
     body: "",
     songTitle: "",
     songArtist: "",
     songUrl: "",
   });
+  const [state, formAction, pending] = useActionState(
+    async (prev: LetterFormState, formData: FormData) => {
+      const result = await submitLetter(prev, formData);
+      // 成功后主动清空，避免同一段话被手滑再投一次
+      if (result.ok) {
+        setDraft({ body: "", songTitle: "", songArtist: "", songUrl: "" });
+      }
+      return result;
+    },
+    initialState
+  );
   const bind = (name: keyof typeof draft) => ({
     value: draft[name],
     onChange: (value: string) =>
@@ -94,7 +104,7 @@ export function LetterForm() {
         <Button
           type="submit"
           disabled={pending}
-          className="rounded-none bg-data px-4 font-mono text-[12px] text-background hover:bg-data/90"
+          className="rounded-none border border-data bg-transparent px-4 font-mono text-[12px] text-data hover:border-foreground hover:bg-transparent hover:text-foreground"
         >
           {pending ? "投递中…" : "投进信箱"}
         </Button>

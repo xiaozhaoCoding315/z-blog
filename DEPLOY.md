@@ -114,7 +114,7 @@ docker compose up -d --no-build
 
 浏览器打开 `http://服务器IP` —— 完成 🎉
 
-容器启动时自动执行：建表（幂等）→ 按 SHA-256 哈希增量同步文章 → 向量化 + AI 摘要。
+容器启动时自动执行：建表（幂等）→ 按 SHA-256 哈希增量同步笔记 → 向量化 + AI 摘要。
 
 **别忘了安全组**：阿里云控制台 → ECS → 安全组 → 入方向添加：自定义 TCP / 80 / 0.0.0.0/0。
 
@@ -212,7 +212,7 @@ gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog bl
 
 ## 常见问题
 
-**Q：改了 `.env` 不生效？** 环境变量在构建期（NEXT_PUBLIC_*）和运行期都会用到，改完执行 `docker compose up -d --build`。
+**Q：改了 `.env` 不生效？** 环境变量在构建期（NEXT_PUBLIC_*）和运行期都会用到：本地重新构建并用 `scripts/deploy.sh` 发布；服务器只执行 `docker compose up -d --no-build`（2C2G 禁止在服务器构建）。
 
 **Q：AI 问答报「AI 功能未启用」？** 检查 `.env` 的 `AI_API_KEY`（智谱）和 `EMBEDDING_API_KEY`（百炼），然后 `docker compose restart app`。
 

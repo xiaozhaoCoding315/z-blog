@@ -76,7 +76,11 @@ export async function moderateSong(formData: FormData): Promise<void> {
   if (!id || (status !== "approved" && status !== "rejected")) return;
   const db = getDb();
   if (!db) return;
-  await db.update(songsTable).set({ status }).where(eq(songsTable.id, id));
+  // 驳回「此刻循环」时同时取消置顶，避免公开页残留占位
+  await db
+    .update(songsTable)
+    .set(status === "rejected" ? { status, pinned: false } : { status })
+    .where(eq(songsTable.id, id));
   updateTag("songs");
   refresh();
 }

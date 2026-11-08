@@ -58,15 +58,17 @@ export default async function PostOgImage({
 }) {
   const { slug } = await params;
   const note = getNoteBySlug(slug);
+  // 草稿和未知 slug 一样回退到站点默认卡片，不把草稿标题画出来
+  const visible = note && !note.meta.draft ? note : null;
 
   const [serif, sans] = await Promise.all([
     loadFont("NotoSerifSC-Bold.ttf", "serif"),
     loadFont("NotoSansSC-Bold.ttf", "sans"),
   ]);
 
-  const title = note?.meta.title ?? siteConfig.title;
-  const tags = note?.meta.tags.slice(0, 3) ?? [];
-  const date = note?.meta.date ?? "";
+  const title = visible?.meta.title ?? siteConfig.title;
+  const tags = visible?.meta.tags.slice(0, 3) ?? [];
+  const date = visible?.meta.date ?? "";
   const fonts = [
     ...(serif ? [{ name: "Serif SC", data: serif, weight: 700 as const }] : []),
     ...(sans ? [{ name: "Sans SC", data: sans, weight: 700 as const }] : []),

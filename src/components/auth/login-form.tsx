@@ -135,7 +135,7 @@ export function LoginForm({ ownerConfigured }: { ownerConfigured: boolean }) {
         <Button
           type="submit"
           disabled={pending}
-          className="rounded-none bg-data px-4 font-mono text-[12px] text-background hover:bg-data/90"
+          className="rounded-none border border-data bg-transparent px-4 font-mono text-[12px] text-data hover:border-foreground hover:bg-transparent hover:text-foreground"
         >
           {pending ? "处理中…" : step === "email" ? "发验证码" : "登录"}
         </Button>

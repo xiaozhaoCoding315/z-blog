@@ -8,7 +8,7 @@
 
 **内容系统**
 - MDX 写作（Markdown + 组件），Git 即版本管理，`git pull` 即发布
-- 笔记静态生成（SEO 友好、秒开），Shiki 双主题代码高亮 + 行高亮 + 复制按钮
+- 笔记预渲染，评论在请求时补齐（SEO 友好、秒开），Shiki 双主题代码高亮 + 行高亮 + 复制按钮
 - 阅读进度条、目录 TOC 滚动高亮、上下篇、标签筛选、草稿支持
 - RSS / Sitemap / 动态 OG 分享卡片 / JSON-LD 结构化数据
 - 站内评论（登录后发言）、自建浏览量统计
@@ -123,7 +123,7 @@ scripts/              # 同步 CLI 与 Docker entrypoint
 
 ## 环境变量
 
-见 [.env.example](./env.example)，关键项：
+见 [.env.example](./.env.example)，关键项：
 
 | 变量 | 说明 |
 | --- | --- |

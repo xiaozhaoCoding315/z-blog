@@ -105,8 +105,20 @@ export function listRawNotes(): Note[] {
     );
 }
 
+/**
+ * 笔记 slug 白名单：只允许小写字母/数字，用单个连字符分段。
+ * 动态段会把 `%2F` 解码成 `/`，所以不能只靠字符串替换；
+ * `../posts/...` 这类值必须在拼路径之前就被拒绝。
+ */
+export function isValidNoteSlug(slug: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+}
+
 export function getRawNote(slug: string): Note | null {
-  const filepath = path.join(NOTES_DIR, `${slug}.mdx`);
+  if (!isValidNoteSlug(slug)) return null;
+  const filepath = path.resolve(NOTES_DIR, `${slug}.mdx`);
+  // 白名单之外再加一道目录边界断言，防止未来放宽规则时重新打开穿越
+  if (!filepath.startsWith(NOTES_DIR + path.sep)) return null;
   if (!fs.existsSync(filepath)) return null;
   return parseFile(filepath);
 }
