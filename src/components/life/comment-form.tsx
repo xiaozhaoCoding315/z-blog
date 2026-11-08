@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   submitComment,
   type CommentFormState,
-} from "@/app/(site)/life/[id]/actions";
+} from "@/app/(site)/(apps)/life/[id]/actions";
 
 const initialState: CommentFormState = {};
 

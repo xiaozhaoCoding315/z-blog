@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { submitLetter, type LetterFormState } from "@/app/(site)/letters/actions";
+import { submitLetter, type LetterFormState } from "@/app/(site)/(apps)/letters/actions";
 
 const initialState: LetterFormState = {};
 

@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { submitSong, type SongFormState } from "@/app/(site)/playlist/actions";
+import { submitSong, type SongFormState } from "@/app/(site)/(apps)/playlist/actions";
 
 const initialState: SongFormState = {};
 

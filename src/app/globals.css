@@ -1284,3 +1284,16 @@ html {
     overflow: hidden;
   }
 }
+
+.os-app-frame[data-expanded="true"] {
+  padding: 0;
+}
+
+.os-app-frame[data-expanded="true"] .os-app-window {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.os-app-content {
+  scroll-behavior: smooth;
+}

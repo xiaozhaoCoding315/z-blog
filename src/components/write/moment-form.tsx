@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePicker } from "./image-picker";
-import { createMoment, type MomentFormState } from "@/app/(site)/write/actions";
+import { createMoment, type MomentFormState } from "@/app/(site)/(apps)/write/actions";
 
 const KINDS = [
   { value: "text", label: "短记" },
