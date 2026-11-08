@@ -540,3 +540,95 @@ git commit -m "docs(phase-5): 验收结果——迁移、旧链接、RSS 与上�
 - **无占位**：10 篇名单、路由重定向、RSS/sitemap 形状、删除清单、验收命令都具体；项目文案给的是可调整示例，不编造项目事实。
 - **类型一致**：`getAllNotes/getNoteBySlug/getAdjacentNotes/getNoteTags` 在 Task 1 改名后，Task 3 的 RSS/sitemap 直接使用；`getMoments()` 的 `{ available, moments }` 沿用阶段 2 接口。
 - **破坏性操作有边界**：只 `git rm` 计划列出的路由/组件/API；`content/posts` 归档、`content/interview`、数据库表全部保留。
+
+---
+
+## 验收结果
+
+验收时间：2026-11-08 至 2026-11-09。环境：Windows 11、Node 24、Next.js 16.4.3、本地生产构建 + 本地 Postgres 17（pgvector，`zb-check-db`）。分支 `refactor/personal-space`，HEAD `f101f8e`，工作树干净；未推送、未部署、未合并 `main`。
+
+### 1. 门禁
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run type-check` | exit 0，`✓ Types generated successfully` |
+| `npm run lint` | exit 0，无输出 |
+| `npm test` | exit 0：78 tests / 78 pass / 0 fail |
+| `node scripts/check-content.mjs` | exit 0：「检查了 10 篇笔记：0 个错误，0 个提醒」 |
+| `npm run build` | exit 0；Turbopack 构建成功，56/56 静态页生成 |
+
+构建路由表关键项：`/notes`、`/journal`、`/shelf`、`/playlist`、`/letters`、`/notes/[slug]`（10 个 `generateStaticParams` 路径）、`/feed.xml`（ƒ）、`/sitemap.xml`（ƒ）、`/robots.txt`（○）、`/blog/[slug]`（ƒ，旧链接兜底）、`/admin`（ƒ）。构建日志有两条既有 `uploads-server.ts` 文件系统 tracing 警告，与阶段 5 无关。
+
+### 2. 数据库同步
+
+同步前：`posts=0`、`chunks=0`、`moments=0`、`comments=0`。
+
+执行 `DATABASE_URL=postgres://blog:blog@localhost:5432/blog npm run blog:sync`：
+
+- AI/向量服务启用，10 篇笔记全部分块并写入；
+- `posts=10`、`chunks=83`；
+- `posts` 的 slug 与 `content/notes` 的 10 个文件名逐一对应；
+- 归档的 20 个 slug 在 `posts` 与 `chunks` 中均为 0。
+
+额外验证级联清理：先手工插入归档 slug `kafka-exactly-once-truth` 的 `posts` 行与 1 个 chunk（`posts=11`、`chunks=84`），再跑一次 `blog:sync`。输出「移除文章：kafka-exactly-once-truth」，结束后 `posts=10`、`chunks=83`，该 slug 的 `posts` 与 `chunks` 均为 0，确认 `chunks` 随 `posts` 级联删除。
+
+### 3. 路由与旧链接
+
+生产服务 `npm run start -- -p 3213`（带数据库）实测：
+
+| 请求 | 结果 |
+| --- | --- |
+| `/blog/hello-world` | 308 → `/notes/hello-world` |
+| `/blog/agent-memory-design` | 308 → `/notes/agent-memory-design` |
+| `/blog/kafka-exactly-once-truth`（归档） | 308 → `/notes` |
+| `/blog`、`/blog/tag/Next.js`、`/archives` | 308 → `/notes` |
+| `/changelog` | 308 → `/journal` |
+| `/guestbook` | 308 → `/letters` |
+| `/interview`、`/interview/bean-lifecycle` | 404 |
+| `/notes` | 200，列出 10 篇 |
+| `/notes/hello-world` | 200，正文与评论可见 |
+| `/notes/kafka-exactly-once-truth` | **200 + 404 UI + noindex**（见「已知偏差」） |
+| `/journal` | 200 |
+| `/shelf`、`/playlist`、`/letters` | 200 |
+| `/admin`（匿名） | 200，登录提示；不展示审核数据 |
+| `/login`、`/write` | 200 |
+
+旧路由的 308 与 `next.config.ts` 的 `permanent: true`、`src/app/blog/[slug]/route.ts` 一致；阶段计划与提交信息里的「301」是历史措辞，实际语义为永久重定向，具体状态码是 308。
+
+### 4. RSS、站点地图与 robots
+
+带数据库实测：
+
+- `/feed.xml`：`content-type: application/rss+xml; charset=utf-8`；12 个 `<item>`（10 篇笔记 + 2 条动态）；`/life/` 链接与 guid 共 4 处、`/notes/` 共 20 处；旧路由出现 0 次；XML 解析通过，`pubDate` 严格倒序。
+- `/sitemap.xml`：21 个 `<url>`（9 个静态页 + 10 篇笔记 + 2 条动态）；包含 `/notes`、`/shelf`、`/playlist`、`/letters`、`/journal`、10 个笔记 URL、`/life/1`、`/life/2`；不包含 `/blog`、`/changelog`、`/guestbook`、`/interview`、`/archives`；XML 解析通过。
+- `/robots.txt`：`Disallow: /admin`、`/write`、`/login`、`/api/`，`Sitemap` 指向站点配置的生产地址。
+- 无数据库时只输出 10 篇笔记、sitemap 不输出动态，已在阶段 5 Task 3 验证；本次未重跑无库分支。
+
+### 5. 死链与浏览器
+
+- 站内链接 grep：`src/app`、`src/components`、`content/notes` 中没有指向 `/blog`、`/changelog`、`/guestbook`、`/interview`、`/archives` 的 `href` 或 Markdown 链接。
+- 从 10 个入口页抓取并跟随全部站内链接：27 个内部链接，0 个 4xx/5xx，0 个跳转。
+- 浏览器（1280×900，随后 375×812）：主导航四项「生活 / 书架 / 歌单 / 信箱」、页脚「笔记 / 项目 / 日志 / 关于」与 GitHub/RSS 均可达；11 个页面全部 200，控制台 0 error、0 warning；页面内无旧路由链接。页脚「友链」因 `friends` 为空按既有规则隐藏。
+- 所有者会话（签名 cookie）：`/admin` 显示状态句、待审留言、待审歌曲、评论、书架、歌单六个区块；访客会话只显示「只对站长开放」，不显示审核数据。
+- 动态评论与笔记评论均可见；匿名状态显示登录提示，不出现评论表单。
+- 关 JS：首页、`/notes`、`/notes/hello-world` 的标题与正文可见；首页时钟显示 `--:--:--`，不伪造时间。
+- 375 宽：`scrollWidth=365`，无横向滚动；首页两条动态可见。
+- 首页有数据时读数为 MOMENTS 2、MONTH 2、COMMITS 25、WEATHER 15°，无 `NOT AVAILABLE`、无假 0。
+
+### 6. 已知偏差与未完成项
+
+**已知偏差（需在最终评审/上线时定夺，不在验收中擅自改代码）**
+
+1. **未知笔记是软 404**：`/notes/kafka-exactly-once-truth` 返回 HTTP 200 + 「这一页不在」404 UI + `noindex`，不是硬 404。原因是 `cacheComponents` 下 `/notes/[slug]` 仍先发出静态壳，流式渲染中的 `notFound()` 无法再改状态码；阶段 2 的 `/life/[id]` 已记录同一 PPR 取舍。页面表现与抓取语义（noindex）正确，硬 404 需要让路由退出 PPR 或增加 Proxy 级存在性检查，留待最终评审决定。另：该响应同时带有 `notFound()` 注入的 `noindex` 与布局的 `index, follow` 两个 robots meta，按搜索引擎「取最严格」规则应以 noindex 为准，但两条并存本身是 Minor。
+2. **`/archives` 页面文件仍保留**：计划文件结构曾列「删除 `src/app/(site)/archives/page.tsx`」，Task 2 评审时明确保留该文件并由 `next.config.ts` 的 308 重定向覆盖；本次构建仍生成 `/archives` 静态页，但运行时请求先命中重定向。若最终决定严格按计划删除，只需删文件并保留重定向，不影响 `/archives` 的 308 行为。
+
+**未完成项（实际部署未执行）**
+
+- 未在真实服务器执行 `scripts/deploy.sh`：本机到 GitHub/服务器网络、域名备案、HTTPS 证书均未就绪。
+- 未做真实 SMTP 发信（465/587）、未验证真实反向代理的 XFF、未验证 `uploads` 命名卷重启后图片仍在。
+- 上线前必须在**本地构建机**用 `NEXT_PUBLIC_SITE_URL=https://…` 与 `NEXT_PUBLIC_CONTACT_EMAIL=…` 重新构建镜像；只改服务器 `.env` 或只重启容器不生效。详见 `DEPLOY.md` §6。
+- 分支未推送、未部署、未合并 `main`；完整改版仍等待用户决定推送与上线时间。
+
+### 7. 结论
+
+阶段 5 的代码、内容迁移、旧链接、RSS/sitemap、死链与后台权限均通过本地验收；可以进入最终整枝评审。两处已知偏差（软 404、`/archives` 页面保留）不影响站内可用性，但应在合并/上线前由最终评审明确处理方式。
