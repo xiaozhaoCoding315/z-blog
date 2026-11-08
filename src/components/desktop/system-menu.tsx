@@ -12,6 +12,7 @@ import {
   useDesktopSettings,
   type DesktopPreset,
 } from "./use-desktop-settings";
+import { useDesktopRuntime } from "./desktop-runtime";
 import { useTaskbarPanels } from "./taskbar-panels";
 
 const PRESETS: { id: DesktopPreset; label: string }[] = [
@@ -29,6 +30,7 @@ export function SystemMenu({
 }) {
   const closePanels = useTaskbarPanels();
   const { preset, setPreset } = useDesktopSettings();
+  const { windows } = useDesktopRuntime();
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,6 +78,20 @@ export function SystemMenu({
             </button>
           ))}
         </div>
+      </section>
+
+      <section>
+        <p className="os-menu-label">窗口</p>
+        <button
+          type="button"
+          className="os-menu-link"
+          onClick={() => {
+            windows.resetLayout();
+            closePanels();
+          }}
+        >
+          重置窗口布局
+        </button>
       </section>
 
       <section>

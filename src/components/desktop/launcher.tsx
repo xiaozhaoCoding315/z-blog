@@ -1,12 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import type { LinkedApp } from "@/config/apps";
+import { useRouter } from "next/navigation";
+import type { AppDefinition } from "@/config/apps";
+import { useDesktopRuntime } from "./desktop-runtime";
 import { AppIcon } from "./icons";
 import { useTaskbarPanels } from "./taskbar-panels";
 
-export function Launcher({ apps }: { apps: LinkedApp[] }) {
+/**
+ * 启动器：所有应用（含有路由与无路由的窗口型应用）。
+ *
+ * 点击行为从运行时上下文取，不接收 onOpen 回调：
+ * 设置 → 打开系统菜单；窗口型 → 开窗；路由型 → 跳转。
+ * 移动端没有窗口，窗口型应用有真实路由时直接进入应用页。
+ */
+export function Launcher({ apps }: { apps: AppDefinition[] }) {
   const closePanels = useTaskbarPanels();
+  const { windows, openSettings } = useDesktopRuntime();
+  const router = useRouter();
+
+  const open = (app: AppDefinition) => {
+    closePanels();
+    if (app.id === "settings") {
+      openSettings();
+      return;
+    }
+    if (app.kind === "route") {
+      if (app.path) router.push(app.path);
+      return;
+    }
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      if (app.path) router.push(app.path);
+      return;
+    }
+    windows.openApp(app.id);
+  };
 
   return (
     <div className="os-launcher" role="dialog" aria-label="全部应用">
@@ -15,18 +43,40 @@ export function Launcher({ apps }: { apps: LinkedApp[] }) {
         <span className="tabular-nums">{apps.length} 个</span>
       </div>
       <div className="os-launcher-grid">
-        {apps.map((app) => (
-          <Link
-            key={app.id}
-            href={app.path}
-            onClick={closePanels}
-            className="os-launcher-app"
-            title={app.description}
-          >
-            <AppIcon name={app.icon} className="size-5" />
-            <span>{app.title}</span>
-          </Link>
-        ))}
+        {apps.map((app) => {
+          const content = (
+            <>
+              <AppIcon name={app.icon} className="size-5" />
+              <span>{app.title}</span>
+            </>
+          );
+
+          if (app.kind === "route" && app.path) {
+            return (
+              <Link
+                key={app.id}
+                href={app.path}
+                onClick={closePanels}
+                className="os-launcher-app"
+                title={app.description}
+              >
+                {content}
+              </Link>
+            );
+          }
+
+          return (
+            <button
+              key={app.id}
+              type="button"
+              onClick={() => open(app)}
+              className="os-launcher-app"
+              title={app.description}
+            >
+              {content}
+            </button>
+          );
+        })}
       </div>
       <div className="os-launcher-foot">
         <Link href="/about" onClick={closePanels}>

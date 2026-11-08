@@ -51,6 +51,7 @@ test("hydrate 只恢复位置，preferredRect 用保存值并 clamp", () => {
     type: "hydrate",
     saved: { life: { x: 20, y: 40, w: 480, h: 600 } },
   });
+  assert.equal(state.hydrated, true);
   assert.equal(state.windows.life, undefined);
   assert.deepEqual(
     preferredRect(state.saved.life, rect, bounds, 420, 360),
@@ -74,9 +75,11 @@ test("clampRect 限制最小尺寸并保留 80px 标题栏", () => {
   assert.equal(clamped.y, 0);
 });
 
-test("reset 清空窗口与保存位置", () => {
-  let state = windowReducer(initialWindowStore, { type: "open", id: "life", rect });
+test("reset 清空窗口与保存位置，但保持已水合标记", () => {
+  let state = windowReducer(initialWindowStore, { type: "hydrate", saved: {} });
+  state = windowReducer(state, { type: "open", id: "life", rect });
   state = windowReducer(state, { type: "reset" });
   assert.deepEqual(state.windows, {});
   assert.deepEqual(state.saved, {});
+  assert.equal(state.hydrated, true);
 });

@@ -25,7 +25,6 @@ export function useWindowManager() {
   const pathname = usePathname();
   const [store, dispatch] = useReducer(windowReducer, initialWindowStore);
   const [bounds, setBounds] = useState<DesktopBounds>(DEFAULT_BOUNDS);
-  const [hydrated, setHydrated] = useState(false);
   const nodeRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
 
@@ -54,30 +53,33 @@ export function useWindowManager() {
     observerRef.current = observer;
   }, []);
 
-  // 只恢复位置/尺寸；开合状态不恢复。hydrated 让 Task 3 在读取完成后再处理 ?open。
+  // 只恢复位置/尺寸；开合状态不恢复。hydrate action 同时把 store.hydrated
+  // 置为 true，因此 Task 3 的 ?open 只会在 saved 真正可用的同一帧执行。
+  // 即使存储为空/损坏也必须 dispatch：这是 hydrated 的唯一来源。
   useEffect(() => {
+    let saved: Record<string, Rect> = {};
     try {
-      const saved = JSON.parse(
+      const parsed = JSON.parse(
         localStorage.getItem(WINDOW_STORAGE_KEY) ?? "{}"
       );
-      if (saved && typeof saved === "object") {
-        dispatch({ type: "hydrate", saved });
+      if (parsed && typeof parsed === "object") {
+        saved = parsed as Record<string, Rect>;
       }
     } catch {
       // 存储损坏或不可用时按空布局启动
     }
-    // 在 effect 体内同步 setState 会触发级联渲染；等本次外部同步结束
-    // 后再标记，Task 3 会在 hydrated 为 true 后处理 ?open。
-    queueMicrotask(() => setHydrated(true));
+    dispatch({ type: "hydrate", saved });
   }, []);
 
   useEffect(() => {
+    // 水合完成前不要写：否则空 store 会先覆盖掉 localStorage 里的位置。
+    if (!store.hydrated) return;
     try {
       localStorage.setItem(WINDOW_STORAGE_KEY, JSON.stringify(store.saved));
     } catch {
       // 隐私模式写不进去：本次会话仍然保留内存中的位置
     }
-  }, [store.saved]);
+  }, [store.saved, store.hydrated]);
 
   const openApp = useCallback(
     (id: string) => {
@@ -146,7 +148,7 @@ export function useWindowManager() {
     store,
     boundsRef,
     bounds,
-    hydrated,
+    hydrated: store.hydrated,
     openApp,
     close,
     focus,

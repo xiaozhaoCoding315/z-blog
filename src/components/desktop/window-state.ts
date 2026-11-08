@@ -23,11 +23,22 @@ export interface WindowStore {
   windows: Record<string, WindowState>;
   saved: Record<string, Rect>;
   zCounter: number;
+  /**
+   * localStorage 里的位置是否已经进入 `saved`。
+   * 它由 hydrate action 设置，保证读取它的组件（如首页的 `?open=`）
+   * 在 saved 真正可用的同一帧才看到 `true`。
+   */
+  hydrated: boolean;
 }
 
 export const WINDOW_STORAGE_KEY = "z-os:windows";
 export const DEFAULT_BOUNDS: DesktopBounds = { width: 1440, height: 852 };
-export const initialWindowStore: WindowStore = { windows: {}, saved: {}, zCounter: 1 };
+export const initialWindowStore: WindowStore = {
+  windows: {},
+  saved: {},
+  zCounter: 1,
+  hydrated: false,
+};
 
 export function clampRect(
   rect: Rect,
@@ -139,9 +150,15 @@ export function windowReducer(state: WindowStore, action: Action): WindowStore {
       };
     }
     case "hydrate":
-      return { ...state, saved: { ...state.saved, ...action.saved } };
+      return {
+        ...state,
+        saved: { ...state.saved, ...action.saved },
+        hydrated: true,
+      };
     case "reset":
-      return { ...initialWindowStore };
+      // 重置布局只清空窗口与位置；hydrate 是一次性的启动阶段，
+      // 不能因为重置又退回未水合状态。
+      return { ...initialWindowStore, hydrated: state.hydrated };
     default:
       return state;
   }

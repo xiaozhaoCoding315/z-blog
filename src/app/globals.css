@@ -1627,3 +1627,185 @@ html {
     }
   }
 }
+
+/* ============ Personal Dev OS 桌面窗口层 ============ */
+@layer components {
+  /*
+   * 窗口层覆盖整个桌面；本身不吃指针事件，好让下面的图标照常可点。
+   * 只有窗口自己恢复 pointer-events。
+   */
+  .os-window-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  .os-window-layer > .os-window {
+    pointer-events: auto;
+  }
+
+  /* ---------- 图标选择态 ---------- */
+  .os-icon[data-selected="true"] {
+    border-color: color-mix(in srgb, var(--phosphor) 55%, var(--rule));
+    background: color-mix(in srgb, var(--window-2) 70%, transparent);
+  }
+
+  .os-icon[data-selected="true"] .os-icon-tile {
+    border-color: color-mix(in srgb, var(--phosphor) 55%, var(--rule));
+  }
+
+  .os-icon[data-selected="true"] .os-icon-label {
+    color: var(--ink);
+  }
+
+  /* 窗口型图标是 <button>：去掉浏览器默认外观，保持与 <a> 图标一致。 */
+  button.os-icon {
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  /* ---------- 任务栏中的窗口项 ---------- */
+  .os-taskbar-item {
+    max-width: 180px;
+    overflow: hidden;
+  }
+
+  .os-taskbar-item > span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .os-taskbar-window {
+    position: relative;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .os-taskbar-window:focus-visible {
+    outline: 1px solid var(--phosphor);
+    outline-offset: -1px;
+  }
+
+  /* 活动窗口：底部 2px 琥珀线；最小化项降透明度，但不能低到读不清。 */
+  .os-taskbar-window::after {
+    content: "";
+    position: absolute;
+    right: 8px;
+    bottom: 0;
+    left: 8px;
+    height: 2px;
+    background: transparent;
+  }
+
+  .os-taskbar-window[data-focused="true"]::after {
+    background: var(--phosphor);
+  }
+
+  .os-taskbar-window[data-minimized="true"] {
+    opacity: 0.55;
+  }
+
+  .os-taskbar-window[data-minimized="true"]:hover,
+  .os-taskbar-window[data-minimized="true"]:focus-visible {
+    opacity: 1;
+  }
+
+  /* ---------- 窗口内容 ---------- */
+  .os-window-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px 20px 22px;
+  }
+
+  .os-pane-label {
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .os-pane-link {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-align: left;
+    transition: color 180ms ease;
+  }
+
+  .os-pane-link:hover,
+  .os-pane-link:focus-visible {
+    color: var(--ink);
+  }
+
+  button.os-pane-link {
+    background: transparent;
+    cursor: pointer;
+  }
+
+  /* 系统菜单里的按钮项与链接共用一套排版 */
+  button.os-menu-link {
+    background: transparent;
+    cursor: pointer;
+  }
+
+  button.os-launcher-app {
+    width: 100%;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  /* ---------- 桌面插槽（Phase 3 填充内容） ---------- */
+  .os-sticky-note,
+  .os-status-widget,
+  .os-desk-objects {
+    position: absolute;
+    z-index: 10;
+  }
+
+  .os-sticky-note {
+    top: 32px;
+    right: 36px;
+  }
+
+  .os-status-widget {
+    right: 36px;
+    bottom: 56px;
+    width: 280px;
+  }
+
+  .os-desk-objects {
+    bottom: 56px;
+    left: 36px;
+  }
+
+  @media (max-width: 767px) {
+    /* 移动端没有窗口与桌面物件：应用内容走真实路由页 */
+    .os-window-layer,
+    .os-sticky-note,
+    .os-status-widget,
+    .os-desk-objects {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .os-pane-link {
+      transition: none;
+    }
+  }
+}
