@@ -50,17 +50,18 @@ export function Window({ id, app, children }: WindowProps) {
 
   const minWidth = app.window?.minWidth ?? 0;
   const minHeight = app.window?.minHeight ?? 0;
+  // §5.4：终端/助理是模态 dialog，其余桌面窗口是 region。
+  const isDialog = app.id === "terminal" || app.id === "assistant";
 
-  // Esc 关闭聚焦窗口；正在输入或面板/模态打开时把 Esc 留给它们。
+  // Esc 关闭聚焦窗口；面板/模态打开时把 Esc 留给它们。
+  // 需要自己处理 Esc 的输入表面（如终端输入框）在本地 stopPropagation。
   useEffect(() => {
     if (!focused || state?.minimized) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest(INTERACTIVE)) return;
       if (
         document.querySelector(
-          ".os-launcher, .os-system-menu, [aria-modal='true']"
+          ".os-launcher, .os-system-menu, [aria-modal='true']:not(.os-window)"
         )
       ) {
         return;
@@ -250,7 +251,8 @@ export function Window({ id, app, children }: WindowProps) {
       ref={rootRef}
       className="os-window is-open"
       style={style}
-      role="dialog"
+      role={isDialog ? "dialog" : "region"}
+      aria-modal={isDialog ? true : undefined}
       aria-labelledby={titleId}
       data-focused={focused ? "true" : "false"}
       data-maximized={state.maximized ? "true" : "false"}

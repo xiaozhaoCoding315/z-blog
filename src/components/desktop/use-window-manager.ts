@@ -24,10 +24,37 @@ export function useWindowManager() {
   const router = useRouter();
   const pathname = usePathname();
   const [store, dispatch] = useReducer(windowReducer, initialWindowStore);
-  const boundsRef = useRef<HTMLDivElement>(null);
   const [bounds, setBounds] = useState<DesktopBounds>(DEFAULT_BOUNDS);
+  const [hydrated, setHydrated] = useState(false);
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
 
-  // 只恢复位置/尺寸；开合状态不恢复
+  /*
+   * 窗口层会随路由卸载/重挂载，所以用稳定的 callback ref 而不是一次性
+   * effect 读取节点：节点变化时重挂 ResizeObserver，卸载时只断开观察、
+   * 保留最后一次有效 bounds。0×0 的测量（display:none / 卸载过程）忽略。
+   */
+  const boundsRef = useCallback((node: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    nodeRef.current = node;
+    if (!node) return;
+
+    const measure = () => {
+      const width = node.clientWidth;
+      const height = node.clientHeight;
+      if (width <= 0 || height <= 0) return;
+      setBounds({ width, height });
+    };
+
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    observerRef.current = observer;
+  }, []);
+
+  // 只恢复位置/尺寸；开合状态不恢复。hydrated 让 Task 3 在读取完成后再处理 ?open。
   useEffect(() => {
     try {
       const saved = JSON.parse(
@@ -39,6 +66,9 @@ export function useWindowManager() {
     } catch {
       // 存储损坏或不可用时按空布局启动
     }
+    // 在 effect 体内同步 setState 会触发级联渲染；等本次外部同步结束
+    // 后再标记，Task 3 会在 hydrated 为 true 后处理 ?open。
+    queueMicrotask(() => setHydrated(true));
   }, []);
 
   useEffect(() => {
@@ -48,18 +78,6 @@ export function useWindowManager() {
       // 隐私模式写不进去：本次会话仍然保留内存中的位置
     }
   }, [store.saved]);
-
-  useEffect(() => {
-    const node = boundsRef.current;
-    if (!node) return;
-    const update = () =>
-      setBounds({ width: node.clientWidth, height: node.clientHeight });
-    update();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(update);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
 
   const openApp = useCallback(
     (id: string) => {
@@ -128,6 +146,7 @@ export function useWindowManager() {
     store,
     boundsRef,
     bounds,
+    hydrated,
     openApp,
     close,
     focus,
