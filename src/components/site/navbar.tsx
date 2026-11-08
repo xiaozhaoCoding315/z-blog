@@ -119,7 +119,16 @@ export function Navbar({ accountMenu }: { accountMenu?: ReactNode }) {
                     </Link>
                   ))}
                 </nav>
-                <div className="px-4" onClick={() => setMobileOpen(false)}>
+                <div
+                  className="px-4"
+                  onClick={(event) => {
+                    // 仅当点击真正落在链接或按钮上时才关闭抽屉；
+                    // 点击 <summary> 只是展开账号菜单，不应关掉 Sheet。
+                    if ((event.target as HTMLElement).closest("a, button")) {
+                      setMobileOpen(false);
+                    }
+                  }}
+                >
                   {accountMenu}
                 </div>
               </SheetContent>
