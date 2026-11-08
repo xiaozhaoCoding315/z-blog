@@ -58,7 +58,7 @@
 - `AppDefinition` 增加 `kind: AppKind`、`window?: WindowConfig`、`keywords: string[]`
 - `findAppById(id: string): AppDefinition | undefined`
 - `desktopTileApps: AppDefinition[]`（全部 12 个桌面图标，不再过滤 path）
-- `launcherApps: AppDefinition[]`（全部 `launcher: true`，含无 path 的终端/助理/更多）
+- `launcherApps: AppDefinition[]`（全部 `launcher: true`，含无 path 的终端/助理/更多/设置；友链若有内容也进启动器）
 - `window-state.ts`：`Rect`、`DesktopBounds`、`WindowState`、`WindowStore`、`initialWindowStore`、`clampRect`、`preferredRect`、`windowReducer`、`WINDOW_STORAGE_KEY`、`DEFAULT_BOUNDS`
 
 - [ ] **Step 1: 写失败的 reducer 测试**
@@ -309,7 +309,7 @@ export function windowReducer(state: WindowStore, action: Action): WindowStore {
 | more | 240,160,400,320 | 320×240 |
 | assistant | 360,120,720,520 | 420×320 |
 
-`terminal`、`more`、`assistant` 的 `kind: "window"`、`path: null`；`more.launcher` 改为 `true`。`notes/shelf/playlist/letters/journal/friends/login/write/admin/style` 为 `kind: "route"`。新增：
+`terminal`、`more`、`assistant` 的 `kind: "window"`、`path: null`；`more.launcher` 改为 `true`。`notes/shelf/playlist/letters/journal/friends/login/write/admin/style` 为 `kind: "route"`。同时按设计文档 §4.4 把 `friends.launcher`、`settings.launcher` 改为 `true`（`settings` 仍无 path，由 `Launcher` 打开系统菜单）；`write/admin/login/style` 不进启动器（账号区/开发环境）。新增：
 
 ```ts
 export function findAppById(id: string): AppDefinition | undefined {
@@ -319,7 +319,7 @@ export const desktopTileApps = apps.filter((app) => app.desktop);
 export const launcherApps = apps.filter((app) => app.launcher);
 ```
 
-更新 `scripts/apps.test.mjs`：桌面图标期望 12 个（顺序不变），阶段 1 的“9 个”断言删除；启动器允许无 path 的应用。
+更新 `scripts/apps.test.mjs`：桌面图标期望 12 个（顺序不变），阶段 1 的“9 个”断言删除；启动器允许无 path 的应用，并断言 `terminal/more/assistant/settings` 在其中，`friends` 的 `launcher` 为 true；`publicApps` 仍只含 path 非空的应用。
 
 - [ ] **Step 5: 运行测试** — `node --test scripts/apps.test.mjs scripts/window-state.test.mjs`，Expected: apps 5 pass、window 7 pass。
 - [ ] **Step 6: 提交** — `git add src/config/apps.ts src/components/desktop/window-state.ts scripts/apps.test.mjs scripts/window-state.test.mjs package.json && git commit -m "feat(window): 应用注册表扩展与纯窗口 reducer"`
@@ -599,7 +599,7 @@ export function DesktopShell({ accountMenu, hasFriends, notes, aiEnabled, childr
 - 左侧 Z 后渲染当前路由应用 + 所有打开窗口（最多 180px 截断），活动窗口底部 2px 琥珀线，最小化降透明度。
 - 点击窗口项：若当前路由不是 `/`，`router.push("/")`；随后 `windows.restore(id)`/`focus(id)`。
 - 系统菜单 `onOpenSettings` 打开设置面板（Phase 4 完整；Phase 2 先复用 `SystemMenu` 的桌面段）。
-- 打开启动器时用 `launcherApps`，`Launcher` 增加 `onOpen(id)`：窗口型调用 `openApp`，路由型 `router.push`。
+- 打开启动器时用 `launcherApps`，`Launcher` 增加 `onOpen(id)`：`settings` 调用 `runtime.openSettings()`，窗口型调用 `openApp`，路由型 `router.push`。`Launcher` 的 `apps` 类型改为 `AppDefinition[]`（不再要求 `path` 非空）。
 
 - [ ] **Step 4: 更新阶段 1 测试**
 
