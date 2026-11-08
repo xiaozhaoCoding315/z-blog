@@ -8,6 +8,8 @@ import {
   countThisMonth,
   formatDay,
   groupByMonth,
+  momentExcerpt,
+  momentText,
   monthKeyOf,
   monthLabel,
 } from "../src/lib/life.ts";
@@ -78,4 +80,24 @@ test("本月条数只算当月，跨年不算", () => {
   assert.equal(countThisMonth(moments, 2026, 11), 2);
   assert.equal(countThisMonth(moments, 2026, 10), 1);
   assert.equal(countThisMonth(moments, 2027, 1), 0);
+});
+
+test("动态标题折叠空白，只留正文", () => {
+  const m = { body: "  降温了，\n 记得加衣服。  " };
+  assert.equal(momentText(m), "降温了， 记得加衣服。");
+  assert.equal(momentExcerpt(m, 40), "降温了， 记得加衣服。");
+});
+
+test("动态标题按码点截断，不劈开 emoji", () => {
+  const m = { body: "🌧️".repeat(3) + "雨下了一整天" };
+  assert.equal(momentExcerpt(m, 3), "🌧️🌧️🌧️");
+});
+
+test("没有正文时用卡片标题，纯图片动态说一张照片", () => {
+  assert.equal(
+    momentText({ body: "   ", card: { title: "晴天 - 周杰伦" } }),
+    "晴天 - 周杰伦"
+  );
+  assert.equal(momentText({ body: "", images: ["/media/a.jpg"] }), "一张照片");
+  assert.equal(momentText({ body: "", images: [] }), "一条动态");
 });

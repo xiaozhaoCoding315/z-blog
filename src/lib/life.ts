@@ -121,6 +121,43 @@ export function groupByMonth(
 }
 
 /**
+ * 动态的纯文本：正文优先，其次卡片标题。
+ * 正文只有空白时不能当成「有内容」；纯图片动态给一句能读的说明。
+ */
+export function momentText(
+  moment: Pick<Moment, "body" | "card" | "images">
+): string {
+  const body = moment.body.replace(/\s+/g, " ").trim();
+  if (body) return body;
+  if (moment.card?.title) return moment.card.title;
+  if (moment.images?.length) return "一张照片";
+  return "一条动态";
+}
+
+const graphemeSegmenter = new Intl.Segmenter("zh-CN", {
+  granularity: "grapheme",
+});
+
+/**
+ * 动态的短标题：按字素簇截断，emoji、变体选择符和 ZWJ 组合都不会被劈开。
+ * RSS 与单条动态页共用同一套规则，免得两边长度不一致。
+ */
+export function momentExcerpt(
+  moment: Pick<Moment, "body" | "card" | "images">,
+  max: number
+): string {
+  const limit = Math.max(0, max);
+  let result = "";
+  let count = 0;
+  for (const { segment } of graphemeSegmenter.segment(momentText(moment))) {
+    if (count >= limit) break;
+    result += segment;
+    count += 1;
+  }
+  return result;
+}
+
+/**
  * 本月条数。只按北京时间算，跨年不算。
  * 放在这里而不是 observation.ts，是因为 observation.ts 要 import 服务端模块，
  * node --test 解析不了 `@/` 别名——纯函数留在本文件才测得到。

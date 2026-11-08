@@ -6,7 +6,7 @@ import { getMomentById, getMomentNeighbors } from "@/lib/moments-server";
 import { getVisibleComments } from "@/lib/comments-server";
 import { getSessionUser } from "@/lib/session";
 import { loginReady } from "@/lib/login-status";
-import { formatDay } from "@/lib/life";
+import { formatDay, momentExcerpt } from "@/lib/life";
 import { Moment, NODE_CLASS } from "@/components/life/moment";
 import { CommentList } from "@/components/life/comment-list";
 import { CommentForm } from "@/components/life/comment-form";
@@ -24,13 +24,8 @@ export async function generateMetadata({
   if (!available || !moment) {
     return { title: "动态", robots: { index: false } };
   }
-  // 折叠空白，避免正文里的换行钻进 <title>；按码点截 60，避免劈开代理对
-  const excerpt =
-    Array.from(moment.body.replace(/\s+/g, " ").trim())
-      .slice(0, 60)
-      .join("") ||
-    moment.card?.title ||
-    "一条动态";
+  // 与 RSS 共用同一套折叠空白与字素截断规则
+  const excerpt = momentExcerpt(moment, 60);
   return {
     title: `${formatDay(moment.publishedAt)} · ${excerpt}`,
     description: excerpt,

@@ -24,7 +24,11 @@ export default function ErrorPage({
       </h1>
       <p className="mt-2 max-w-md text-center text-sm leading-6 text-muted-foreground">
         页面渲染时遇到了错误。重试一下通常能解决；如果持续出现，
-        欢迎到留言板告诉我。
+        欢迎到
+        <Link href="/letters" className="link-underline">
+          信箱
+        </Link>
+        告诉我。
       </p>
       {error.digest && (
         <code className="mt-3 font-mono text-[11px] text-muted-foreground">
