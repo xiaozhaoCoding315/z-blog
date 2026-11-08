@@ -12,7 +12,7 @@ export function Launcher({ apps }: { apps: LinkedApp[] }) {
     <div className="os-launcher" role="dialog" aria-label="全部应用">
       <div className="os-launcher-head">
         <span>应用</span>
-        <span>{apps.length} 个</span>
+        <span className="tabular-nums">{apps.length} 个</span>
       </div>
       <div className="os-launcher-grid">
         {apps.map((app) => (

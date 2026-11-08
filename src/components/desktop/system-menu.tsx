@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from "react";
 import { siteConfig } from "@/config/site";
 import {
   useDesktopSettings,
@@ -38,6 +43,16 @@ export function SystemMenu({
     return () => window.removeEventListener("keydown", onKey);
   }, [closePanels]);
 
+  // 账号区由服务端渲染，链接不带 onClick；在捕获阶段统一处理链接和提交按钮，
+  // 让 Next 的客户端导航（不触发 popstate）与退出登录表单也能收起菜单。
+  const handleClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest('a[href], button[type="submit"]')) {
+      closePanels();
+    }
+  };
+
   return (
     <div
       ref={panelRef}
@@ -45,6 +60,7 @@ export function SystemMenu({
       role="dialog"
       aria-label="系统菜单"
       tabIndex={-1}
+      onClickCapture={handleClickCapture}
     >
       <section>
         <p className="os-menu-label">桌面</p>
@@ -64,17 +80,9 @@ export function SystemMenu({
 
       <section>
         <p className="os-menu-label">系统</p>
-        <Link href="/about" onClick={closePanels}>
-          关于本机
-        </Link>
-        <Link href="/journal" onClick={closePanels}>
-          开发日志
-        </Link>
-        {hasFriends && (
-          <Link href="/friends" onClick={closePanels}>
-            友链
-          </Link>
-        )}
+        <Link href="/about">关于本机</Link>
+        <Link href="/journal">开发日志</Link>
+        {hasFriends && <Link href="/friends">友链</Link>}
         <a href="/feed.xml">RSS</a>
         <a
           href={siteConfig.links.github}
