@@ -11,7 +11,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { apps } from "@/config/apps";
+import { launcherApps } from "@/config/apps";
 import { useDesktopRuntime } from "@/components/desktop/desktop-runtime";
 import {
   filterLocalApps,
@@ -37,14 +37,16 @@ const SEARCH_DEBOUNCE_MS = 200;
 const EMPTY_SEMANTIC: SemanticItem[] = [];
 
 /**
- * 注册表只保留 Spotlight 需要的字段；打开动作仍走 runtime。
+ * 只索引启动器里的应用，避免把 admin/write/login 和开发用的 style 暴露给
+ * 访客；注册表只保留 Spotlight 需要的字段。
  * settings 没有 path，打开的是系统菜单而不是路由。
  */
-const appIndex = apps.map(({ id, title, keywords, path }) => ({
+const appIndex = launcherApps.map(({ id, title, keywords, path, kind }) => ({
   id,
   title,
   keywords,
   path,
+  kind,
 }));
 
 /**
@@ -142,14 +144,18 @@ export function SearchPalette({ notes }: { notes: SearchableNote[] }) {
   );
   const hasResults = appResults.length > 0 || noteResults.length > 0;
 
-  const selectApp = (id: string) => {
+  const selectApp = (app: (typeof appIndex)[number]) => {
     // 先关闭面板，再执行动作；Spotlight 不持有导航状态。
     close();
-    if (id === "settings") {
+    if (app.id === "settings") {
       runtime.openSettings();
       return;
     }
-    runtime.windows.openApp(id);
+    if (app.kind === "route") {
+      if (app.path) router.push(app.path);
+      return;
+    }
+    runtime.windows.openApp(app.id);
   };
 
   const selectNote = (slug: string) => {
@@ -227,14 +233,14 @@ export function SearchPalette({ notes }: { notes: SearchableNote[] }) {
           <kbd className="os-spotlight-kbd">Esc</kbd>
         </div>
 
-        <Command.List className="os-spotlight-list" label="搜索结果">
+        <Command.List label="搜索结果">
           {appResults.length > 0 && (
             <Command.Group heading="应用">
               {appResults.map((app) => (
                 <Command.Item
                   key={`app:${app.id}`}
                   value={`app:${app.id}`}
-                  onSelect={() => selectApp(app.id)}
+                  onSelect={() => selectApp(app)}
                 >
                   <span className="os-spotlight-item-title">{app.title}</span>
                   <span className="os-spotlight-item-meta">
@@ -275,6 +281,11 @@ export function SearchPalette({ notes }: { notes: SearchableNote[] }) {
                 type="button"
                 className="os-spotlight-ask"
                 onClick={askAssistant}
+                onKeyDown={(event) => {
+                  // cmdk 根节点会对 Enter 调用 preventDefault，吞掉按钮的
+                  // 原生激活；在按钮上阻断冒泡，让 Enter 仍按按钮语义点击。
+                  if (event.key === "Enter") event.stopPropagation();
+                }}
               >
                 打开助理
               </button>

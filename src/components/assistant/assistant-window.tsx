@@ -16,7 +16,6 @@ interface ChatSource {
   id: number;
   slug: string;
   title: string;
-  heading: string | null;
   href?: string;
 }
 
@@ -95,7 +94,15 @@ export function AssistantWindow({
 }) {
   const router = useRouter();
   const { windows } = useDesktopRuntime();
-  const { messages, sendMessage, status, setMessages, error, stop } = useChat({
+  const {
+    messages,
+    sendMessage,
+    status,
+    setMessages,
+    error,
+    stop,
+    clearError,
+  } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
   const [input, setInput] = useState("");
@@ -298,7 +305,13 @@ export function AssistantWindow({
               <button
                 type="button"
                 className="os-assistant-action"
-                onClick={() => setMessages([])}
+                onClick={() => {
+                  // 先停掉在途请求，否则下一个 chunk 会把刚清掉的助理消息
+                  // 重新插回 transcript；错误行也一并清掉。
+                  stop();
+                  setMessages([]);
+                  clearError();
+                }}
               >
                 清空
               </button>

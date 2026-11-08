@@ -76,7 +76,7 @@ test("语义命中补在本地命中之后并按 slug 去重", () => {
   assert.equal(merged[1].detail, "缓存");
 });
 
-test("语义命中的标题为空时用摘要补 detail，空 slug 被忽略", () => {
+test("语义命中没有 heading 时用 snippet 补 detail，空 slug 被忽略", () => {
   const merged = mergeNoteHits(
     [],
     [
