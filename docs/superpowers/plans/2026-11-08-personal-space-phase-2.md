@@ -3578,3 +3578,48 @@ git commit -m "docs(phase-2): 验收结果——门禁、三种库状态、关 J
 **类型一致性**：`Moment` 只在 `@/lib/life` 定义一次；Drizzle 行类型叫 `MomentDbRow`，映射函数 `toMoment` 在 `moment-core.ts`，读取层 `moments-server.ts` 三个函数都返回 `Moment`；`SessionUser.role` 由 Task 3 定义，Task 4/5 消费；`ImagePicker` 的 `value` / `onChange` 在 Task 4 定义、Task 5 使用；`updateTag("moments")` 的标签名与 Task 2 的 `cacheTag("moments")` 一致；`MEDIA_PATH` 正则（`moment-input.ts`）与 `isSafeMediaPath`（`upload-core.ts`）描述同一种形状（32 位哈希 + webp/jpg/png）；`MAX_IMAGES_PER_MOMENT` 与 `MAX_IMAGE_BYTES` 只在 `media-limits.ts` 定义一次，`upload-core.ts` 既不定义也不转发（它要被 `node --test` 直接加载，Node 不解析无扩展名相对导入），`image-picker.tsx` 与 `/api/uploads` 各自直接引零依赖那份。
 
 **与设计文档的有意偏差**：`moments.card` 是 §6.2 漏掉的一列，Task 1 Step 8 会把文档补上；观测条的条数读数从 `getObservation()` 移到首页就地计算（避免两个缓存各自过期时条数与列表不一致），`Observation` 的返回类型因此收窄；`sanitizeNext` 的兜底从 `/interview` 改成 `/`（`/interview` 阶段 5 会删）。
+
+---
+
+## 验收结果
+
+验收时间：2026-11-08，分支 `refactor/personal-space`，验收提交 `a7dfefc`（Task 7 之后）。
+
+### 门禁
+
+`npm run type-check && npm run lint && npm test && node scripts/check-content.mjs && npm run build` 全部退出码 0。
+
+- 测试：**56/56** 通过（0 fail / 0 skip）。阶段 1.5 基线 21 条与计划一致；本阶段新增实际 **35** 条：schema 6 + moment-core 6 + email-code 5 + upload-core 6 + moment-input 12。计划里写的「52（新增 31，schema 5 / moment-input 9）」是旧估计，按实测 56 记。
+- 内容检查：30 篇文章，0 个错误，0 个提醒。
+- 构建退出码 0。路由表关键项：`/` 为 `ƒ`、`/login` 与 `/write` 为 `ƒ`、`/life/[id]` 为 `◐ Partial Prerender`。
+- 已知噪声：测试输出里的 `MODULE_TYPELESS_PACKAGE_JSON` 警告（仓库没有 `"type": "module"`），非本阶段引入。
+
+### 三种数据库状态（生产构建 + `next start`）
+
+| 状态 | 端口 | 实际表现 |
+| --- | --- | --- |
+| 没有 `DATABASE_URL` | 3501 | 观测条 MOMENTS / MONTH 显示 `NOT AVAILABLE`（各 1 处）；DAYS 129、COMMITS 25、WEATHER 17° 照常；左栏「生活流暂时读不到」；`/life/1` 显示「暂时读不到」；`/login` 显示「登录暂未开放」（未配 SMTP）。没有出现假的 `0`。 |
+| 有库、空表 | 3502 | MOMENTS `0`、MONTH `0`（真实零，不是 NOT AVAILABLE）；左栏「还没有第一条」。 |
+| 有库、有数据 | 3503 | 观测条 129 / 5 / 5 / 25 / 17°；首页恰好 5 条 `/life/<id>` 链接，与 MOMENTS 读数一致；`/life/5` 返回 200，正文与卡片（蓝莲花 / 许巍 / 没有什么能够阻挡）正确。 |
+
+**软 404（已知取舍）**：`/life/[id]` 是 `◐ Partial Prerender`，静态壳先以 200 发出，动态段里的 `notFound()` 无法再改状态码。缺失 id 的响应因此是 **200 + 「这一页不在」404 UI**（body 里能读到自定义 not-found 文案），而不是 HTTP 404。页面表现正确，抓取器会看到软 404；若要硬 404，需要让该路由退出 PPR，留待后续阶段评估。
+
+### 关 JS 与两套模式
+
+服务端返回的 HTML 中 `opacity:0` 出现次数：`/` 0、`/login` 0、`/write` 0、`/life/1` 0。四条都是直接请求运行中的生产服务器，不是在 `.next` 里 grep 空集。
+
+关 JS 截图（`javaScriptEnabled: false` 的真实 Chromium）：首页读数与生活流、单条页正文、登录页「登录暂未开放」、发布页「发布需要登录」全部可见；时钟显示 `--:--:--`（没有脚本就不编时间）。截图在 `.superpowers/sdd/acceptance/`：`nojs-home.png`、`nojs-life.png`、`nojs-login.png`、`nojs-write.png`。
+
+两套模式截图（JS 开启，点导航栏主题按钮切换，实测 `html` 类名 dark ↔ light）：`dark-home.png`、`light-home.png`、`dark-life.png`、`light-life.png`。
+
+### 诚实性
+
+- `grep -rn "mockMoments\|mock-moments" src/ scripts/` → 无匹配（假数据已删净）。
+- `grep -rn "在线\|心跳\|实时" src/app src/components` → 只剩 `src/app/api/_shared/no-store.ts:2` 的注释，没有 UI 文案。
+- 观测条的 `NOT AVAILABLE` 都对应真实缺失的数据源；空库显示的是真实 `0`。
+
+### 遗留项
+
+- Task 2–7 的 Minor 清单在 `.superpowers/sdd/progress.md`（`/style` 演示页日期链到不存在的 id、单条页日期与 meta 重复、`card.href` 协议校验、数字条整条 0–9 进剪贴板、热图 opacity 的层级、邻居查询失败与边界的区分、覆盖率等），交最终整支评审裁量。
+- `/interview` 仍在用 `reveal.tsx`，按计划随阶段 5 一起清理。
+- 软 404 见上。
