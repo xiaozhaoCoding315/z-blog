@@ -47,8 +47,15 @@ export function MomentForm() {
   });
   const isCard = CARD_KINDS.has(kind);
 
+  // React 19 会在 Action 结束后自动 form.reset()。文字字段是受控的所以不怕，
+  // 但受控 radio 的 checked 不会被 React 同步回默认值——重试时形态会悄悄退回「短记」，
+  // 卡片标题被丢掉。reset 事件可取消，直接拦掉，整张表单保持原样。
   return (
-    <form action={formAction} className="divide-y divide-rule border-y border-rule">
+    <form
+      action={formAction}
+      onReset={(e) => e.preventDefault()}
+      className="divide-y divide-rule border-y border-rule"
+    >
       <fieldset className="py-4">
         <legend className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           形态
