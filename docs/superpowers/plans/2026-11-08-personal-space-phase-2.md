@@ -40,7 +40,7 @@
 | `src/lib/email-code.ts` | 验证码生成 / 哈希 / 校验 / 邮箱规范化，纯函数 |
 | `src/lib/mailer.ts` | nodemailer 发送验证码，未配置 SMTP 时返回 false |
 | `src/lib/moment-input.ts` | 发布表单的 zod 校验（只 import zod 与 `import type`） |
-| `src/lib/upload-core.ts` | 图片魔数嗅探、内容哈希、路径拼装与安全校验（只 import `node:crypto`） |
+| `src/lib/upload-core.ts` | 图片魔数嗅探、内容哈希、路径拼装与安全校验（只 import `node:crypto`，不引任何相对模块） |
 | `src/lib/uploads-server.ts` | 落盘与读取（`UPLOAD_DIR`） |
 | `src/app/api/auth/email/request/route.ts` | 申请验证码 |
 | `src/app/api/auth/email/verify/route.ts` | 校验验证码并签发会话 |
@@ -1869,7 +1869,7 @@ git commit -m "feat(auth): 邮箱验证码登录——只存哈希、限频、�
 **Interfaces:**
 - Consumes: Task 3 的 `getSessionUser()`（含 `role`）。
 - Produces:
-  - `MAX_IMAGE_BYTES`（2MB）、`MAX_IMAGES_PER_MOMENT`（9）——放在 `src/lib/media-limits.ts`，**零 import**，客户端可直接用
+  - `MAX_IMAGE_BYTES`（2MB）、`MAX_IMAGES_PER_MOMENT`（9）——只定义在 `src/lib/media-limits.ts`，**零 import**，客户端与服务端都直接引这一份（`upload-core.ts` 不转发）
   - `sniffImageType(bytes: Uint8Array): "webp" | "jpeg" | "png" | null`
   - `contentHash(bytes: Uint8Array): string`、`mediaDirName(date: Date): string`、`mediaFileName(hash, type): string`、`isSafeMediaPath(segments: string[]): boolean`
   - `uploadRoot()`、`writeUpload(relPath, bytes)`、`readUpload(segments): Promise<{ bytes: Uint8Array; mime: string } | null>`
@@ -1986,18 +1986,19 @@ export const MAX_IMAGES_PER_MOMENT = 9;
 
 ```ts
 import { createHash } from "node:crypto";
-import { MAX_IMAGE_BYTES, MAX_IMAGES_PER_MOMENT } from "./media-limits";
 
 /**
  * 图片上传的纯逻辑。
  *
  * 为什么自己嗅魔数而不是信 Content-Type：请求头是客户端说了算的，
  * 只按 MIME 放行等于让人随便往服务器塞任意字节。
+ *
+ * 注意这里**不 import `./media-limits`**：本文件要被 `node --test` 直接加载，
+ * 而 Node 不解析无扩展名的相对导入（Next 的打包器能，Node 不能）。
+ * 上限常量只在 media-limits.ts 定义，需要它的地方（路由、客户端组件）直接引那一份。
  */
 
 export type ImageType = "webp" | "jpeg" | "png";
-
-export { MAX_IMAGE_BYTES, MAX_IMAGES_PER_MOMENT };
 
 const EXT: Record<ImageType, string> = {
   webp: "webp",
@@ -2156,8 +2157,8 @@ export async function readUpload(
 import { NextResponse } from "next/server";
 import { connection } from "next/server";
 import { getSessionUser } from "@/lib/session";
+import { MAX_IMAGE_BYTES } from "@/lib/media-limits";
 import {
-  MAX_IMAGE_BYTES,
   contentHash,
   mediaDirName,
   mediaFileName,
@@ -2499,9 +2500,11 @@ git commit -m "feat(upload): 图片上传——浏览器端压到 2400px WebP，
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  MOMENT_KIND_VALUES,
   momentInputSchema,
   parseMomentInput,
 } from "../src/lib/moment-input.ts";
+import { MOMENT_KINDS } from "../src/lib/moment-core.ts";
 
 const fd = (entries) => {
   const f = new FormData();
@@ -2579,6 +2582,13 @@ test("schema 单独可用（给将来的编辑接口留口子）", () => {
     momentInputSchema.safeParse({ kind: "text", body: "" }).success,
     false
   );
+});
+
+test("kind 清单与读取层那份必须一致", () => {
+  // 两份清单不能合并：moment-input.ts 要被 node --test 直接加载，
+  // 而 Node 不解析无扩展名的相对导入，所以它没法 import moment-core.ts。
+  // 与其留一个无声的漂移口子，不如让这条断言替我们盯着。
+  assert.deepEqual([...MOMENT_KIND_VALUES], [...MOMENT_KINDS]);
 });
 ```
 
@@ -3523,15 +3533,21 @@ Expected: 全绿；`npm test` 用例数 = 阶段 1.5 的 21 + 本阶段新增 31
 
 - [ ] **Step 3: 关 JS 与两套模式**
 
-关掉 JavaScript 后确认：首页正文、观测条读数、单条页正文全部可见；产物 HTML 里没有 `opacity:0`。
+关掉 JavaScript 后确认：首页正文、观测条读数、单条页正文全部可见；**服务端返回的 HTML 里没有 `opacity:0`**。
+
+注意不能去 `.next/server/app/` 里找 HTML：首页、`/login`、`/write`、`/life/[id]` 在本阶段都变成了动态路由（`ƒ`），构建期不产出 `.html` 文件，`grep` 一个空集永远「通过」，是假绿灯。必须打运行中的服务器：
 
 ```bash
-grep -c "opacity:0" .next/server/app/index.html .next/server/app/life/*.html 2>/dev/null || echo "0 处"
+npm run build && (npm start >/tmp/zb-start.log 2>&1 &) && sleep 8
+curl -s http://127.0.0.1:3000/ | grep -c "opacity:0" || echo "首页 0 处"
+curl -s http://127.0.0.1:3000/login | grep -c "opacity:0" || echo "/login 0 处"
+curl -s http://127.0.0.1:3000/write | grep -c "opacity:0" || echo "/write 0 处"
+curl -s http://127.0.0.1:3000/life/1 | grep -c "opacity:0" || echo "/life/1 0 处"
 ```
 
-Expected: `0 处`。
+Expected: 四条都打印 `… 0 处`（`grep -c` 无匹配时退出码 1，所以走 `||` 分支；若打印的是数字 `0`，同样算通过，但不要接受任何非零数字）。
 
-观测台（暗）与报表（亮）两套模式下各截一张首页与一张单条页。
+再用浏览器关掉 JS 各页截图确认正文可见；观测台（暗）与报表（亮）两套模式下各截一张首页与一张单条页。
 
 - [ ] **Step 4: 诚实性检查**
 
@@ -3559,6 +3575,6 @@ git commit -m "docs(phase-2): 验收结果——门禁、三种库状态、关 J
 
 **未覆盖且有意留到后续阶段**：评论（§6.2 `comments`）、信箱（`letters`）、审核后台 → 阶段 3；书架与歌单（`shelf_items` / `songs`）→ 阶段 4；状态句挪进数据库（§13 待定项）→ 阶段 3；`/notes`、`/journal` 路由改名 → 阶段 5；`reveal.tsx` 与 `/interview` 的清理 → 阶段 5。阶段 2 的导航只加一个「登录」链接，头像菜单（登录/登出、我的推荐、管理入口）随阶段 3 的审核后台一起做——现在没有「我的推荐」，先摆一个空菜单是假的。
 
-**类型一致性**：`Moment` 只在 `@/lib/life` 定义一次；Drizzle 行类型叫 `MomentDbRow`，映射函数 `toMoment` 在 `moment-core.ts`，读取层 `moments-server.ts` 三个函数都返回 `Moment`；`SessionUser.role` 由 Task 3 定义，Task 4/5 消费；`ImagePicker` 的 `value` / `onChange` 在 Task 4 定义、Task 5 使用；`updateTag("moments")` 的标签名与 Task 2 的 `cacheTag("moments")` 一致；`MEDIA_PATH` 正则（`moment-input.ts`）与 `isSafeMediaPath`（`upload-core.ts`）描述同一种形状（32 位哈希 + webp/jpg/png）；`MAX_IMAGES_PER_MOMENT` 只在 `media-limits.ts` 定义一次，`upload-core.ts` 再导出、`image-picker.tsx` 直接引零依赖那份。
+**类型一致性**：`Moment` 只在 `@/lib/life` 定义一次；Drizzle 行类型叫 `MomentDbRow`，映射函数 `toMoment` 在 `moment-core.ts`，读取层 `moments-server.ts` 三个函数都返回 `Moment`；`SessionUser.role` 由 Task 3 定义，Task 4/5 消费；`ImagePicker` 的 `value` / `onChange` 在 Task 4 定义、Task 5 使用；`updateTag("moments")` 的标签名与 Task 2 的 `cacheTag("moments")` 一致；`MEDIA_PATH` 正则（`moment-input.ts`）与 `isSafeMediaPath`（`upload-core.ts`）描述同一种形状（32 位哈希 + webp/jpg/png）；`MAX_IMAGES_PER_MOMENT` 与 `MAX_IMAGE_BYTES` 只在 `media-limits.ts` 定义一次，`upload-core.ts` 既不定义也不转发（它要被 `node --test` 直接加载，Node 不解析无扩展名相对导入），`image-picker.tsx` 与 `/api/uploads` 各自直接引零依赖那份。
 
 **与设计文档的有意偏差**：`moments.card` 是 §6.2 漏掉的一列，Task 1 Step 8 会把文档补上；观测条的条数读数从 `getObservation()` 移到首页就地计算（避免两个缓存各自过期时条数与列表不一致），`Observation` 的返回类型因此收窄；`sanitizeNext` 的兜底从 `/interview` 改成 `/`（`/interview` 阶段 5 会删）。
