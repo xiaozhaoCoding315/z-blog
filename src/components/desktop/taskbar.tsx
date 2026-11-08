@@ -22,6 +22,14 @@ export function Taskbar({
   const [menuOpen, setMenuOpen] = useState(false);
   const current = findAppByPath(pathname);
 
+  // 回到桌面或切换应用时，外层滚动容器与移动端 window 都立即回到顶部
+  useEffect(() => {
+    document
+      .querySelector<HTMLElement>(".os-main")
+      ?.scrollTo({ top: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [pathname]);
+
   // 浏览器前进/后退时收起面板；面板内链接、任务栏入口和遮罩各自负责关闭，
   // 所以不需要监听 pathname 变化（在 effect 里同步 setState 会触发级联渲染）。
   useEffect(() => {

@@ -86,7 +86,7 @@ export default async function MomentPage({
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6">
       <Link
-        href="/"
+        href="/life"
         className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
       >
         ← 生活
