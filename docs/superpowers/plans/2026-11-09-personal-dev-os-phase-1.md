@@ -2798,14 +2798,22 @@ export function AppFrame({ children }: { children: ReactNode }) {
   const app = findAppByPath(pathname);
   const scrollRef = useRef<HTMLDivElement>(null);
   const desktop = useDesktopViewport();
-  const [expanded, setExpanded] = useState(false);
-  const [focusMode, setFocusMode] = useState(false);
+  // pathname 变化时用派生值归零，不在 effect 里同步 setState（React Compiler 规则）
+  const [chrome, setChrome] = useState({
+    path: pathname,
+    expanded: false,
+    focusMode: false,
+  });
+  const expanded = chrome.path === pathname && chrome.expanded;
+  const focusMode = chrome.path === pathname && chrome.focusMode;
   const titleId = useId();
   const canFocus = /^\/notes\/[^/]+$/.test(pathname);
 
+  // 窗口内部滚动，Next 默认的 window 滚动复位够不到；进应用时手动回到顶部
   useEffect(() => {
-    setExpanded(false);
-    setFocusMode(false);
+    scrollRef.current?.scrollTo({ top: 0 });
+    scrollRef.current?.closest<HTMLElement>(".os-main")?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
   }, [pathname]);
 
   useEffect(() => {
@@ -2813,14 +2821,20 @@ export function AppFrame({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.dataset.focusMode = "true";
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setFocusMode(false);
+      if (event.key === "Escape") {
+        setChrome((current) => ({
+          ...current,
+          path: pathname,
+          focusMode: false,
+        }));
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
       delete root.dataset.focusMode;
     };
-  }, [focusMode]);
+  }, [focusMode, pathname]);
 
   return (
     <ScrollRootContext.Provider value={desktop ? scrollRef : null}>
@@ -2847,7 +2861,16 @@ export function AppFrame({ children }: { children: ReactNode }) {
                   className="os-titlebar-control"
                   aria-label="专注阅读"
                   aria-pressed={focusMode}
-                  onClick={() => setFocusMode((on) => !on)}
+                  onClick={() =>
+                    setChrome((current) => ({
+                      path: pathname,
+                      expanded:
+                        current.path === pathname ? current.expanded : false,
+                      focusMode: !(
+                        current.path === pathname && current.focusMode
+                      ),
+                    }))
+                  }
                 >
                   ◱
                 </button>
@@ -2859,7 +2882,16 @@ export function AppFrame({ children }: { children: ReactNode }) {
                 type="button"
                 className="os-titlebar-control"
                 aria-label={expanded ? "还原窗口" : "最大化"}
-                onClick={() => setExpanded((on) => !on)}
+                onClick={() =>
+                  setChrome((current) => ({
+                    path: pathname,
+                    expanded: !(
+                      current.path === pathname && current.expanded
+                    ),
+                    focusMode:
+                      current.path === pathname ? current.focusMode : false,
+                  }))
+                }
               >
                 □
               </button>
@@ -3057,6 +3089,7 @@ Expected:
 - 点击 `—` 或 `×` 回到 `/`。
 - 点击 `□` 窗口贴满桌面区域，再点还原。
 - 笔记详情出现 `◱`；点击后任务栏和标题栏消失，`Esc` 退出专注模式。
+- 在 `/notes` 向下滚动后点击某篇笔记，新页面从顶部开始，不继承上一页的滚动位置。
 - 笔记详情滚动时，顶部 2px 进度条跟随窗口内部滚动；目录高亮随内部滚动变化。
 - `/write` 的表单能正常提交（action 路径已改）。
 
