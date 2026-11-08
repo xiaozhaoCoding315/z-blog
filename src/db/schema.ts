@@ -8,6 +8,8 @@ import {
   vector,
   index,
   primaryKey,
+  boolean,
+  date,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -209,6 +211,129 @@ export const interviewReview = pgTable(
   ]
 );
 
+/**
+ * comments：动态 / 笔记下的评论。
+ * status 只有 visible / hidden：评论先公开，站长看到不合适再隐藏，
+ * 不走「先审后发」——那会让每一条评论都卡在站长身上。
+ */
+export const comments = pgTable(
+  "comments",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    status: text("status").notNull().default("visible"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("comments_target_idx").on(
+      table.targetType,
+      table.targetId,
+      table.status,
+      table.createdAt.desc()
+    ),
+    index("comments_user_idx").on(table.userId),
+  ]
+);
+
+/**
+ * letters：信箱留言。
+ *
+ * 新留言都有 userId；从旧留言板迁过来的记录没有账号，用 guestName 显示名字，
+ * legacyGuestbookId 只用于幂等迁移（唯一索引允许多个 NULL）。
+ */
+export const letters = pgTable(
+  "letters",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    userId: integer("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    guestName: text("guest_name"),
+    legacyGuestbookId: integer("legacy_guestbook_id").unique(),
+    body: text("body").notNull(),
+    songTitle: text("song_title"),
+    songArtist: text("song_artist"),
+    songUrl: text("song_url"),
+    status: text("status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("letters_status_idx").on(table.status, table.createdAt.desc()),
+    index("letters_user_idx").on(table.userId),
+  ]
+);
+
+/**
+ * songs：歌单条目。owner 添加的直接 approved；访客推荐默认 pending。
+ * pinned 表示「此刻循环」，同一时间只应该有一首，由 Action 保证。
+ */
+export const songs = pgTable(
+  "songs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    title: text("title").notNull(),
+    artist: text("artist").notNull(),
+    url: text("url").notNull(),
+    platform: text("platform").notNull().default("other"),
+    note: text("note").notNull().default(""),
+    source: text("source").notNull().default("owner"),
+    userId: integer("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("pending"),
+    pinned: boolean("pinned").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("songs_status_idx").on(table.status, table.createdAt.desc()),
+    index("songs_user_idx").on(table.userId),
+  ]
+);
+
+/**
+ * shelf_items：书架条目。type 三档，rating 1–5 可空，
+ * finishedAt 只存日期（读出来是 YYYY-MM-DD 字符串）。
+ */
+export const shelfItems = pgTable(
+  "shelf_items",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    creator: text("creator").notNull().default(""),
+    rating: integer("rating"),
+    note: text("note").notNull().default(""),
+    coverUrl: text("cover_url"),
+    finishedAt: date("finished_at"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("shelf_items_type_idx").on(table.type, table.finishedAt.desc()),
+  ]
+);
+
+/** site_settings：站长可在后台修改的小配置，当前只有 status_sentence */
+export const siteSettings = pgTable("site_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export type PostRow = typeof posts.$inferSelect;
 export type ChunkRow = typeof chunks.$inferSelect;
 export type UserRow = typeof users.$inferSelect;
@@ -217,3 +342,7 @@ export type ReviewRow = typeof interviewReview.$inferSelect;
 export type LoginCodeRow = typeof loginCodes.$inferSelect;
 /** 名字带 Db 后缀：`Moment` 已经是生活流组件的领域类型，别混用 */
 export type MomentDbRow = typeof moments.$inferSelect;
+export type CommentDbRow = typeof comments.$inferSelect;
+export type LetterDbRow = typeof letters.$inferSelect;
+export type SongDbRow = typeof songs.$inferSelect;
+export type ShelfItemDbRow = typeof shelfItems.$inferSelect;

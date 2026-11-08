@@ -30,7 +30,7 @@ function ddlColumns(table) {
   if (start === -1) return null;
   const next = ddl.indexOf("CREATE ", start + 1);
   const body = ddl.slice(start, next === -1 ? undefined : next);
-  return [...body.matchAll(/\b([a-z_]+) (bigserial|text|integer|jsonb|timestamptz|boolean)\b/g)]
+  return [...body.matchAll(/\b([a-z_]+) (bigserial|text|integer|jsonb|timestamptz|boolean|date)\b/g)]
     .map((m) => m[1]);
 }
 
@@ -124,4 +124,27 @@ test("github_id 与 email 必须都可空——两种身份来源各缺一半", 
   const users = schemaTableBody("users");
   assert.match(users, /githubId: text\("github_id"\)\.unique\(\)/);
   assert.match(users, /email: text\("email"\)\.unique\(\)/);
+});
+
+test("comments / letters / songs / shelf_items / site_settings 都进了幂等 DDL", () => {
+  for (const table of ["comments", "letters", "songs", "shelf_items", "site_settings"]) {
+    assert.ok(ddl.includes(`CREATE TABLE IF NOT EXISTS ${table} (`), `${table} 缺建表语句`);
+    assert.ok(schema.includes(`pgTable(\n  "${table}"`) || schema.includes(`pgTable("${table}"`), `${table} 缺 drizzle 定义`);
+  }
+});
+
+test("letters 为旧留言板保留 guest_name 与幂等迁移键", () => {
+  assert.ok(ddlColumns("letters").includes("guest_name"));
+  assert.ok(ddlColumns("letters").includes("legacy_guestbook_id"));
+  assert.match(ddl, /CREATE UNIQUE INDEX IF NOT EXISTS letters_legacy_guestbook_key/);
+  assert.match(ddl, /ON CONFLICT \(legacy_guestbook_id\) DO NOTHING/);
+  assert.ok(schemaHasColumn("letters", "legacy_guestbook_id"));
+});
+
+test("songs.pinned 是 boolean，shelf_items 的 rating / finished_at 可空", () => {
+  assert.ok(ddlColumns("songs").includes("pinned"));
+  assert.match(ddl, /pinned boolean NOT NULL DEFAULT false/);
+  assert.ok(ddlColumns("shelf_items").includes("rating"));
+  assert.ok(ddlColumns("shelf_items").includes("finished_at"));
+  assert.match(ddl, /finished_at date/);
 });

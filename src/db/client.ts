@@ -160,4 +160,102 @@ export async function ensureSchema() {
   await db.execute(
     sql`CREATE INDEX IF NOT EXISTS interview_review_user_idx ON interview_review (user_id)`
   );
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS comments (
+      id bigserial PRIMARY KEY,
+      target_type text NOT NULL,
+      target_id text NOT NULL,
+      user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      body text NOT NULL,
+      status text NOT NULL DEFAULT 'visible',
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS comments_target_idx ON comments (target_type, target_id, status, created_at DESC)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS comments_user_idx ON comments (user_id)`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS letters (
+      id bigserial PRIMARY KEY,
+      user_id integer REFERENCES users(id) ON DELETE SET NULL,
+      guest_name text,
+      legacy_guestbook_id integer,
+      body text NOT NULL,
+      song_title text,
+      song_artist text,
+      song_url text,
+      status text NOT NULL DEFAULT 'pending',
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS letters_legacy_guestbook_key ON letters (legacy_guestbook_id)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS letters_status_idx ON letters (status, created_at DESC)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS letters_user_idx ON letters (user_id)`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS songs (
+      id bigserial PRIMARY KEY,
+      title text NOT NULL,
+      artist text NOT NULL,
+      url text NOT NULL,
+      platform text NOT NULL DEFAULT 'other',
+      note text NOT NULL DEFAULT '',
+      source text NOT NULL DEFAULT 'owner',
+      user_id integer REFERENCES users(id) ON DELETE SET NULL,
+      status text NOT NULL DEFAULT 'pending',
+      pinned boolean NOT NULL DEFAULT false,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS songs_status_idx ON songs (status, created_at DESC)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS songs_user_idx ON songs (user_id)`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS shelf_items (
+      id bigserial PRIMARY KEY,
+      type text NOT NULL,
+      title text NOT NULL,
+      creator text NOT NULL DEFAULT '',
+      rating integer,
+      note text NOT NULL DEFAULT '',
+      cover_url text,
+      finished_at date,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS shelf_items_type_idx ON shelf_items (type, finished_at DESC)`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS site_settings (
+      key text PRIMARY KEY,
+      value text NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+
+  /*
+   * 旧留言板并入信箱：旧记录没有账号，用 guest_name 显示名字。
+   * legacy_guestbook_id 与唯一索引让这条语句可以在每次启动时安全重跑。
+   */
+  await db.execute(sql`
+    INSERT INTO letters (legacy_guestbook_id, guest_name, body, status, created_at)
+    SELECT id, name, message, 'approved', created_at FROM guestbook
+    ON CONFLICT (legacy_guestbook_id) DO NOTHING
+  `);
 }
