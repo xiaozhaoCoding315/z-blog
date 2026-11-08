@@ -1794,3 +1794,61 @@ git commit -m "docs(phase-3): 验收结果与 letters 迁移列说明"
 - **无占位**：每个新接口有签名与关键实现；UI 任务给出了结构要求与关键 JSX，实现者需按现有组件模式补全，不允许「自行发挥」出示例数据。
 - **类型一致**：`LetterView` / `CommentView` / `SongView` 在 Task 2 定义，Task 3–5 直接消费；`TargetType` 与 `Platform` 从 `community-input.ts` 导出，读层复用。
 - **阶段 4/5 接口预留**：`songs.pinned`、`shelf_items`、`comments.targetType = note` 已就位；阶段 4 只加页面与 owner 维护，阶段 5 只把 `getPostBySlug` 改名并接笔记评论。
+
+---
+
+## 验收结果
+
+验收日期：2026-11-08。分支 `refactor/personal-space`，未部署、未合 `main`。
+
+### 门禁
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run type-check` | exit 0，`next typegen` + `tsc --noEmit` 通过 |
+| `npm run lint` | exit 0，无输出 |
+| `npm test` | 69 tests，69 pass，0 fail，0 skipped |
+| `node scripts/check-content.mjs` | 检查 30 篇文章：0 个错误，0 个提醒 |
+| `npm run build` | exit 0，347/347 静态页面生成 |
+
+构建只有 2 条既有 Turbopack 警告（`src/lib/uploads-server.ts` 的动态文件系统访问导致整项目 tracing），与阶段 3 无关。
+
+路由渲染方式（Next 16.4.3，Cache Components + Partial Prefetching）：
+
+- `ƒ` 动态：`/`、`/admin`、`/letters`、`/login`、`/playlist`、`/write`、`/life/[id]`（PPR 壳 + 请求时数据）、API 与 `/media/[...path]`。
+- `◐` Partial Prerender：`/about`、`/archives`、`/blog`、`/blog/[slug]`、`/blog/tag/[tag]`、`/changelog`、`/friends`、`/guestbook`、`/interview`、`/interview/[slug]`、`/projects`、`/shelf`、`/style`。
+- `○` 静态：`/_not-found`、`/api/github`、`/feed.xml`、`/icon`、`/robots.txt`、`/sitemap.xml`。
+
+页头账号菜单在 `<Suspense>` 内调用 `connection()` 后，静态壳仍保持 Partial Prerender。
+
+### 三种数据库状态
+
+用 WSL Docker `zb-check-db`（`pgvector/pgvector:pg17`）与本地 dev server 实测，dev server 使用临时 `AUTH_SECRET`、占位 `SMTP_USER/SMTP_PASS`、`OWNER_EMAIL=owner@example.test`；会话 cookie 由 `signSession()` 按同一算法生成，未改代码绕过鉴权。
+
+- **无库**（`DATABASE_URL=`）：`/` 出现 6 处 `NOT AVAILABLE`；`/letters`、`/playlist` 显示 `NOT AVAILABLE` 面板与「暂时读不到」，没有假的 `0 封` / `0 首`；`/admin` 未登录仍先显示站长入口登录说明。没有示例留言残留。
+- **空库**（新建 `blog_empty` 并 `ensureSchema()`，只插 owner 用户）：`/` 显示「还没有留言」；`/letters` 显示「信箱还空着。第一封可以是你写的。」；`/playlist` 显示「还没有设定此刻循环」「还没有添加歌曲」「还没有人推荐」；`/admin` 显示「没有待审留言」「没有待审歌曲」「还没有评论」，均不是 `NOT AVAILABLE`。
+- **有数据**：owner / visitor 两个用户、一条动态、三条留言（含旧留言板迁移记录与 pending）、三首歌曲（owner pinned / visitor approved / visitor pending）、三条评论（visible / hidden）、`site_settings.status_sentence`。
+
+### 运行时证据
+
+1. **首页**：页头状态句来自 `site_settings`（后台改为「在杭州，今天也在改观测台」后首页立即更新）；「此刻」三条留言全部来自数据库，显示 visitor 与「旧留言板的朋友」；页面无「阿远」「小满」「老陈」「示例 · 阶段 3」字样。
+2. **信箱**：未登录无表单，显示「去登录」与「投递需要登录；提交后待审」；登录后表单可见，提交后数据库为 `pending`，本人页面出现「待审」标记，公开访客看不到；站长在 `/admin` 通过后公开访客可见，首页「此刻」同步出现。
+3. **动态评论**：未登录显示登录说明；登录后发评论立即出现在列表；站长在 `/admin` 隐藏后，公开页面不再显示，计数从 2 条降为 1 条。
+4. **歌单**：pinned 歌曲在「此刻循环」；已通过计数排除待审（`3 首 · 已通过 · 1 首待审`）；访客推荐显示推荐人；待审只对本人可见；24 小时 3 首限制实测拦下第 4 首，错误「今天已经推荐三首了，明天再来」，草稿保留。
+5. **审核后台**：未登录显示站长入口；visitor 显示「只对站长开放」且不渲染任何审核数据；owner 可改状态句、通过/驳回留言与歌曲、隐藏/恢复评论，操作后列表与公开页面同步更新。
+6. **两种模式**：观测台（`<html class="dark">`，背景 `rgb(13, 15, 18)`）与报表模式（背景 `rgb(245, 245, 243)`）各检查 `/`、`/letters`、`/playlist`、`/life/1`、`/admin`，正文长度一致、无 `NOT AVAILABLE`、无控制台错误。
+7. **关 JS**：`/`、`/letters`、`/playlist`、`/life/1` 正文均可见；首页时钟显示 `--:--:--`，互动表单按未登录状态给出说明。
+8. **移动端账号菜单**：375px 打开 Sheet 后点账号菜单，`<details>` 正常展开，Sheet 保持打开，「我的推荐 / 写一条 / 管理」可见；点「管理」后 Sheet 关闭并跳到 `/admin`。
+9. **诚实性 grep**：`src/app/(site)/page.tsx` 与 `src/components/life/now-panel.tsx` 无「阿远 / 小满 / 老陈 / 示例 · 阶段 3」残留。
+
+### 验收中发现并修复
+
+- `3ff2496`：移动端 Sheet 的账号菜单点击 `<summary>` 会冒泡到关闭抽屉的 `onClick`，导致登录用户打不开菜单；改为只在实际点击 `a` / `button` 时关闭。
+- `956f59c`：真实会话 cookie 存在时，Next 16 报 `Route "/letters": unstable value Date.now() while prerendering`（`verifySession` 的过期判断）；按官方文档在 `AccountMenu` 调用 `getSessionUser()` 前加 `await connection()`，错误消失且静态壳保持。
+
+### 遗留 Minor
+
+- 账号菜单的 `<summary>` 与链接仍依赖浏览器默认 focus 轮廓，可补 token 级 `focus-visible` 样式。
+- 原生 `<details>` 在客户端导航后保持展开，且不响应外部点击；这是无 JS 方案的取舍。
+- `next dev` 有一条既有警告：`scroll-behavior: smooth` 建议在 `<html>` 加 `data-scroll-behavior="smooth"`，与阶段 3 无关。
+- 只有一条动态时，`/life/[id]` 的「下一条」链接指回自身；属既有相邻导航逻辑，留待后续清理。
