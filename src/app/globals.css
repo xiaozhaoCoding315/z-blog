@@ -1277,3 +1277,10 @@ html {
     }
   }
 }
+
+/* 桌面外壳内部自己滚动，锁住 body 避免出现双层滚动条 */
+@media (min-width: 768px) {
+  body {
+    overflow: hidden;
+  }
+}

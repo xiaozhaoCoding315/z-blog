@@ -1,28 +1,19 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Navbar } from "@/components/site/navbar";
-import { Footer } from "@/components/site/footer";
 import { AccountMenu } from "@/components/site/account-menu";
-import { ChatWidget } from "@/components/chat/chat-widget";
-import { SearchPalette } from "@/components/search/search-palette";
-import { getAllNotes } from "@/content";
+import { DesktopShell } from "@/components/desktop/desktop-shell";
+import { friends } from "@/config/portfolio";
 
-export default function SiteLayout({ children }: { children: React.ReactNode }) {
-  const notes = getAllNotes().filter((p) => !p.meta.draft);
-  const searchable = notes.map((p) => ({
-    slug: p.slug,
-    title: p.meta.title,
-    tags: p.meta.tags,
-  }));
-
-  // Suspense 把读 cookie 的账号菜单收进动态洞，静态页面壳不被拖成整页动态
+export default function SiteLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  // Suspense 把读 cookie 的账号菜单收进动态洞，静态外壳不被拖成整页动态
   const accountMenu = (
     <Suspense
       fallback={
-        <Link
-          href="/login"
-          className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-        >
+        <Link href="/login" className="os-menu-link">
           登录
         </Link>
       }
@@ -32,12 +23,8 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   );
 
   return (
-    <>
-      <Navbar accountMenu={accountMenu} />
-      <main className="flex-1">{children}</main>
-      <Footer />
-      <SearchPalette posts={searchable} />
-      <ChatWidget />
-    </>
+    <DesktopShell accountMenu={accountMenu} hasFriends={friends.length > 0}>
+      {children}
+    </DesktopShell>
   );
 }
