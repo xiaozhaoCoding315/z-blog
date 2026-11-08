@@ -497,3 +497,62 @@ git commit -m "docs(phase-4): 验收结果"
 - **规格覆盖**：§5.2 书架三标签与字段、§5.3 歌单四段与平台外链、§10 阶段 4 完成标志「三个页面可用，跳转外部平台正确」，均有任务对应。
 - **无占位**：schema 已由阶段 3 建好；本计划只补 `parseShelfInput`、读层、页面与 owner Actions，接口签名齐全。
 - **类型一致**：`ShelfType` 与 `SongView` 直接复用阶段 3 的 `community-input.ts` / `songs-server.ts`，不重复定义平台枚举。
+
+---
+
+## 验收结果
+
+验收日期：2026-11-08。分支 `refactor/personal-space`，未部署、未合 `main`。
+
+### 门禁
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run type-check` | exit 0，`next typegen` + `tsc --noEmit` 通过 |
+| `npm run lint` | exit 0，无输出 |
+| `npm test` | 73 tests，73 pass，0 fail，0 skipped |
+| `node scripts/check-content.mjs` | 检查 30 篇文章：0 个错误，0 个提醒 |
+| `npm run build` | exit 0，347/347 静态页面生成 |
+
+构建仍只有 2 条既有 Turbopack 警告（`src/lib/uploads-server.ts` 的动态文件系统访问），与本阶段无关。
+
+路由渲染方式（Next 16.4.3，Cache Components + Partial Prefetching）：
+
+- `/shelf` 由阶段 1.5 的 `◐` 占位改为 `ƒ` 动态：页面顶层 `await connection()` 并导出 `instant = false`，标签切换与条数都在请求时读取。
+- `/playlist`、`/admin` 继续保持 `ƒ` 动态；其余内容路由与静态路由未变。
+
+### 数据状态
+
+用 WSL Docker `zb-check-db`（`pgvector/pgvector:pg17`）与本地 dev server 实测；会话 cookie 由 `signSession()` 按同一算法生成，未改代码绕过鉴权。
+
+- **有数据**：书架 4 条（书 2、影 1、音 1；一条有封面 URL 与评分、一条无封面无评分无日期、一条空日期之外的完成日期为 2026-10-31）；歌单 4 首（owner approved + pinned、owner approved 未 pin、visitor approved、visitor pending）；`site_settings.status_sentence` 一条。
+- **空分类**：删除音乐条目后，`/shelf?type=music` 显示「0 条」与「这一类还空着。」，不显示假条目。
+- **无 pinned**：删除 pinned 歌曲后，`/playlist` 显示「还没有设定此刻循环」空白面板，不显示假卡片。
+- **无库**（`DATABASE_URL=`）：`/shelf` 与 `/playlist` 均显示 `NOT AVAILABLE` 与「暂时读不到」说明，条数读数整体隐藏，没有假的 `0 条` / `0 首`；`/admin` 因会话查询依赖数据库而先显示登录说明，未渲染任何审核数据。
+
+### 运行时证据
+
+1. **`/shelf`**：默认「书」标签 2 条；`?type=film` 1 条、`?type=music` 1 条；`?type=game` 回退「书」且 `aria-current` 落在「书」。有封面条目渲染 `<img>` 并带 `border-rule` 细边；无封面条目显示标题首字占位块，不出现 `example.com` 占位图。无评分条目显示「未评分」，全文没有 `0/5`。
+2. **书架排序**：`finishedAt` 为 2026-10-31 的条目排在无日期条目前面，`NULLS LAST` 生效；后台列表同序，无日期显示「未标注日期」。
+3. **`/playlist`**：公开计数为「3 首 · 已通过」，pending 不计入；pinned 的「雨の日」在「此刻循环」，且不在「我的歌单」重复；「我的歌单」只含 owner 未 pin 歌曲；「大家推荐的」含 visitor approved 歌曲并显示推荐人 visitor。三处外链 `href` 与数据库中的 URL 逐字一致，均为 `target="_blank" rel="noreferrer noopener"`。
+4. **待审可见性**：visitor 登录后「我的待审」出现 `id="mine"`，显示自己的 pending 歌曲并带 `PENDING`；owner 与匿名访客的公开歌单都不显示该条；匿名访客的推荐区没有表单，只有「推荐需要登录；提交后待审」说明。
+5. **`/admin` 写路径**：owner 添加书架条目后 `/shelf` 立即从 2 条变 3 条且新条目排在首位；删除后恢复 2 条并消失。添加歌曲后 `/playlist` 变 4 首且出现在「我的歌单」；设为此刻循环后「此刻循环」切到新歌，旧 pinned 退回「我的歌单」，数据库 `pinned` 计数为 1；删除该歌后计数回到 3，数据库 `pinned` 计数为 0。删除音乐条目后 `/shelf?type=music` 变 0 条并显示空分类文案，用后台表单以「音」类型重新添加后恢复。
+6. **鉴权**：匿名访问 `/shelf`、`/playlist` 均可读；visitor 访问 `/admin` 显示「只对站长开放」且不渲染审核数据；匿名访问 `/admin` 显示「这是站长入口，先登录」。三个写 Action 都在服务端重新校验 owner。
+7. **两种模式**：`<html class="light">`（背景 `rgb(245, 245, 243)`）与 `<html class="dark">`（背景 `rgb(13, 15, 18)`）各检查 `/shelf`、`/playlist`、`/admin`（含书架与歌单两段），所有颜色来自 token，无硬编码 hex；浏览器控制台无错误或警告。
+8. **键盘**：`/shelf` Tab 依次到达「书 / 影 / 音」；`/playlist` 依次到达三个外链、待审条目、四个表单控件与提交按钮；`/admin` 依次到达保存、通过、驳回、添加、删除、设为此刻循环。焦点轮廓可见。
+9. **移动端**：375px 下 `/shelf`、`/playlist` 无横向溢出，书架行与标签正常换行。
+10. **诚实性**：以上无库、空分类、无 pinned 三种状态都没有用 `0`、空列表或占位卡片冒充数据；封面只在数据库给出 URL 时渲染 `<img>`。
+
+### 验收中发现并修复
+
+- 无代码缺陷；本阶段验收未新增修复提交。种子封面使用 `https://example.com/cover.jpg` 仅用于验证 `<img>` 分支，图片本身加载失败属于测试数据，不是页面占位逻辑。
+
+### 遗留 Minor
+
+- `/playlist#mine` 锚点挂在按条件渲染的「我的待审」段上；已登录但没有待审歌曲时点「我的推荐」会停在页顶。
+- `moderateSong` 把已 pinned 的歌改为 rejected 时不会顺手清 `pinned`；该行不会出现在任何公开列表，下一次 pin 会自愈。
+- 后台 `书架` 与 `歌单` 两段都无分页/上限；`admin/page.tsx` 已约 880 行，后续任务可拆段组件。
+- 书架日期粒度不统一：有 `finishedAt` 显示 `YYYY.MM.DD`，缺失时回退 `formatDay(createdAt)` 的 `MM.DD`。
+- 三个 owner 歌曲 Action 与 pin 唯一性没有自动化测试，依赖本次运行时验收。
+- 非法输入在 Action 中静默忽略，表单没有内联错误提示（与既有 Action 模式一致）。
+- 歌单表单复用了 `shelfLabelClass` / `shelfFieldClass` / `shelfTextareaClass` 三个样式常量，命名带 shelf 但已用于歌单。
