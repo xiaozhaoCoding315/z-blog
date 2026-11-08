@@ -36,7 +36,7 @@ export function GlobalWindows({
   return (
     <div className="os-global-windows">
       {open.terminal && terminalApp && (
-        <Window id="terminal" app={terminalApp}>
+        <Window id="terminal" app={terminalApp} title="zsh — guest@z-os">
           <TerminalWindow
             aiEnabled={aiEnabled}
             notes={notes}

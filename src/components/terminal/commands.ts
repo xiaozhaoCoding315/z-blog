@@ -34,6 +34,8 @@ export interface TerminalSnippet {
 
 export interface TerminalContext {
   apps: TerminalApp[];
+  /** 桌面图标数量（neofetch 的 Apps 行；`apps` 命令仍列完整注册表） */
+  desktopAppCount: number;
   notes: TerminalNote[];
   snippets: TerminalSnippet[];
   theme: DesktopPreset;
@@ -139,7 +141,7 @@ function neofetchLines(ctx: TerminalContext) {
     "Host: 杭州",
     `Uptime: ${formatUptime(ctx.uptimeDays)}`,
     "Stack: Next.js 16 / React 19 / PostgreSQL",
-    `Apps: ${ctx.apps.length}`,
+    `Apps: ${ctx.desktopAppCount}`,
     `Notes: ${ctx.notes.length}`,
     `Theme: ${THEME_LABELS[ctx.theme]} (${ctx.theme})`,
     `AI: ${ctx.aiEnabled ? "已配置" : "未配置"}`,
@@ -154,6 +156,15 @@ function openTarget(target: string, ctx: TerminalContext): TerminalResult {
         "open: 用法：open <app|note-slug|snippet-id>",
         "提示：输入 apps、posts 或 snippets 查看可打开的目标。",
       ],
+    };
+  }
+
+  // settings 是 Phase 2 的系统菜单入口，不在窗口注册表里；即使调用方
+  // 过滤掉 settings，也要能显式打开它（由 TerminalWindow 调 openSettings）。
+  if (target === "settings") {
+    return {
+      lines: ["打开 系统设置 (settings)。"],
+      effect: { type: "open", appId: "settings" },
     };
   }
 

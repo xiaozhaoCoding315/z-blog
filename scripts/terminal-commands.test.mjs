@@ -12,6 +12,7 @@ function makeContext(overrides = {}) {
       { id: "life", title: "每日日志", path: "/life", kind: "window" },
       { id: "notes", title: "笔记", path: "/notes", kind: "route" },
     ],
+    desktopAppCount: 12,
     notes: [
       { slug: "hello-world", title: "你好，世界" },
       { slug: "rag-notes", title: "RAG 笔记" },
@@ -100,6 +101,12 @@ test("open 缺少参数给出用法", () => {
   assert.ok(text(result).includes("用法"));
 });
 
+test("open settings 显式解析为设置入口", () => {
+  const result = runCommand("open settings", makeContext({ apps: [] }));
+  assert.deepEqual(result.effect, { type: "open", appId: "settings" });
+  assert.ok(text(result).includes("系统设置"));
+});
+
 test("theme 切换预设，未知预设报错", () => {
   assert.deepEqual(runCommand("theme paper", makeContext()).effect, {
     type: "theme",
@@ -151,7 +158,7 @@ test("neofetch 只显示真实值与明示的模拟 Shell", () => {
   assert.ok(output.includes("Host: 杭州"));
   assert.ok(output.includes("Uptime: 建站 129 天"));
   assert.ok(output.includes("Stack: Next.js 16 / React 19 / PostgreSQL"));
-  assert.ok(output.includes("Apps: 3"));
+  assert.ok(output.includes("Apps: 12"));
   assert.ok(output.includes("Notes: 2"));
   assert.ok(output.includes("Theme: 夜班 (night)"));
   assert.ok(output.includes("AI: 未配置"));
@@ -167,6 +174,21 @@ test("neofetch 只显示真实值与明示的模拟 Shell", () => {
     runCommand("neofetch", makeContext({ uptimeDays: null }))
   );
   assert.ok(unknownUptime.includes("Uptime: 建站 —"));
+});
+
+test("neofetch Apps 用桌面图标数，apps 仍列完整注册表", () => {
+  const apps = Array.from({ length: 14 }, (_, index) => ({
+    id: `app-${index}`,
+    title: `应用 ${index}`,
+    path: null,
+    kind: "window",
+  }));
+  const ctx = makeContext({ apps, desktopAppCount: 12 });
+  assert.ok(text(runCommand("neofetch", ctx)).includes("Apps: 12"));
+  const listed = text(runCommand("apps", ctx));
+  assert.ok(listed.includes("app-0"));
+  assert.ok(listed.includes("app-13"));
+  assert.equal(listed.split("\n").length, 14);
 });
 
 test("coffee 打印 ASCII 咖啡并产生热气事件", () => {

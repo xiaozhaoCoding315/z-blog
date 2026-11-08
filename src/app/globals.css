@@ -1907,15 +1907,36 @@ html {
     border-top-color: color-mix(in srgb, var(--phosphor) 30%, var(--rule));
   }
 
+  /*
+   * 输入行用镜像层画方块光标：input 自己隐藏原生 caret，
+   * 镜像里的文字透明、光标按 selectionStart 定位，视觉上仍是真输入。
+   */
+  .os-terminal-input-wrap {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .os-terminal-mirror {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    white-space: pre;
+    color: transparent;
+    pointer-events: none;
+  }
+
   .os-terminal-input {
     flex: 1;
+    width: 100%;
     min-width: 0;
     padding: 0;
     border: 0;
     background: transparent;
     color: var(--ink);
     font: inherit;
-    caret-color: var(--phosphor);
+    caret-color: transparent;
     outline: none;
   }
 

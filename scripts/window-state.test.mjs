@@ -86,6 +86,19 @@ test("hydrate 只恢复位置，preferredRect 用保存值并 clamp", () => {
   assert.deepEqual(state.saved.life, { x: 20, y: 40, w: 480, h: 600 });
 });
 
+test("preferredRect 初始位置整体落在视口内（1024 宽度）", () => {
+  const rect = preferredRect(
+    undefined,
+    { x: 320, y: 120, w: 760, h: 440 },
+    { width: 1024, height: 768 },
+    420,
+    280
+  );
+  assert.deepEqual(rect, { x: 264, y: 120, w: 760, h: 440 });
+  assert.ok(rect.x + rect.w <= 1024);
+  assert.ok(rect.y + rect.h <= 768);
+});
+
 test("clampRect 限制最小尺寸并保留 80px 标题栏", () => {
   const clamped = clampRect(
     { x: 2000, y: -200, w: 100, h: 100 },

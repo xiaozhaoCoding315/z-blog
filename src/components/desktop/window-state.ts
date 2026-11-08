@@ -53,7 +53,12 @@ export function clampRect(
   return { x, y, w, h };
 }
 
-/** 打开窗口时的最终 rect：优先用上次保存的位置，再按当前视口 clamp。 */
+/**
+ * 打开窗口时的最终 rect：优先用上次保存的位置，再按当前视口 clamp。
+ *
+ * 与拖拽不同，初始位置必须让整个窗口落在视口内：否则窄屏下 760px 的
+ * 终端会从右侧溢出，最大化/关闭按钮点不到。拖拽仍允许部分移出屏幕。
+ */
 export function preferredRect(
   saved: Rect | undefined,
   fallback: Rect,
@@ -61,7 +66,12 @@ export function preferredRect(
   minWidth: number,
   minHeight: number
 ): Rect {
-  return clampRect(saved ?? fallback, bounds, minWidth, minHeight);
+  const rect = clampRect(saved ?? fallback, bounds, minWidth, minHeight);
+  return {
+    ...rect,
+    x: Math.max(0, Math.min(rect.x, bounds.width - rect.w)),
+    y: Math.max(0, Math.min(rect.y, bounds.height - rect.h)),
+  };
 }
 
 /**

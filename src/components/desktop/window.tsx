@@ -18,6 +18,8 @@ import { clampRect, type Rect } from "./window-state";
 interface WindowProps {
   id: string;
   app: AppDefinition;
+  /** 标题栏文案；不传时用 app.title（终端用 `zsh — guest@z-os`） */
+  title?: string;
   children: ReactNode;
 }
 
@@ -39,7 +41,7 @@ const INTERACTIVE = "button, a, input, textarea, select, [contenteditable='true'
  * 拖拽/缩放期间只写 transform / width / height（不入 React state），
  * 松手后再 clamp 并提交一次 reducer action。
  */
-export function Window({ id, app, children }: WindowProps) {
+export function Window({ id, app, title, children }: WindowProps) {
   const { windows } = useDesktopRuntime();
   const state = windows.store.windows[id];
   const focused = state?.z === windows.store.zCounter;
@@ -269,7 +271,7 @@ export function Window({ id, app, children }: WindowProps) {
       >
         <AppIcon name={app.icon} className="os-window-icon" />
         <span id={titleId} className="os-window-title">
-          {app.title}
+          {title ?? app.title}
         </span>
         <span className="os-window-path">{pathLabel}</span>
         <div className="os-window-controls">
