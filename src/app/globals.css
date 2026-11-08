@@ -743,7 +743,7 @@ html {
     border: 1px solid var(--rule);
     background: var(--window);
     box-shadow: 0 18px 44px rgb(0 0 0 / 0.28);
-    animation: os-panel-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    animation: os-panel-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .os-launcher {
@@ -951,7 +951,7 @@ html {
     border: 1px solid transparent;
     color: var(--ink);
     text-align: center;
-    animation: os-icon-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: os-icon-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: calc(var(--i) * 30ms);
     transition:
       background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
