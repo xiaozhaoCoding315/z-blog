@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   // Docker 部署使用 standalone 产物
   output: "standalone",
   cacheComponents: true,
+  // nodemailer 走原生 socket，不进打包器更稳
+  serverExternalPackages: ["nodemailer"],
   partialPrefetching: true,
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],

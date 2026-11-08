@@ -70,6 +70,11 @@ services:
       GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
       # 会话签名密钥；留空则回退到 SYNC_SECRET
       AUTH_SECRET: ${AUTH_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-smtp.qq.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
     ports:
       - "80:3000"
 

@@ -82,6 +82,12 @@ export function Navbar() {
             >
               <GithubIcon className="size-4" />
             </Button>
+            <Link
+              href="/login"
+              className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              登录
+            </Link>
             <ThemeToggle />
   
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>

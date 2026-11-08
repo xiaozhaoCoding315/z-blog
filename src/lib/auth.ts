@@ -150,8 +150,8 @@ export function sessionSecret(): string | null {
  * （`//evil.com` 和 `https://evil.com` 都是常见绕过手法）。
  */
 export function sanitizeNext(raw: string | null): string {
-  if (!raw) return "/interview";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/interview";
+  if (!raw) return "/";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
   return raw;
 }
 
