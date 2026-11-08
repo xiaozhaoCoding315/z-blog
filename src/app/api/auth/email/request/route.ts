@@ -47,7 +47,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
   }
 
-  const email = normalizeEmail(body.email ?? "");
+  // 非字符串会在 normalizeEmail 的 .trim() 里抛成 500，先按类型收窄
+  const email = typeof body.email === "string" ? normalizeEmail(body.email) : "";
   if (!isValidEmail(email)) {
     return NextResponse.json({ error: "邮箱看起来不对" }, { status: 400 });
   }

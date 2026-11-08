@@ -142,7 +142,13 @@ export async function verifySession(
  * 两者都没有时返回 null，登录功能整体不可用（而不是用一个弱密钥签名）。
  */
 export function sessionSecret(): string | null {
-  return process.env.AUTH_SECRET ?? process.env.SYNC_SECRET ?? null;
+  // 用 || 而不是 ??：compose 会把未填的 AUTH_SECRET 定义成空字符串，
+  // 空串在 ?? 下算「有值」，文档里写的 SYNC_SECRET 回退就永远不会发生
+  return (
+    process.env.AUTH_SECRET?.trim() ||
+    process.env.SYNC_SECRET?.trim() ||
+    null
+  );
 }
 
 /**

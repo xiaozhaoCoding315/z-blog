@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { email?: string; code?: string; next?: string } | null;
+  let body: { email?: unknown; code?: unknown; next?: unknown } | null;
   try {
     body = await request.json();
   } catch {
@@ -42,8 +42,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
   }
 
-  const email = normalizeEmail(body.email ?? "");
-  const code = (body.code ?? "").trim();
+  // 字段类型也必须先验：非字符串会在 .trim() 里抛成 500，
+  // 而这里的 500 发生在「次数已扣、码已焚」之后，用户只会拿到空响应
+  const email = typeof body.email === "string" ? normalizeEmail(body.email) : "";
+  const code = typeof body.code === "string" ? body.code.trim() : "";
+  const next = typeof body.next === "string" ? body.next : null;
   if (!isValidEmail(email) || !/^\d{6}$/.test(code)) {
     return NextResponse.json({ error: "邮箱或验证码不对" }, { status: 400 });
   }
@@ -115,7 +118,7 @@ export async function POST(request: Request) {
   const res = NextResponse.json({
     ok: true,
     role: user.role,
-    next: sanitizeNext(body.next ?? null),
+    next: sanitizeNext(next),
   });
   res.cookies.set(SESSION_COOKIE, session, {
     httpOnly: true,
