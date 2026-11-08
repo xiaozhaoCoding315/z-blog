@@ -3,28 +3,40 @@
 import { useEffect, useState } from "react";
 import { ArrowUp, Check, Link2, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useScrollRoot } from "@/components/desktop/app-frame";
 
 /**
  * 文章页浮动工具条（桌面端显示在右侧留白区）：
  * 回到顶部 + 复制链接 / 分享 + 滚动进度环。
+ * 桌面跟随窗口内部滚动容器，移动端回退到 window。
  */
 export function ArticleTools() {
   const [progress, setProgress] = useState(0);
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
+  const scrollRoot = useScrollRoot();
 
   useEffect(() => {
+    const node = scrollRoot?.current ?? null;
     const onScroll = () => {
-      const doc = document.documentElement;
-      const total = doc.scrollHeight - doc.clientHeight;
-      const p = total > 0 ? Math.min(1, window.scrollY / total) : 0;
+      const total = node
+        ? node.scrollHeight - node.clientHeight
+        : document.documentElement.scrollHeight -
+          document.documentElement.clientHeight;
+      const top = node ? node.scrollTop : window.scrollY;
+      const p = total > 0 ? Math.min(1, Math.max(0, top / total)) : 0;
       setProgress(p);
-      setVisible(window.scrollY > 480);
+      setVisible(top > 480);
     };
     onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    const target: EventTarget = node ?? window;
+    target.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      target.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [scrollRoot]);
 
   async function share() {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -52,6 +64,12 @@ export function ArticleTools() {
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
+  }
+
+  function backToTop() {
+    const node = scrollRoot?.current;
+    if (node) node.scrollTo({ top: 0, behavior: "smooth" });
+    else window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   const circumference = 2 * Math.PI * 15;
@@ -118,7 +136,7 @@ export function ArticleTools() {
       <button
         type="button"
         aria-label="回到顶部"
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        onClick={backToTop}
         className="card-surface flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
       >
         <ArrowUp className="size-4" />

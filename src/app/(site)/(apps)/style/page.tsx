@@ -3,6 +3,8 @@ import { Moment } from "@/components/life/moment";
 import { MonthTick } from "@/components/life/month-tick";
 import { ObservBar } from "@/components/site/observ-bar";
 import { NotYetOpen } from "@/components/site/not-yet-open";
+import { AppIcon } from "@/components/desktop/icons";
+import { ICON_KEYS } from "@/config/apps";
 
 /**
  * 样式走廊：只在开发环境存在，生产构建时直接 404。
@@ -14,6 +16,25 @@ export default function StylePage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6">
       <h1 className="font-heading text-2xl font-bold">样式走廊</h1>
+
+      <section className="mt-10">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          桌面图标
+        </h2>
+        <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-6">
+          {ICON_KEYS.map((name) => (
+            <div
+              key={name}
+              className="flex flex-col items-center gap-2 border border-rule bg-panel p-3"
+            >
+              <AppIcon name={name} className="size-5 text-data" />
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {name}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="mt-10">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">

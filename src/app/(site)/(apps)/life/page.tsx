@@ -16,6 +16,11 @@ import { NowPanel } from "@/components/life/now-panel";
 import { ObservBar } from "@/components/site/observ-bar";
 import { Clock } from "@/components/desktop/clock";
 
+export const metadata: Metadata = {
+  title: "每日日志",
+  description: "一条按时间走的生活流：文字、照片、歌、书和信。",
+};
+
 /**
  * 生活流要读数据库，这个页面不再是纯静态页（设计文档 §6.3 已接受这一点）。
  *
@@ -26,11 +31,6 @@ import { Clock } from "@/components/desktop/clock";
  * 而 Cache Components 会校验每页必须有非空静态壳。这个导出只关掉那条校验，
  * 不影响运行时行为。
  */
-export const metadata: Metadata = {
-  title: "每日日志",
-  description: "一条按时间走的生活流：文字、照片、歌、书和信。",
-};
-
 export const instant = false;
 
 /**

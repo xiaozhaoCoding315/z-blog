@@ -6,7 +6,7 @@ import { siteConfig } from "@/config/site";
 
 /**
  * 静态页只列站内仍然存在的路由。
- * /archives、/blog、/changelog、/guestbook 都是 301/308 的中转站，不该出现在地图里；
+ * /archives、/blog、/changelog、/guestbook 都是 308 的中转站，不该出现在地图里；
  * 后台与管理动作（/admin、/write、/login）也不该被搜索引擎收录。
  */
 const STATIC_PAGES: Array<{
@@ -14,6 +14,9 @@ const STATIC_PAGES: Array<{
   priority: number;
 }> = [
   { path: "", priority: 1 },
+  { path: "/life", priority: 0.8 },
+  { path: "/gallery", priority: 0.6 },
+  { path: "/snippets", priority: 0.6 },
   { path: "/notes", priority: 0.8 },
   { path: "/shelf", priority: 0.7 },
   { path: "/playlist", priority: 0.7 },

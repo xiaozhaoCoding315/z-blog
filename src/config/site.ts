@@ -2,7 +2,6 @@
  * 站点全局配置——改这里即可全站生效。
  * 站点名等可被 .env 中的 NEXT_PUBLIC_SITE_NAME / NEXT_PUBLIC_SITE_URL 覆盖。
  */
-import { friends } from "@/config/portfolio";
 
 /**
  * .env 里留空的变量是空字符串而不是 undefined，
@@ -19,8 +18,8 @@ export const siteConfig = {
   description: "赵小元的个人空间：记录生活，收信，听歌，看书。",
   url: envOr(process.env.NEXT_PUBLIC_SITE_URL, "http://localhost:3000"),
   /**
-   * 首页页头那句状态话，是首页唯一的自我介绍。
-   * 阶段 1 先写死；阶段 3 挪进数据库，由站长在管理页改。
+   * 状态句的缺省值。数据库里有 site_settings.status_sentence 时以数据库为准；
+   * 桌面主屏与 /life 都读 getStatusSentence()。
    */
   status: "在杭州，最近在学做饭",
   // 站点建立日期：全站「运行天数」的唯一数据源（页脚 / 终端 neofetch 均读这里）
@@ -43,20 +42,6 @@ export const siteConfig = {
     latitude: 30.2741,
     longitude: 120.1551,
   },
-  // 主导航只放四个真正会点的地方；其余沉到页脚。
-  nav: [
-    { title: "生活", href: "/" },
-    { title: "书架", href: "/shelf" },
-    { title: "歌单", href: "/playlist" },
-    { title: "信箱", href: "/letters" },
-  ],
-  footerNav: [
-    { title: "笔记", href: "/notes" },
-    { title: "项目", href: "/projects" },
-    { title: "日志", href: "/journal" },
-    { title: "友链", href: "/friends" },
-    { title: "关于", href: "/about" },
-  ],
   footer: {
     icp: "", // 备案号（有域名备案后填写）
     beianUrl: "",
@@ -64,25 +49,3 @@ export const siteConfig = {
 } as const;
 
 export type SiteConfig = typeof siteConfig;
-
-/**
- * 导航项里「有内容才有意义」的入口：内容为空时从菜单里隐藏，
- * 免得把一个空页面摆在主导航上。
- *
- * 判断数据源是 portfolio.ts —— 加第一条真实友链后，导航自动恢复，
- * 不需要回来改 site.ts。
- */
-const EMPTY_SECTION_HREFS = new Set<string>(
-  friends.length === 0 ? ["/friends"] : []
-);
-
-function visibleNav<T extends { href: string }>(items: readonly T[]): T[] {
-  return EMPTY_SECTION_HREFS.size === 0
-    ? [...items]
-    : items.filter((item) => !EMPTY_SECTION_HREFS.has(item.href));
-}
-
-export const navItems = visibleNav(siteConfig.nav);
-export const footerNavItems = visibleNav(siteConfig.footerNav);
-/** 全部导航（含被隐藏项），供 footer 等需要完整列表的地方按需取用 */
-export const allNavItems = visibleNav([...siteConfig.nav, ...siteConfig.footerNav]);

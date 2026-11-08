@@ -1175,7 +1175,9 @@ html {
     }
 
     .os-main {
-      position: static;
+      /* 壁纸是 absolute：主内容若退回 static，会被画在壁纸下面，标题与读数不可见 */
+      position: relative;
+      z-index: 1;
       overflow: visible;
       padding-bottom: 72px;
     }
