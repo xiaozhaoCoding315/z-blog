@@ -621,17 +621,36 @@ html {
     height: 48px;
     padding: 0 8px;
     border-top: 1px solid var(--rule);
-    background: color-mix(in srgb, var(--window) 88%, transparent);
-    backdrop-filter: blur(12px);
+    background: transparent;
+  }
+
+  /*
+   * 模糊放在伪元素上：taskbar 本体一旦有 backdrop-filter，
+   * 就会成为 fixed 子元素的包含块，启动器/系统菜单/遮罩会以 48px 任务栏为参照定位。
+   */
+  .os-taskbar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: color-mix(in srgb, var(--window) 80%, transparent);
+    backdrop-filter: blur(14px);
+    pointer-events: none;
   }
 
   @supports not (backdrop-filter: blur(1px)) {
-    .os-taskbar {
+    .os-taskbar::before {
       background: var(--window);
     }
   }
 
-  .os-taskbar > *:not(.os-menu-backdrop) {
+  .os-taskbar
+    > :is(
+      .os-launcher-button,
+      .os-taskbar-menu-button,
+      .os-taskbar-apps,
+      .os-taskbar-right
+    ) {
     position: relative;
     z-index: 2;
   }
@@ -708,7 +727,7 @@ html {
   .os-menu-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 1;
+    z-index: 55;
     border: 0;
     background: transparent;
     cursor: default;
@@ -717,9 +736,10 @@ html {
   /* ---------- 启动器 / 系统菜单 ---------- */
   .os-launcher,
   .os-system-menu {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    z-index: 3;
+    position: fixed;
+    bottom: 56px;
+    z-index: 60;
+    max-width: calc(100vw - 16px);
     border: 1px solid var(--rule);
     background: var(--window);
     box-shadow: 0 18px 44px rgb(0 0 0 / 0.28);
@@ -728,7 +748,7 @@ html {
 
   .os-launcher {
     left: 8px;
-    width: 320px;
+    width: 420px;
     padding: 12px;
   }
 

@@ -129,7 +129,7 @@ test("正文对比度 ≥ 7:1", () => {
 
 test("muted 与语义色对比度 ≥ 4.5:1", () => {
   for (const [name, preset] of Object.entries(presets)) {
-    for (const token of ["ink-dim", "phosphor", "ok", "warn", "danger"]) {
+    for (const token of ["ink-dim", "phosphor", "ok", "warn", "danger", "info"]) {
       const ratio = contrast(resolve(preset, token), resolve(preset, "window-2"));
       assert.ok(ratio >= 4.5, `${name}: ${token} = ${ratio.toFixed(2)}`);
     }
@@ -166,8 +166,14 @@ test("已退役的 v1 token 不再出现", () => {
     "--scanline",
     "--amber",
     "--serif-display",
+    "--stamp",
+    "--postmark",
+    "--vermilion",
   ]) {
     assert.equal(css.includes(retired), false, `retired token ${retired} still present`);
+  }
+  for (const className of [".postmark", ".perforated", ".paper-sheet"]) {
+    assert.equal(css.includes(className), false, `retired class ${className} still present`);
   }
 });
 
@@ -187,6 +193,14 @@ test("图表与侧栏别名齐全", () => {
   ]) {
     assert.ok(aliases[token], `missing alias --${token}`);
   }
+});
+
+test("图表语义色映射正确", () => {
+  assert.equal(aliases["chart-1"], "var(--phosphor)");
+  assert.equal(aliases["chart-2"], "var(--ok)");
+  assert.equal(aliases["chart-3"], "var(--warn)");
+  assert.equal(aliases["chart-4"], "var(--danger)");
+  assert.equal(aliases["chart-5"], "var(--ink-dim)");
 });
 
 test("标题字体是等宽，不再加载宋体", () => {
