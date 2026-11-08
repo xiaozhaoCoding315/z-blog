@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh, updateTag } from "next/cache";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
   comments as commentsTable,
@@ -11,7 +11,11 @@ import {
   songs as songsTable,
 } from "@/db/schema";
 import { getSessionUser } from "@/lib/session";
-import { parseShelfInput, parseStatusInput } from "@/lib/community-input";
+import {
+  parseShelfInput,
+  parseSongInput,
+  parseStatusInput,
+} from "@/lib/community-input";
 import { STATUS_KEY } from "@/lib/settings-server";
 
 /**
@@ -73,6 +77,68 @@ export async function moderateSong(formData: FormData): Promise<void> {
   const db = getDb();
   if (!db) return;
   await db.update(songsTable).set({ status }).where(eq(songsTable.id, id));
+  updateTag("songs");
+  refresh();
+}
+
+/** 站长添加一首歌：直接通过，来源固定 owner，userId 记站长本人。 */
+export async function addSong(formData: FormData): Promise<void> {
+  const owner = await requireOwner();
+  if (!owner) return;
+  const parsed = parseSongInput(formData);
+  if (!parsed.ok) return;
+  const db = getDb();
+  if (!db) return;
+  await db.insert(songsTable).values({
+    ...parsed.value,
+    source: "owner",
+    status: "approved",
+    userId: owner.id,
+  });
+  updateTag("songs");
+  refresh();
+}
+
+/**
+ * 设为此刻循环：只认已通过、且由站长添加的歌。
+ * 公开页只展示 owner 歌曲，pin 访客歌曲会让它从所有列表里消失。
+ */
+export async function pinSong(formData: FormData): Promise<void> {
+  if (!(await requireOwner())) return;
+  const id = idFrom(formData);
+  if (!id) return;
+  const db = getDb();
+  if (!db) return;
+
+  const [song] = await db
+    .select({ id: songsTable.id })
+    .from(songsTable)
+    .where(
+      and(
+        eq(songsTable.id, id),
+        eq(songsTable.status, "approved"),
+        eq(songsTable.source, "owner")
+      )
+    )
+    .limit(1);
+  if (!song) return;
+
+  await db.transaction(async (tx) => {
+    await tx.update(songsTable).set({ pinned: false });
+    await tx.update(songsTable).set({ pinned: true }).where(eq(songsTable.id, id));
+  });
+  updateTag("songs");
+  refresh();
+}
+
+/** 删除一首歌；id 必须是正的安全整数。 */
+export async function deleteSong(formData: FormData): Promise<void> {
+  if (!(await requireOwner())) return;
+  const id = idFrom(formData);
+  if (!id) return;
+  const db = getDb();
+  if (!db) return;
+  await db.delete(songsTable).where(eq(songsTable.id, id));
   updateTag("songs");
   refresh();
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
   comments as commentsTable,
@@ -16,10 +16,13 @@ import { getStatusSentence, STATUS_KEY } from "@/lib/settings-server";
 import { formatDay } from "@/lib/life";
 import {
   addShelfItem,
+  addSong,
   deleteShelfItem,
+  deleteSong,
   moderateComment,
   moderateLetter,
   moderateSong,
+  pinSong,
   updateStatus,
 } from "./actions";
 
@@ -51,6 +54,16 @@ interface AdminSong {
   url: string;
   note: string;
   recommender: string;
+}
+
+interface AdminSongEntry {
+  id: number;
+  title: string;
+  artist: string;
+  status: string;
+  source: string;
+  pinned: boolean;
+  recommender: string | null;
 }
 
 interface AdminComment {
@@ -179,6 +192,46 @@ async function loadPendingSongs(db: Db): Promise<SectionData<AdminSong[]>> {
   }
 }
 
+/**
+ * 歌单管理：approved + pending 都列出来，站长可直接删除。
+ * 只有 approved 且 source = owner 的行能设为此刻循环；
+ * pending 的通过 / 驳回仍走「待审歌曲」段。
+ */
+async function loadSongList(db: Db): Promise<SectionData<AdminSongEntry[]>> {
+  try {
+    const rows = await db
+      .select({
+        id: songsTable.id,
+        title: songsTable.title,
+        artist: songsTable.artist,
+        status: songsTable.status,
+        source: songsTable.source,
+        pinned: songsTable.pinned,
+        login: users.login,
+      })
+      .from(songsTable)
+      .leftJoin(users, eq(users.id, songsTable.userId))
+      .where(inArray(songsTable.status, ["approved", "pending"]))
+      .orderBy(desc(songsTable.createdAt), desc(songsTable.id));
+
+    return {
+      available: true,
+      data: rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        artist: row.artist,
+        status: row.status,
+        source: row.source,
+        pinned: row.pinned,
+        recommender: row.login,
+      })),
+    };
+  } catch (err) {
+    console.error("[admin] 歌单读取失败：", err);
+    return unavailable();
+  }
+}
+
 /** 最近 50 条评论（含 hidden）；userId NOT NULL，innerJoin users 拿作者。 */
 async function loadRecentComments(db: Db): Promise<SectionData<AdminComment[]>> {
   try {
@@ -241,7 +294,7 @@ export default async function AdminPage() {
       <header>
         <h1 className="font-heading text-3xl font-bold">审核后台</h1>
         <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-          状态句 · 待审留言 · 待审歌曲 · 评论 · 书架
+          状态句 · 待审留言 · 待审歌曲 · 评论 · 书架 · 歌单
         </p>
       </header>
 
@@ -280,6 +333,7 @@ async function AdminSections() {
   const songs = db ? await loadPendingSongs(db) : unavailable<AdminSong[]>();
   const comments = db ? await loadRecentComments(db) : unavailable<AdminComment[]>();
   const shelf = db ? await loadShelfItems(db) : unavailable<AdminShelfItem[]>();
+  const songList = db ? await loadSongList(db) : unavailable<AdminSongEntry[]>();
 
   return (
     <>
@@ -642,6 +696,144 @@ async function AdminSections() {
                     </li>
                   );
                 })}
+              </ul>
+            )}
+          </>
+        )}
+      </Section>
+
+      <Section title="歌单">
+        {!songList.available ? (
+          <NotAvailable what="歌单" />
+        ) : (
+          <>
+            <form action={addSong} className="mt-3 border-y border-rule py-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                添加一首
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="song-title" className={shelfLabelClass}>
+                    歌名
+                  </label>
+                  <input
+                    id="song-title"
+                    name="title"
+                    type="text"
+                    required
+                    maxLength={120}
+                    className={shelfFieldClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="song-artist" className={shelfLabelClass}>
+                    艺人
+                  </label>
+                  <input
+                    id="song-artist"
+                    name="artist"
+                    type="text"
+                    required
+                    maxLength={120}
+                    className={shelfFieldClass}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="song-url" className={shelfLabelClass}>
+                    平台链接
+                  </label>
+                  <input
+                    id="song-url"
+                    name="url"
+                    type="url"
+                    required
+                    maxLength={500}
+                    placeholder="https://…"
+                    className={shelfFieldClass}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="song-note" className={shelfLabelClass}>
+                    推荐语
+                  </label>
+                  <textarea
+                    id="song-note"
+                    name="note"
+                    rows={3}
+                    maxLength={200}
+                    className={shelfTextareaClass}
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="mt-3 rounded-none border border-data px-3 py-1.5 font-mono text-[11px] text-data transition-colors hover:text-foreground"
+              >
+                添加
+              </button>
+              <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+                站长添加的歌直接挂在「我的歌单」；平台按链接自动识别
+              </p>
+            </form>
+
+            {songList.data.length === 0 ? (
+              <Empty>歌单还空着</Empty>
+            ) : (
+              <ul className="mt-3 divide-y divide-rule border-y border-rule">
+                {songList.data.map((song) => (
+                  <li
+                    key={song.id}
+                    className="flex flex-wrap items-start justify-between gap-3 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="break-words text-[15px]">{song.title}</p>
+                      <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                        {song.artist}
+                        {song.source === "visitor"
+                          ? ` · 推荐人 ${song.recommender ?? "匿名"}`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={
+                          song.status === "approved"
+                            ? "font-mono text-[10px] text-ok"
+                            : "font-mono text-[10px] text-wait"
+                        }
+                      >
+                        {song.status === "approved" ? "已通过" : "待审"}
+                      </span>
+                      {song.pinned && (
+                        <span className="font-mono text-[10px] text-data">
+                          此刻循环
+                        </span>
+                      )}
+                      {song.status === "approved" &&
+                        song.source === "owner" &&
+                        !song.pinned && (
+                          <form action={pinSong}>
+                            <input type="hidden" name="id" value={song.id} />
+                            <button
+                              type="submit"
+                              className="rounded-none border border-data px-3 py-1.5 font-mono text-[11px] text-data transition-colors hover:text-foreground"
+                            >
+                              设为此刻循环
+                            </button>
+                          </form>
+                        )}
+                      <form action={deleteSong}>
+                        <input type="hidden" name="id" value={song.id} />
+                        <button
+                          type="submit"
+                          className="rounded-none border border-rule px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:border-alert hover:text-alert"
+                        >
+                          删除
+                        </button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
               </ul>
             )}
           </>

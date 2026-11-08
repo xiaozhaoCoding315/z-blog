@@ -38,7 +38,7 @@ export async function AccountMenu() {
           {user.login} · {user.role === "owner" ? "站长" : "访客"}
         </p>
         <Link
-          href="/playlist"
+          href="/playlist#mine"
           className="block px-2 py-1.5 text-[13px] hover:text-data"
         >
           我的推荐

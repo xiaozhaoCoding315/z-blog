@@ -22,7 +22,10 @@ export default async function PlaylistPage() {
   const approvedCount = songs.songs.filter((song) => !song.pending).length;
   const pendingCount = songs.songs.filter((song) => song.pending).length;
 
-  const pinned = songs.songs.find((song) => song.pinned && !song.pending);
+  // 「此刻循环」只展示站长自己的歌：访客推荐即使被误 pin 也不该占这一格
+  const pinned = songs.songs.find(
+    (song) => song.pinned && !song.pending && song.source === "owner"
+  );
   const mine = songs.songs.filter(
     (song) => song.source === "owner" && !song.pinned && !song.pending
   );
@@ -121,7 +124,7 @@ export default async function PlaylistPage() {
           </section>
 
           {pendingSongs.length > 0 && (
-            <section className="mt-12">
+            <section id="mine" className="mt-12">
               <h2 className="font-heading text-[19px] font-bold">我的待审</h2>
               <p className="mt-1 font-mono text-[10px] text-muted-foreground">
                 只有你和站长看得到
