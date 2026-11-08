@@ -2809,11 +2809,14 @@ export function AppFrame({ children }: { children: ReactNode }) {
   const titleId = useId();
   const canFocus = /^\/notes\/[^/]+$/.test(pathname);
 
-  // 窗口内部滚动，Next 默认的 window 滚动复位够不到；进应用时手动回到顶部
+  // 窗口内部滚动，Next 默认的 window 滚动复位够不到；进应用时立即回到顶部。
+  // 容器是 scroll-behavior: smooth，必须显式 instant，否则会从旧位置动画上来。
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
-    scrollRef.current?.closest<HTMLElement>(".os-main")?.scrollTo({ top: 0 });
-    window.scrollTo({ top: 0 });
+    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+    scrollRef.current
+      ?.closest<HTMLElement>(".os-main")
+      ?.scrollTo({ top: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, behavior: "instant" });
   }, [pathname]);
 
   useEffect(() => {
@@ -3109,6 +3112,7 @@ git commit -m "refactor(desktop): 内容页迁入应用窗口与内部滚动根"
 - Create: `src/app/(site)/(apps)/gallery/page.tsx`
 - Create: `src/app/(site)/(apps)/snippets/page.tsx`
 - Modify: `src/app/(site)/(apps)/life/[id]/page.tsx`（返回链接）
+- Modify: `src/components/desktop/taskbar.tsx`（pathname 变化时复位外层滚动）
 
 **Interfaces:**
 - Consumes：`desktopTileApps`、`AppIcon`、`Clock`、`siteConfig`、`getStatusSentence()`、`NotYetOpen`。
@@ -3270,6 +3274,18 @@ export default async function HomePage() {
 }
 ```
 
+同时修改 `src/components/desktop/taskbar.tsx`：在现有 `pathname` 变量之后加一个复位外层滚动的 effect（只操作 DOM，不 setState，符合 React Compiler 规则）：
+
+```tsx
+  // 回到桌面或切换应用时，外层滚动容器与移动端 window 都立即回到顶部
+  useEffect(() => {
+    document
+      .querySelector<HTMLElement>(".os-main")
+      ?.scrollTo({ top: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [pathname]);
+```
+
 - [ ] **Step 5: 给两个阶段 3 应用建诚实占位页**
 
 创建 `src/app/(site)/(apps)/gallery/page.tsx`：
@@ -3347,11 +3363,12 @@ Expected:
 - 无横向滚动；身份在顶部，图标 4 列 3 行。
 - 底部 56px 任务栏只有 Z、时间、≡；打开应用后是整页内容，顶部有 `‹ 桌面` 条。
 - 列表页与笔记页正常滚动；阅读进度条贴顶。
+- 在 `/life` 滚到中段后点 `‹ 桌面`，主屏从顶部开始；再进应用不继承上一页的滚动位置。
 
 - [ ] **Step 8: 提交**
 
 ```bash
-git add "src/app/(site)/(apps)/life/page.tsx" "src/app/(site)/(apps)/life/[id]/page.tsx" "src/app/(site)/(apps)/gallery/page.tsx" "src/app/(site)/(apps)/snippets/page.tsx" "src/app/(site)/page.tsx" src/components/desktop/desktop-home.tsx
+git add "src/app/(site)/(apps)/life/page.tsx" "src/app/(site)/(apps)/life/[id]/page.tsx" "src/app/(site)/(apps)/gallery/page.tsx" "src/app/(site)/(apps)/snippets/page.tsx" "src/app/(site)/page.tsx" src/components/desktop/desktop-home.tsx src/components/desktop/taskbar.tsx
 git commit -m "feat(desktop): 桌面主屏与每日日志应用"
 ```
 
