@@ -30,7 +30,10 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "没有收到文件" }, { status: 400 });
   }
-  if (file.size === 0 || file.size > MAX_IMAGE_BYTES) {
+  if (file.size === 0) {
+    return NextResponse.json({ error: "这个文件是空的" }, { status: 400 });
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
     return NextResponse.json(
       { error: "单张图片不能超过 2MB" },
       { status: 413 }

@@ -10,7 +10,10 @@ const MAX_EDGE = 2400;
 const QUALITY = 0.82;
 
 async function compress(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
+  const bitmap = await createImageBitmap(file).catch(() => {
+    // 浏览器原生报错是英文的，统一换成站内中文文案
+    throw new Error("这张图读不出来，换一张试试");
+  });
   const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
   const height = Math.round(bitmap.height * scale);
@@ -62,18 +65,25 @@ export function ImagePicker({
           "file",
           new File([blob], "photo.webp", { type: "image/webp" })
         );
-        const res = await fetch("/api/uploads", { method: "POST", body: form });
+        let res: Response;
+        try {
+          res = await fetch("/api/uploads", { method: "POST", body: form });
+        } catch {
+          throw new Error("网络出错，图片没传上去");
+        }
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.path) {
           setError(data?.error ?? "上传失败");
           break;
         }
-        next.push(data.path);
+        // 同一张图压缩后内容相同、服务端路径也相同，重复入列会撞 React key
+        if (!next.includes(data.path)) next.push(data.path);
       }
-      onChange(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "压缩失败");
+      setError(err instanceof Error ? err.message : "图片没处理成功，再试一次");
     } finally {
+      // 批量中途失败时保留已经传成功的图；一张都没加就不惊动父组件
+      if (next.length !== value.length) onChange(next);
       setPending(false);
       if (inputRef.current) inputRef.current.value = "";
     }
@@ -90,7 +100,8 @@ export function ImagePicker({
               type="button"
               aria-label="移除这张图"
               onClick={() => onChange(value.filter((x) => x !== src))}
-              className="absolute -right-2 -top-2 rounded-full border border-rule bg-background p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+              disabled={pending}
+              className="absolute -right-2 -top-2 rounded-full border border-rule bg-background p-0.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
             >
               <X className="size-3" />
             </button>
