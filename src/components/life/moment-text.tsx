@@ -1,5 +1,6 @@
 import type { Moment } from "@/lib/life";
 import { MomentMeta } from "./moment-meta";
+import { MomentTags } from "./moment-tags";
 
 /**
  * 纯文字短记：没有边框，只占左栏一半宽。
@@ -19,6 +20,7 @@ export function MomentText({
       <p className="mt-2 whitespace-pre-line font-heading text-[16px] leading-[1.7]">
         {moment.body}
       </p>
+      <MomentTags tags={moment.tags ?? []} />
     </article>
   );
 }

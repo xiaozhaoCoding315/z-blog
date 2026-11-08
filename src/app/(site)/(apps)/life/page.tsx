@@ -1,9 +1,11 @@
 ﻿import type { Metadata } from "next";
+import Link from "next/link";
 import { Fragment } from "react";
 import { connection } from "next/server";
 import { siteConfig } from "@/config/site";
 import { now as portfolioNow } from "@/config/portfolio";
 import { countThisMonth, groupByMonth } from "@/lib/life";
+import { collectTags, filterByTags, readTags } from "@/lib/tags";
 import { getObservation } from "@/lib/observation";
 import { getMoments } from "@/lib/moments-server";
 import { getWeather } from "@/lib/weather-server";
@@ -11,6 +13,7 @@ import { getGithubActivity } from "@/lib/github-server";
 import { getApprovedLetters } from "@/lib/letters-server";
 import { getStatusSentence } from "@/lib/settings-server";
 import { Moment, NODE_CLASS } from "@/components/life/moment";
+import { TagFilter } from "@/components/life/tag-filter";
 import { MonthTick } from "@/components/life/month-tick";
 import { NowPanel } from "@/components/life/now-panel";
 import { ObservBar } from "@/components/site/observ-bar";
@@ -39,8 +42,17 @@ export const instant = false;
  * 左栏是生活流（一条主脊线贯穿），右栏是「此刻」。
  * 全站只有一个客户端常驻组件：页头的本地时钟。其余读数都在服务端算好。
  */
-export default async function LifePage() {
+export default async function LifePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string | string[] }>;
+}) {
   await connection();
+
+  const raw = await searchParams;
+  const active = readTags(
+    Array.isArray(raw.tag) ? raw.tag : raw.tag ? [raw.tag] : []
+  );
 
   const [observation, weather, activity, life, letters, statusSentence] =
     await Promise.all([
@@ -53,13 +65,22 @@ export default async function LifePage() {
     ]);
 
   const currentYear = observation.year;
-  const groups = groupByMonth(life.moments, currentYear);
+  const allTags = life.available ? collectTags(life.moments) : [];
+  const visibleMoments = life.available
+    ? filterByTags(life.moments, active)
+    : [];
+  const groups = groupByMonth(visibleMoments, currentYear);
   /** 手机窄带只放在全站首条动态之后，不是每个月各放一条 */
   const firstGroupKey = groups[0]?.key;
   const momentsCount = life.available ? life.moments.length : null;
   const thisMonth = life.available
     ? countThisMonth(life.moments, observation.year, observation.month)
     : null;
+  const filteredEmpty =
+    active.length > 0 &&
+    life.available &&
+    life.moments.length > 0 &&
+    visibleMoments.length === 0;
 
   const readings = [
     {
@@ -142,6 +163,25 @@ export default async function LifePage() {
             <span className="life-spine-fill" />
           </div>
 
+          {life.available && allTags.length > 0 && (
+            <div className="mb-8 border-b border-rule pb-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  {visibleMoments.length} 条 · 标签 AND
+                </p>
+                {active.length > 0 && (
+                  <Link
+                    href="/life"
+                    className="font-mono text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    清除过滤
+                  </Link>
+                )}
+              </div>
+              <TagFilter tags={allTags} active={active} />
+            </div>
+          )}
+
           {!life.available ? (
             <div className="border border-rule bg-panel p-6">
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-wait">
@@ -153,6 +193,21 @@ export default async function LifePage() {
               <p className="mt-2 max-w-[38rem] text-[14px] leading-relaxed text-muted-foreground">
                 这一栏的内容存在数据库里，现在连不上。页面其余部分照常显示，不拿空列表冒充「还没发过」。
               </p>
+            </div>
+          ) : filteredEmpty ? (
+            <div className="border border-rule bg-panel p-6">
+              <h2 className="font-heading text-[19px] font-bold">
+                没有同时带这些标签的动态
+              </h2>
+              <p className="mt-2 max-w-[38rem] text-[14px] leading-relaxed text-muted-foreground">
+                标签按 AND 匹配：一条动态要同时带上所有已选标签才会留下。
+              </p>
+              <Link
+                href="/life"
+                className="mt-4 inline-block border border-data px-3 py-1.5 font-mono text-[11px] text-data transition-colors hover:text-foreground"
+              >
+                清除过滤
+              </Link>
             </div>
           ) : groups.length === 0 ? (
             <div className="border border-rule bg-panel p-6">
@@ -208,6 +263,15 @@ export default async function LifePage() {
           {nowPanel}
         </aside>
       </div>
+
+      <footer className="border-t border-rule py-6">
+        <Link
+          href="/"
+          className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          ← 桌面
+        </Link>
+      </footer>
     </div>
   );
 }

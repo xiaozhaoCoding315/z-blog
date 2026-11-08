@@ -6,14 +6,19 @@ import { getDb } from "@/db/client";
 import {
   comments as commentsTable,
   letters as lettersTable,
+  moments as momentsTable,
   shelfItems as shelfTable,
   siteSettings,
   songs as songsTable,
   users,
 } from "@/db/schema";
 import { getSessionUser } from "@/lib/session";
-import { getStatusSentence, STATUS_KEY } from "@/lib/settings-server";
-import { formatDay } from "@/lib/life";
+import {
+  getDesktopPin,
+  getStatusSentence,
+  STATUS_KEY,
+} from "@/lib/settings-server";
+import { formatDay, momentExcerpt } from "@/lib/life";
 import {
   addShelfItem,
   addSong,
@@ -23,6 +28,7 @@ import {
   moderateLetter,
   moderateSong,
   pinSong,
+  setDesktopPin,
   updateStatus,
 } from "./actions";
 
@@ -75,6 +81,12 @@ interface AdminComment {
   status: string;
 }
 
+interface AdminMomentChoice {
+  id: number;
+  date: string;
+  excerpt: string;
+}
+
 interface AdminShelfItem {
   id: number;
   type: string;
@@ -117,6 +129,35 @@ async function loadStatus(db: Db): Promise<SectionData<string>> {
     return { available: true, data: await getStatusSentence() };
   } catch (err) {
     console.error("[admin] 状态句读取失败：", err);
+    return unavailable();
+  }
+}
+
+/** 桌面便签候选：最近 20 条动态，只要 id / 日期 / 正文。 */
+async function loadRecentMoments(
+  db: Db
+): Promise<SectionData<AdminMomentChoice[]>> {
+  try {
+    const rows = await db
+      .select({
+        id: momentsTable.id,
+        publishedAt: momentsTable.publishedAt,
+        body: momentsTable.body,
+      })
+      .from(momentsTable)
+      .orderBy(desc(momentsTable.publishedAt), desc(momentsTable.id))
+      .limit(20);
+
+    return {
+      available: true,
+      data: rows.map((row) => ({
+        id: row.id,
+        date: formatDay(row.publishedAt.toISOString()),
+        excerpt: momentExcerpt({ body: row.body }, 30),
+      })),
+    };
+  } catch (err) {
+    console.error("[admin] 桌面便签候选读取失败：", err);
     return unavailable();
   }
 }
@@ -294,7 +335,7 @@ export default async function AdminPage() {
       <header>
         <h1 className="font-heading text-3xl font-bold">审核后台</h1>
         <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-          状态句 · 待审留言 · 待审歌曲 · 评论 · 书架 · 歌单
+          状态句 · 桌面便签 · 待审留言 · 待审歌曲 · 评论 · 书架 · 歌单
         </p>
       </header>
 
@@ -328,7 +369,11 @@ export default async function AdminPage() {
  */
 async function AdminSections() {
   const db = getDb();
+  const pin = await getDesktopPin();
   const status = db ? await loadStatus(db) : unavailable<string>();
+  const momentChoices = db
+    ? await loadRecentMoments(db)
+    : unavailable<AdminMomentChoice[]>();
   const letters = db ? await loadPendingLetters(db) : unavailable<AdminLetter[]>();
   const songs = db ? await loadPendingSongs(db) : unavailable<AdminSong[]>();
   const comments = db ? await loadRecentComments(db) : unavailable<AdminComment[]>();
@@ -367,6 +412,48 @@ async function AdminSections() {
             </div>
             <p className="mt-2 font-mono text-[10px] text-muted-foreground">
               显示在首页页头 · 最多 40 字
+            </p>
+          </form>
+        )}
+      </Section>
+
+      <Section title="桌面便签">
+        {!momentChoices.available ? (
+          <NotAvailable what="桌面便签" />
+        ) : (
+          <form action={setDesktopPin} className="mt-3 border-y border-rule py-4">
+            <label htmlFor="desktop-pin" className={shelfLabelClass}>
+              钉在桌面右上角的动态
+            </label>
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <select
+                id="desktop-pin"
+                name="momentId"
+                defaultValue={pin ?? ""}
+                className={shelfSelectClass}
+              >
+                <option value="">不钉选</option>
+                {pin !== null &&
+                  !momentChoices.data.some(
+                    (item) => String(item.id) === pin
+                  ) && (
+                    <option value={pin}>当前钉选 #{pin}（不在最近 20 条）</option>
+                  )}
+                {momentChoices.data.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.date} · {item.excerpt}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="shrink-0 rounded-none border border-data px-3 py-1.5 font-mono text-[11px] text-data transition-colors hover:text-foreground"
+              >
+                保存
+              </button>
+            </div>
+            <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+              桌面便签显示日期与正文前五行 · 候选为最近 20 条
             </p>
           </form>
         )}

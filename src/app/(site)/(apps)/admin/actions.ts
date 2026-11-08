@@ -6,17 +6,19 @@ import { getDb } from "@/db/client";
 import {
   comments as commentsTable,
   letters as lettersTable,
+  moments as momentsTable,
   shelfItems,
   siteSettings,
   songs as songsTable,
 } from "@/db/schema";
 import { getSessionUser } from "@/lib/session";
+import { parseMomentId } from "@/lib/moment-core";
 import {
   parseShelfInput,
   parseSongInput,
   parseStatusInput,
 } from "@/lib/community-input";
-import { STATUS_KEY } from "@/lib/settings-server";
+import { DESKTOP_PIN_KEY, STATUS_KEY } from "@/lib/settings-server";
 
 /**
  * Action 是公开的 POST 入口，页面里藏掉按钮不算权限。
@@ -50,6 +52,47 @@ export async function updateStatus(formData: FormData): Promise<void> {
     .onConflictDoUpdate({
       target: siteSettings.key,
       set: { value: parsed.value.status, updatedAt: sql`now()` },
+    });
+  updateTag("settings");
+  refresh();
+}
+
+/**
+ * 钉选桌面便签。
+ *
+ * 空值表示「不钉选」，删除 site_settings 里的那一行；非空值必须是规范 id，
+ * 并且该动态确实存在才写入——避免桌面挂一条指向 404 的便签。
+ */
+export async function setDesktopPin(formData: FormData): Promise<void> {
+  if (!(await requireOwner())) return;
+  const db = getDb();
+  if (!db) return;
+
+  const raw = String(formData.get("momentId") ?? "").trim();
+  if (raw === "") {
+    await db.delete(siteSettings).where(eq(siteSettings.key, DESKTOP_PIN_KEY));
+    updateTag("settings");
+    refresh();
+    return;
+  }
+
+  const numeric = parseMomentId(raw);
+  if (numeric === null) return;
+
+  const [moment] = await db
+    .select({ id: momentsTable.id })
+    .from(momentsTable)
+    .where(eq(momentsTable.id, numeric))
+    .limit(1);
+  if (!moment) return;
+
+  const value = String(numeric);
+  await db
+    .insert(siteSettings)
+    .values({ key: DESKTOP_PIN_KEY, value })
+    .onConflictDoUpdate({
+      target: siteSettings.key,
+      set: { value, updatedAt: sql`now()` },
     });
   updateTag("settings");
   refresh();

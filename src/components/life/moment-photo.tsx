@@ -1,5 +1,6 @@
 import type { Moment } from "@/lib/life";
 import { MomentMeta } from "./moment-meta";
+import { MomentTags } from "./moment-tags";
 
 /**
  * 图文：照片是主角，正文是图注。
@@ -48,6 +49,7 @@ export function MomentPhoto({
       <p className="mt-4 max-w-[34rem] whitespace-pre-line font-heading text-[16px] leading-[1.7]">
         {moment.body}
       </p>
+      <MomentTags tags={moment.tags ?? []} />
     </article>
   );
 }

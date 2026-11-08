@@ -40,6 +40,7 @@ export function MomentForm() {
     mood: "",
     weather: "",
     place: "",
+    tags: "",
   });
   const bind = (name: keyof typeof draft) => ({
     value: draft[name],
@@ -156,6 +157,15 @@ export function MomentForm() {
           {...bind("weather")}
         />
         <Field label="地点（可选）" name="place" maxLength={40} {...bind("place")} />
+      </div>
+
+      <div className="py-4">
+        <Field
+          label="标签（可选，空格分隔，最多 5 个）"
+          name="tags"
+          maxLength={120}
+          {...bind("tags")}
+        />
       </div>
 
       {state.error && (

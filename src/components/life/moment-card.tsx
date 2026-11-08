@@ -1,5 +1,6 @@
 import type { Moment, MomentKind } from "@/lib/life";
 import { MomentMeta } from "./moment-meta";
+import { MomentTags } from "./moment-tags";
 
 const KIND_LABEL: Record<MomentKind, string> = {
   text: "短记",
@@ -57,6 +58,7 @@ export function MomentCard({
           </p>
         )}
       </div>
+      <MomentTags tags={moment.tags ?? []} />
     </article>
   );
 }

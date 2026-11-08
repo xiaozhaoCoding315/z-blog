@@ -6,13 +6,14 @@ import {
   DesktopHome,
   OpenSettingsButton,
 } from "@/components/desktop/desktop-home";
+import { StickyNote } from "@/components/desktop/sticky-note";
 import { Moment, NODE_CLASS } from "@/components/life/moment";
 import { NotYetOpen } from "@/components/site/not-yet-open";
 import { getChangelogStats } from "@/config/changelog";
 import { friends, projects } from "@/config/portfolio";
 import { siteConfig } from "@/config/site";
 import { getMoments, type MomentsResult } from "@/lib/moments-server";
-import { getStatusSentence } from "@/lib/settings-server";
+import { getPinnedMoment, getStatusSentence } from "@/lib/settings-server";
 
 /**
  * 桌面主屏要读站长的状态句与生活流，所以停在请求期。
@@ -256,9 +257,10 @@ function MoreWindowContent({ hasFriends }: { hasFriends: boolean }) {
 
 export default async function HomePage() {
   await connection();
-  const [status, life] = await Promise.all([
+  const [status, life, pinned] = await Promise.all([
     getStatusSentence(),
     getMoments(),
+    getPinnedMoment(),
   ]);
 
   // 终端/助理不在这里：它们由 DesktopShell 的 GlobalWindows 挂载（Task 4/5）。
@@ -271,5 +273,11 @@ export default async function HomePage() {
     more: <MoreWindowContent hasFriends={friends.length > 0} />,
   };
 
-  return <DesktopHome status={status} windowContent={windowContent} />;
+  return (
+    <DesktopHome
+      status={status}
+      windowContent={windowContent}
+      {...(pinned ? { stickyNote: <StickyNote moment={pinned} /> } : {})}
+    />
+  );
 }
