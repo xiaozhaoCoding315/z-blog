@@ -104,15 +104,16 @@ const b = 2;        // 这一行会高亮
 | --- | --- |
 | `npm run dev` | 本地开发 |
 | `npm run build` | 生产构建（standalone） |
-| `npm run blog:sync` | 增量同步笔记到数据库（`--force` 全量重建向量） |
+| `npm run blog:sync` | 增量同步 `content/notes` 笔记到数据库（`--force` 全量重建向量） |
 | `npm run db:push` | Drizzle 推送 schema 变更（一般不需要，sync 自带建表） |
 | `npm run db:studio` | 数据库可视化管理 |
 
 ## 目录结构
 
 ```
-content/notes/        # 笔记（MDX；content/posts 仅作归档，不再出现在站点）
-src/app/              # 页面与 API 路由
+content/notes/        # 笔记（10 篇，MDX；站点与 RSS 读取这里）
+content/posts/        # 归档（20 篇旧技术文章，文件保留但不再出现在站点）
+src/app/              # 页面与 API 路由（笔记 /notes、日志 /journal；旧 /blog、/changelog 301 至此）
 src/components/       # UI 组件（chat / search / blog / site / mdx）
 src/lib/              # 内容层、分块、同步引擎、AI 封装
 src/db/               # Drizzle schema 与客户端
@@ -129,7 +130,7 @@ scripts/              # 同步 CLI 与 Docker entrypoint
 | `DATABASE_URL` | PostgreSQL 连接串 |
 | `AI_API_KEY` | 智谱 API key（[免费注册](https://open.bigmodel.cn)），留空则 AI 功能降级 |
 | `CHAT_MODEL` / `EMBEDDING_MODEL` | 默认 `glm-4.6` / `embedding-3` |
-| `NEXT_PUBLIC_SITE_URL` | 站点地址（部署后改为 `http://服务器IP`） |
+| `NEXT_PUBLIC_SITE_URL` | 站点地址（部署后改为 `https://域名`；构建期内联，改完需重新构建） |
 
 ## 部署
 

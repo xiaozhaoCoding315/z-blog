@@ -78,7 +78,7 @@ DB_PASSWORD=一个强密码
 AI_API_KEY=你的智谱key             # 聊天/摘要（https://open.bigmodel.cn）
 EMBEDDING_API_KEY=你的百炼key       # 向量化（https://bailian.console.aliyun.com）
 SYNC_SECRET=一串随机字符           # openssl rand -hex 16
-NEXT_PUBLIC_SITE_URL=http://服务器IP
+NEXT_PUBLIC_SITE_URL=https://你的域名   # 构建期内联；没有 HTTPS 时登录 cookie 不会带 Secure
 ```
 
 ```bash
@@ -91,7 +91,7 @@ docker compose logs -f app
 
 **方式 B：本地构建镜像上传（2C2G 服务器必用，实测有效）**
 
-2G 内存即使加了 swap，`next build` 也会把整台服务器拖进 swap 风暴（SSH 失联、其它服务卡死）。**在小内存服务器上永远不要执行 `--build`**，改用：
+2G 内存即使加了 swap，`next build` 也会把整台服务器拖进 swap 风暴（SSH 失联、其它服务卡死）。**在小内存服务器上永远不要执行 `--build`**。日常更新直接跑仓库里的 `scripts/deploy.sh`（本地构建 → 打包源码 → 上传 → 远端滚动更新）；下面的手工命令用于首次部署或排障：
 
 ```bash
 # 1. 本地（开发机）构建并导出镜像
@@ -175,7 +175,22 @@ gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog bl
 }
 ```
 
-3. `.env` 中把 `NEXT_PUBLIC_SITE_URL` 改为 `https://你的域名.com`，`docker compose up -d --build`。
+3. `.env` 中把 `NEXT_PUBLIC_SITE_URL` 改为 `https://你的域名.com`，重新构建镜像（`docker compose up -d --build`；2C2G 服务器改用本地 `scripts/deploy.sh`，不要在服务器上构建）。
+
+## 6. 上线前检查清单
+
+上线前逐条确认，任何一条没验证都不算部署完成：
+
+1. **HTTPS 与 `NEXT_PUBLIC_SITE_URL=https://…`**
+   站点必须通过 HTTPS 访问，`.env` 里的 `NEXT_PUBLIC_SITE_URL` 必须写成 `https://你的域名`。该变量在构建期内联进产物，改完必须重新 `docker compose build`（2C2G 用本地 `scripts/deploy.sh`）；只 `restart` 或只改运行期环境变量都不生效。没有 HTTPS 时登录 cookie 不会带 `Secure`。
+2. **反向代理传可信 `X-Forwarded-For`**
+   登录验证码与互动的限频按客户端 IP 计数，依赖反向代理传真实 IP。Caddy 默认会透传；nginx 需配置 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`。只信任自己这一层代理写入的值，否则所有访客会共用代理 IP，限频会误伤。
+3. **真实 SMTP 发信测试**
+   用 QQ 邮箱授权码（不是登录密码）分别验证 465 与 587 端口，从前端走一遍邮箱验证码登录，确认验证码能实际收到；收不到时先查垃圾箱与 `docker compose logs app` 里的 SMTP 报错。
+4. **`uploads` 命名卷可写、重启后图片仍在**
+   发布一条图文动态，确认图片能正常显示；`docker compose restart app` 后再次访问，图片仍在。`docker volume inspect blog_uploads` 应能看到挂载点，重建容器不会清空卷。
+5. **2C2G 服务器不构建镜像**
+   始终在本地构建并用 `scripts/deploy.sh` 上传，服务器只 `docker load` + `docker compose up -d --no-build`。上线前清理 Docker 构建缓存（服务器当前剩余 16G，缓存约 7.7G）：`docker system df` 查看占用，`docker builder prune -af` 清理后再次确认磁盘余量。
 
 ## 常见问题
 

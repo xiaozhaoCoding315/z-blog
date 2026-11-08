@@ -33,6 +33,7 @@ services:
       args:
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
     restart: unless-stopped
     logging:
       driver: json-file
@@ -57,7 +58,8 @@ services:
       NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost}
       NEXT_PUBLIC_SITE_START_DATE: ${NEXT_PUBLIC_SITE_START_DATE:-}
-      # GitHub 登录（信箱、动态等需要登录的功能）；留空时相应入口不可用
+      NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+      # GitHub OAuth：历史遗留路由，站内没有 UI 入口；当前登录使用邮箱验证码
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
       GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
       # 会话签名密钥；留空则回退到 SYNC_SECRET

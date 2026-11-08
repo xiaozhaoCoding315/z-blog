@@ -88,9 +88,29 @@ test("动态标题折叠空白，只留正文", () => {
   assert.equal(momentExcerpt(m, 40), "降温了， 记得加衣服。");
 });
 
-test("动态标题按码点截断，不劈开 emoji", () => {
+test("动态标题按字素簇截断，不劈开 emoji", () => {
   const m = { body: "🌧️".repeat(3) + "雨下了一整天" };
   assert.equal(momentExcerpt(m, 3), "🌧️🌧️🌧️");
+});
+
+test("momentExcerpt 40 上限按字素簇截断，不劈开 emoji 与组合字符", () => {
+  const body = "é🌧️👨‍👩‍👧‍👦汉字".repeat(20);
+  const segmenter = new Intl.Segmenter("zh-CN", { granularity: "grapheme" });
+  const graphemes = (text) =>
+    [...segmenter.segment(text)].map((item) => item.segment);
+  const excerpt = momentExcerpt({ body }, 40);
+  assert.ok(graphemes(excerpt).length <= 40);
+  assert.deepEqual(graphemes(excerpt), graphemes(body).slice(0, 40));
+});
+
+test("momentExcerpt 60 上限按字素簇截断，不劈开 emoji 与组合字符", () => {
+  const body = "é🌧️👨‍👩‍👧‍👦汉字".repeat(20);
+  const segmenter = new Intl.Segmenter("zh-CN", { granularity: "grapheme" });
+  const graphemes = (text) =>
+    [...segmenter.segment(text)].map((item) => item.segment);
+  const excerpt = momentExcerpt({ body }, 60);
+  assert.ok(graphemes(excerpt).length <= 60);
+  assert.deepEqual(graphemes(excerpt), graphemes(body).slice(0, 60));
 });
 
 test("没有正文时用卡片标题，纯图片动态说一张照片", () => {

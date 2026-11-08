@@ -13,8 +13,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # NEXT_PUBLIC_* 在构建时内联进产物，必须在此注入正确的公网地址
 ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
+# 「关于」页的联系邮箱同样是构建期内联，留空则不显示邮箱入口
+ARG NEXT_PUBLIC_CONTACT_EMAIL=
 ENV NEXT_TELEMETRY_DISABLED=1 \
-    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    NEXT_PUBLIC_CONTACT_EMAIL=$NEXT_PUBLIC_CONTACT_EMAIL
 RUN npm run build
 
 FROM node:20-alpine AS runner

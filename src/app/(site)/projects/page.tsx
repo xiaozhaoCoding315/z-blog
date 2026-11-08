@@ -55,6 +55,24 @@ export default function ProjectsPage() {
               </p>
             )}
 
+            {project.why && (
+              <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+                <span className="mr-2 font-mono text-[10px] uppercase tracking-[0.14em]">
+                  Why
+                </span>
+                {project.why}
+              </p>
+            )}
+
+            {project.feeling && (
+              <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+                <span className="mr-2 font-mono text-[10px] uppercase tracking-[0.14em]">
+                  Feeling
+                </span>
+                {project.feeling}
+              </p>
+            )}
+
             {project.highlights && project.highlights.length > 0 && (
               <ul className="mt-4 space-y-1.5">
                 {project.highlights.map((item) => (
