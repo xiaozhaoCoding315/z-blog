@@ -445,6 +445,7 @@ export function useDesktopRuntime() {
 - 标题栏：`aria-labelledby` 的标题 id（`useId`）；左侧 `AppIcon` + 应用名 + `~/life` 路径；右侧 `↗`（仅 app.path）、`—`、`□`、`×`。
 - 拖拽：标题栏 `onPointerDown` 忽略按钮/链接；`setPointerCapture`；move 时 `el.style.transform = translate3d(dx,dy,0)`；up 时 `onMove({...rect,x+dx,y+dy})` 并清 transform。最大化时禁用。
 - 缩放：右下角 `.os-window-resize`，pointerdown 记录起点；move 更新 `el.style.width/height`；up 调用 `onResize`。最小尺寸来自 `app.window`。
+- clamp：拖拽/缩放松手提交前调用 `clampRect`（min 来自 app.window，bounds 来自窗口层），保证至少 80px 标题栏留在视口内；最大化时禁用拖拽/缩放。
 - 双击标题栏 `onToggleMaximize`；`onPointerDown` 冒泡调用 `onFocus`。
 - 控件全部是 `button`/`Link`，有 `aria-label`；关闭按钮 hover `--danger`。
 - 窗口内容 `.os-window-body` 独立滚动。
