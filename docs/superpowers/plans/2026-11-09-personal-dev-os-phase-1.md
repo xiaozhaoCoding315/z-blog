@@ -78,7 +78,7 @@
 
 **删除**
 
-`src/components/site/navbar.tsx`、`footer.tsx`、`src/components/theme-toggle.tsx`、`src/components/site/reveal.tsx`、`src/components/chat/chat-widget.tsx`、`src/components/chat/open-chat-button.tsx`、`src/components/site/terminal-link-button.tsx`、`src/components/site/local-clock.tsx`、`src/components/terminal/terminal-palette.tsx`。
+`src/components/site/navbar.tsx`、`footer.tsx`、`src/components/theme-toggle.tsx`、`src/components/site/reveal.tsx`、`src/components/chat/chat-widget.tsx`、`src/components/chat/open-chat-button.tsx`、`src/components/terminal/terminal-link-button.tsx`、`src/components/site/local-clock.tsx`、`src/components/terminal/terminal-palette.tsx`。
 
 ---
 
@@ -3325,7 +3325,7 @@ git commit -m "feat(desktop): 桌面主屏与每日日志应用"
 ### Task 7: 清理旧外壳、更新样式走廊与站点地图、全量验证
 
 **Files:**
-- Delete: `src/components/site/navbar.tsx`、`footer.tsx`、`src/components/theme-toggle.tsx`、`src/components/site/reveal.tsx`、`src/components/chat/chat-widget.tsx`、`src/components/chat/open-chat-button.tsx`、`src/components/site/terminal-link-button.tsx`、`src/components/site/local-clock.tsx`、`src/components/terminal/terminal-palette.tsx`
+- Delete: `src/components/site/navbar.tsx`、`footer.tsx`、`src/components/theme-toggle.tsx`、`src/components/site/reveal.tsx`、`src/components/chat/chat-widget.tsx`、`src/components/chat/open-chat-button.tsx`、`src/components/terminal/terminal-link-button.tsx`、`src/components/site/local-clock.tsx`、`src/components/terminal/terminal-palette.tsx`
 - Modify: `src/config/site.ts`（删除 nav/footerNav 派生导出）
 - Modify: `src/app/(site)/(apps)/style/page.tsx`（加图标样张）
 - Modify: `src/app/sitemap.ts`（加新路由）
@@ -3347,7 +3347,7 @@ git rm src/components/theme-toggle.tsx
 git rm src/components/site/reveal.tsx
 git rm src/components/chat/chat-widget.tsx
 git rm src/components/chat/open-chat-button.tsx
-git rm src/components/site/terminal-link-button.tsx
+git rm src/components/terminal/terminal-link-button.tsx
 git rm src/components/site/local-clock.tsx
 git rm src/components/terminal/terminal-palette.tsx
 ```
