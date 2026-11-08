@@ -113,7 +113,7 @@ const b = 2;        // 这一行会高亮
 ```
 content/notes/        # 笔记（10 篇，MDX；站点与 RSS 读取这里）
 content/posts/        # 归档（20 篇旧技术文章，文件保留但不再出现在站点）
-src/app/              # 页面与 API 路由（笔记 /notes、日志 /journal；旧 /blog、/changelog 301 至此）
+src/app/              # 页面与 API 路由（笔记 /notes、日志 /journal；旧 /blog、/changelog 308 至此）
 src/components/       # UI 组件（chat / search / blog / site / mdx）
 src/lib/              # 内容层、分块、同步引擎、AI 封装
 src/db/               # Drizzle schema 与客户端

@@ -93,9 +93,11 @@ docker compose logs -f app
 
 2G 内存即使加了 swap，`next build` 也会把整台服务器拖进 swap 风暴（SSH 失联、其它服务卡死）。**在小内存服务器上永远不要执行 `--build`**。日常更新直接跑仓库里的 `scripts/deploy.sh`（本地构建 → 打包源码 → 上传 → 远端滚动更新）；下面的手工命令用于首次部署或排障：
 
+注意：这些命令在**本地开发机**执行。`NEXT_PUBLIC_*` 在构建期内联进产物，**本地构建机的 `.env`（或执行命令时的环境变量）必须已是生产值**：服务器上的 `.env` 只影响运行期，`scripts/deploy.sh` 上传源码时还会 `--exclude=.env`，补不了构建期。先改本地 `.env`，或直接照抄下面的环境变量写法：
+
 ```bash
 # 1. 本地（开发机）构建并导出镜像
-docker compose build app
+NEXT_PUBLIC_SITE_URL=https://你的域名 NEXT_PUBLIC_CONTACT_EMAIL=你的邮箱 docker compose build app
 docker save blog-app:latest | gzip > /tmp/blog-app.tar.gz   # 约 74MB
 
 # 2. 上传（5Mbps 带宽约 2-3 分钟）
@@ -127,6 +129,8 @@ docker compose up -d --build
 ```
 
 **方式 B（2C2G，配合上面的本地构建流程）：**
+
+本地 `.env` 要保存生产值（`NEXT_PUBLIC_SITE_URL=https://你的域名`、`NEXT_PUBLIC_CONTACT_EMAIL=你的邮箱`）：这两个变量在构建期内联，服务器上的 `.env` 不参与本地构建，也无法在运行期补救。
 
 ```bash
 # 本地
@@ -182,9 +186,23 @@ gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog bl
 上线前逐条确认，任何一条没验证都不算部署完成：
 
 1. **HTTPS 与 `NEXT_PUBLIC_SITE_URL=https://…`**
-   站点必须通过 HTTPS 访问，`.env` 里的 `NEXT_PUBLIC_SITE_URL` 必须写成 `https://你的域名`。该变量在构建期内联进产物，改完必须重新 `docker compose build`（2C2G 用本地 `scripts/deploy.sh`）；只 `restart` 或只改运行期环境变量都不生效。没有 HTTPS 时登录 cookie 不会带 `Secure`。
-2. **反向代理传可信 `X-Forwarded-For`**
-   登录验证码与互动的限频按客户端 IP 计数，依赖反向代理传真实 IP。Caddy 默认会透传；nginx 需配置 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`。只信任自己这一层代理写入的值，否则所有访客会共用代理 IP，限频会误伤。
+   站点必须通过 HTTPS 访问。`NEXT_PUBLIC_SITE_URL` 与 `NEXT_PUBLIC_CONTACT_EMAIL` 都在**构建期**内联进产物：**本地构建机的 `.env`（或执行命令时的环境变量）**必须已有 `NEXT_PUBLIC_SITE_URL=https://你的域名` 与 `NEXT_PUBLIC_CONTACT_EMAIL=你的邮箱`；服务器上的 `.env` 只影响运行期，不能补救构建期内联。改完必须重新 `docker compose build`（2C2G 用本地 `scripts/deploy.sh`，它会在构建前回显并检查要内联的站点地址）；只 `restart` 或只改运行期环境变量都不生效。没有 HTTPS 时登录 cookie 不会带 `Secure`。
+2. **反向代理写入可信 `X-Forwarded-For`**
+   邮箱验证码、站内搜索与 AI 问答按客户端 IP 限频；评论按登录用户限频。应用只读 `X-Forwarded-For` 的**第一个值**，所以代理必须**覆盖写入**，不能追加：`$proxy_add_x_forwarded_for` 会把访客自带的 XFF 留在第一位，等于让访客自报 IP，限频可被伪造 IP 绕过。若代理完全不写 XFF，所有访客会共用代理 IP，限频会误伤。
+
+   - **单层 nginx 直接反代**：`proxy_set_header X-Forwarded-For $remote_addr;`
+   - **nginx 前面还有 CDN / 负载均衡**：先用 `real_ip` 模块只信任实际回源网段（禁止 `0.0.0.0/0`），再同样覆盖写入：
+
+     ```nginx
+     # http / server 块：只信任 CDN 或负载均衡的回源网段
+     set_real_ip_from <回源网段>;
+     real_ip_header X-Forwarded-For;
+     real_ip_recursive on;
+
+     # location 块：覆盖写入，不要用 $proxy_add_x_forwarded_for
+     proxy_set_header X-Forwarded-For $remote_addr;
+     ```
+   - **Caddy**：直连反代由 Caddy 写入 XFF；前面还有 CDN / 负载均衡时，配置 `trusted_proxies` 只信任回源地址。
 3. **真实 SMTP 发信测试**
    用 QQ 邮箱授权码（不是登录密码）分别验证 465 与 587 端口，从前端走一遍邮箱验证码登录，确认验证码能实际收到；收不到时先查垃圾箱与 `docker compose logs app` 里的 SMTP 报错。
 4. **`uploads` 命名卷可写、重启后图片仍在**
