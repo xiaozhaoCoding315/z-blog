@@ -3378,6 +3378,7 @@ git commit -m "feat(desktop): 桌面主屏与每日日志应用"
 - Delete: `src/components/site/navbar.tsx`、`footer.tsx`、`src/components/theme-toggle.tsx`、`src/components/site/reveal.tsx`、`src/components/chat/chat-widget.tsx`、`src/components/chat/open-chat-button.tsx`、`src/components/terminal/terminal-link-button.tsx`、`src/components/site/local-clock.tsx`、`src/components/terminal/terminal-palette.tsx`
 - Modify: `src/config/site.ts`（删除 nav/footerNav 派生导出）
 - Modify: `src/app/(site)/(apps)/style/page.tsx`（加图标样张）
+- Modify: `src/components/blog/article-tools.tsx`（改用内部滚动根）
 - Modify: `src/app/sitemap.ts`（加新路由）
 - Modify: `package.json`（移除 `next-themes`）
 - Verify: 全站
@@ -3480,6 +3481,161 @@ import { ICON_KEYS } from "@/config/apps";
       </section>
 ```
 
+- [ ] **Step 3b: 让文章浮动工具跟随内部滚动根**
+
+`src/components/blog/article-tools.tsx` 仍用 `window.scrollY` / `window.scrollTo`，但桌面端真正的滚动容器是 `AppFrame` 的 `.os-app-content`，`body` 已锁死，结果进度环永远不出现、「回到顶部」无效。整体替换为：
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { ArrowUp, Check, Link2, Share2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useScrollRoot } from "@/components/desktop/app-frame";
+
+/**
+ * 文章页浮动工具条（桌面端显示在右侧留白区）：
+ * 回到顶部 + 复制链接 / 分享 + 滚动进度环。
+ * 桌面跟随窗口内部滚动容器，移动端回退到 window。
+ */
+export function ArticleTools() {
+  const [progress, setProgress] = useState(0);
+  const [visible, setVisible] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const scrollRoot = useScrollRoot();
+
+  useEffect(() => {
+    const node = scrollRoot?.current ?? null;
+    const onScroll = () => {
+      const total = node
+        ? node.scrollHeight - node.clientHeight
+        : document.documentElement.scrollHeight -
+          document.documentElement.clientHeight;
+      const top = node ? node.scrollTop : window.scrollY;
+      const p = total > 0 ? Math.min(1, Math.max(0, top / total)) : 0;
+      setProgress(p);
+      setVisible(top > 480);
+    };
+    onScroll();
+    const target: EventTarget = node ?? window;
+    target.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      target.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [scrollRoot]);
+
+  async function share() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: document.title, url });
+        return;
+      }
+    } catch {
+      /* 用户取消分享，走复制兜底 */
+    }
+    await copy(url);
+  }
+
+  async function copy(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = url;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  }
+
+  function backToTop() {
+    const node = scrollRoot?.current;
+    if (node) node.scrollTo({ top: 0, behavior: "smooth" });
+    else window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  const circumference = 2 * Math.PI * 15;
+
+  return (
+    <div
+      className={cn(
+        "fixed right-6 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-center gap-2 transition-all duration-300 xl:flex",
+        visible
+          ? "pointer-events-auto translate-x-0 opacity-100"
+          : "pointer-events-none translate-x-4 opacity-0"
+      )}
+    >
+      {/* 进度环 */}
+      <div className="relative mb-1 flex size-10 items-center justify-center">
+        <svg viewBox="0 0 36 36" className="size-10 -rotate-90">
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            fill="none"
+            strokeWidth="2"
+            className="stroke-border"
+          />
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            fill="none"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - progress)}
+            className="stroke-primary transition-[stroke-dashoffset] duration-150"
+          />
+        </svg>
+        <span className="absolute font-mono text-[9px] tabular-nums text-muted-foreground">
+          {Math.round(progress * 100)}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        aria-label="分享这篇文章"
+        onClick={share}
+        className="card-surface flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
+      >
+        <Share2 className="size-4" />
+      </button>
+
+      <button
+        type="button"
+        aria-label="复制链接"
+        onClick={() => copy(window.location.href)}
+        className="card-surface flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
+      >
+        {copied ? (
+          <Check className="size-4 text-emerald-500" />
+        ) : (
+          <Link2 className="size-4" />
+        )}
+      </button>
+
+      <button
+        type="button"
+        aria-label="回到顶部"
+        onClick={backToTop}
+        className="card-surface flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
+      >
+        <ArrowUp className="size-4" />
+      </button>
+    </div>
+  );
+}
+```
+
+在笔记页手动检查：内部滚动超过 480px 后工具条出现、进度环百分比与滚动比例一致；点「回到顶部」内部容器平滑回到顶部。
+
 - [ ] **Step 4: 站点地图补三条路由并修正注释**
 
 修改 `src/app/sitemap.ts`：
@@ -3506,7 +3662,7 @@ Expected: `package.json` 不再包含 `next-themes`；`package-lock.json` 更新
 
 Run: `npm test`
 
-Expected: 13 个测试文件全部通过，输出 `# fail 0`，退出码 0。特别注意 `tokens` 10 项与 `apps` 5 项。
+Expected: 13 个测试文件全部通过，输出 `# fail 0`，退出码 0。特别注意 `tokens` 11 项与 `apps` 5 项。
 
 - [ ] **Step 7: 类型检查与 lint**
 
