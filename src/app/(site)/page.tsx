@@ -7,6 +7,8 @@ import { getObservation } from "@/lib/observation";
 import { getMoments } from "@/lib/moments-server";
 import { getWeather } from "@/lib/weather-server";
 import { getGithubActivity } from "@/lib/github-server";
+import { getApprovedLetters } from "@/lib/letters-server";
+import { getStatusSentence } from "@/lib/settings-server";
 import { Moment, NODE_CLASS } from "@/components/life/moment";
 import { MonthTick } from "@/components/life/month-tick";
 import { NowPanel } from "@/components/life/now-panel";
@@ -34,12 +36,15 @@ export const instant = false;
 export default async function HomePage() {
   await connection();
 
-  const [observation, weather, activity, life] = await Promise.all([
-    getObservation(),
-    getWeather(),
-    getGithubActivity(),
-    getMoments(),
-  ]);
+  const [observation, weather, activity, life, letters, statusSentence] =
+    await Promise.all([
+      getObservation(),
+      getWeather(),
+      getGithubActivity(),
+      getMoments(),
+      getApprovedLetters(3),
+      getStatusSentence(),
+    ]);
 
   const currentYear = observation.year;
   const groups = groupByMonth(life.moments, currentYear);
@@ -92,11 +97,15 @@ export default async function HomePage() {
       weather={weather}
       listening={portfolioNow.listening}
       reading={portfolioNow.reading}
-      letters={[
-        { id: "l1", name: "阿远", body: "路过，祝好。", date: "11.05" },
-        { id: "l2", name: "小满", body: "这首歌我也在循环。", date: "11.02" },
-        { id: "l3", name: "老陈", body: "旧书店叫什么名字？", date: "10.30" },
-      ]}
+      letters={{
+        available: letters.available,
+        items: letters.letters.slice(0, 3).map((letter) => ({
+          id: String(letter.id),
+          name: letter.name,
+          body: letter.body,
+          date: letter.date,
+        })),
+      }}
       updatedAt={portfolioNow.updatedAt}
       activity={activity}
     />
@@ -113,7 +122,7 @@ export default async function HomePage() {
             ·
           </span>
           <p className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">
-            {siteConfig.status}
+            {statusSentence}
           </p>
         </div>
         <LocalClock />

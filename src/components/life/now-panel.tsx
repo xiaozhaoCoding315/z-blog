@@ -4,11 +4,16 @@ import type { GithubActivity } from "@/lib/github-server";
 import { formatDay } from "@/lib/life";
 import { ActivityStrip } from "./activity-strip";
 
-export interface NowLetter {
+export interface NowLetterItem {
   id: string;
   name: string;
   body: string;
   date: string;
+}
+
+export interface NowLetters {
+  available: boolean;
+  items: NowLetterItem[];
 }
 
 /**
@@ -30,7 +35,8 @@ export function NowPanel({
   listening: string;
   /** portfolio.now.reading，按数组顺序显示 */
   reading: string[];
-  letters: NowLetter[];
+  /** 首页只拿已通过的留言；读不到库时 available 为假 */
+  letters: NowLetters;
   updatedAt: string;
   activity: GithubActivity;
 }) {
@@ -95,20 +101,31 @@ export function NowPanel({
         <h2 className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           Letters
         </h2>
-        {/* 三封信是布局示例，不是真实访客留言——留言墙阶段 3 才上线 */}
-        <p className="mt-1 font-mono text-[10px] text-muted-foreground">
-          示例 · 阶段 3 上线
-        </p>
-        <ul className="mt-2 space-y-3">
-          {letters.map((letter) => (
-            <li key={letter.id} className="border-b border-rule pb-3 last:border-0 last:pb-0">
-              <p className="text-[13px] leading-relaxed">{letter.body}</p>
-              <p className="mt-1 font-mono text-[10px] tabular-nums text-muted-foreground">
-                {letter.name} · {letter.date}
-              </p>
-            </li>
-          ))}
-        </ul>
+        {!letters.available ? (
+          <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+            NOT AVAILABLE
+          </p>
+        ) : letters.items.length === 0 ? (
+          <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+            还没有留言
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-3">
+            {letters.items.map((letter) => (
+              <li
+                key={letter.id}
+                className="border-b border-rule pb-3 last:border-0 last:pb-0"
+              >
+                <p className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                  {letter.name} · {letter.date}
+                </p>
+                <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed">
+                  {letter.body}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
         <Link
           href="/letters"
           className="mt-4 inline-block border border-data px-3 py-1.5 font-mono text-[11px] text-data transition-colors hover:border-data hover:text-foreground"
