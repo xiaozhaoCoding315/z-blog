@@ -79,14 +79,20 @@ export const guestbook = pgTable("guestbook", {
 });
 
 /**
- * users：通过 GitHub 登录的用户（目前只服务面试题库的掌握度）
+ * users：站内账号。
  *
- * 不用自建账号体系：站点已经用 Giscus 走了 GitHub Discussions，
- * 复用同一个身份来源最省事，也避免再存一份密码。
+ * 两种身份来源共用一张表：
+ *   - GitHub OAuth（历史遗留，服务面试题库的掌握度）→ githubId 有值、email 为空
+ *   - 邮箱验证码（阶段 2 起的正门）→ email 有值、githubId 为空
+ * 所以两个列都可空，各自的唯一性靠索引保证。
+ *
+ * role 只有 owner / visitor 两档：站长一个邮箱，其余都是访客。
  */
 export const users = pgTable("users", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
-  githubId: text("github_id").notNull().unique(),
+  githubId: text("github_id").unique(),
+  email: text("email").unique(),
+  role: text("role").notNull().default("visitor"),
   login: text("login").notNull(),
   avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -96,6 +102,60 @@ export const users = pgTable("users", {
     .notNull()
     .defaultNow(),
 });
+
+/**
+ * login_codes：邮箱登录的一次性验证码。
+ *
+ * 只存 HMAC 哈希，不存明文——库被拖走也换不出能用的码。
+ * attempts 到了上限就整条作废，逼用户重新申请，避免六位数被穷举。
+ */
+export const loginCodes = pgTable(
+  "login_codes",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("login_codes_email_idx").on(table.email)]
+);
+
+/**
+ * moments：生活流。
+ *
+ * body 允许为空（一条纯照片、一张读数卡都可以没有正文）；
+ * card 是 jsonb，只给 song / shelf / quote / link 四种形态用——
+ * 设计文档 §6.2 的表里漏了这一列，没有它这四种形态无处安放。
+ */
+export const moments = pgTable(
+  "moments",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    kind: text("kind").notNull(),
+    body: text("body").notNull().default(""),
+    images: jsonb("images").$type<string[]>().notNull().default([]),
+    mood: text("mood"),
+    weather: text("weather"),
+    place: text("place"),
+    card: jsonb("card").$type<{
+      title: string;
+      meta: string;
+      note?: string;
+      href?: string;
+    } | null>(),
+    publishedAt: timestamp("published_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("moments_published_idx").on(table.publishedAt.desc())]
+);
 
 /**
  * interviewMastery：每道题的掌握状态
@@ -154,3 +214,6 @@ export type ChunkRow = typeof chunks.$inferSelect;
 export type UserRow = typeof users.$inferSelect;
 export type MasteryRow = typeof interviewMastery.$inferSelect;
 export type ReviewRow = typeof interviewReview.$inferSelect;
+export type LoginCodeRow = typeof loginCodes.$inferSelect;
+/** 名字带 Db 后缀：`Moment` 已经是生活流组件的领域类型，别混用 */
+export type MomentDbRow = typeof moments.$inferSelect;

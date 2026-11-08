@@ -286,6 +286,8 @@ v1 写明要「去掉点赞、浏览量等技术博客装饰」。在观测台�
 - 新增 `role text not null default 'visitor'`，取值 `owner` / `visitor`
 - `login` 保留作为显示名
 
+`email` 的唯一性用普通唯一索引实现（`CREATE UNIQUE INDEX ... ON users (email)`）：普通唯一索引允许多个 NULL，GitHub 老用户没有邮箱，不会因此互相冲突。
+
 新增 `login_codes`：
 
 | 列 | 类型 | 说明 |
@@ -307,6 +309,7 @@ v1 写明要「去掉点赞、浏览量等技术博客装饰」。在观测台�
 | kind | `text` / `photo` / `song` / `shelf` / `quote` / `link` |
 | body | 正文，纯文本 + 换行 |
 | images | jsonb，图片路径数组 |
+| card | jsonb，可空。`song` / `shelf` / `quote` / `link` 四种形态的卡片数据（title / meta / note / href）。原表漏了这一列，这四种形态没有它无处安放 |
 | mood / weather / place | 可空，各一个短字符串 |
 | publishedAt | timestamptz |
 | createdAt | |

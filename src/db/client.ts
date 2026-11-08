@@ -93,6 +93,46 @@ export async function ensureSchema() {
       last_seen_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  // 邮箱用户没有 GitHub id；老库的 NOT NULL 必须放开（这条语句本身幂等）
+  await db.execute(sql`ALTER TABLE users ALTER COLUMN github_id DROP NOT NULL`);
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email text`);
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'visitor'`
+  );
+  // 普通唯一索引允许多个 NULL：GitHub 老用户没有邮箱，不能因此互相冲突
+  await db.execute(
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS users_email_key ON users (email)`
+  );
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS login_codes (
+      id bigserial PRIMARY KEY,
+      email text NOT NULL,
+      code_hash text NOT NULL,
+      expires_at timestamptz NOT NULL,
+      attempts integer NOT NULL DEFAULT 0,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS login_codes_email_idx ON login_codes (email)`
+  );
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS moments (
+      id bigserial PRIMARY KEY,
+      kind text NOT NULL,
+      body text NOT NULL DEFAULT '',
+      images jsonb NOT NULL DEFAULT '[]'::jsonb,
+      mood text,
+      weather text,
+      place text,
+      card jsonb,
+      published_at timestamptz NOT NULL DEFAULT now(),
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS moments_published_idx ON moments (published_at DESC)`
+  );
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS interview_mastery (
       user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
