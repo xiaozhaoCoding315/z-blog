@@ -44,7 +44,9 @@ const INTERACTIVE = "button, a, input, textarea, select, [contenteditable='true'
 export function Window({ id, app, title, children }: WindowProps) {
   const { windows } = useDesktopRuntime();
   const state = windows.store.windows[id];
-  const focused = state?.z === windows.store.zCounter;
+  // 最小化窗口的 z 可能仍等于 zCounter（焦点已回落到可见窗口），
+  // 但它不再是聚焦窗口，避免同时出现两个 data-focused="true"。
+  const focused = !!state && !state.minimized && state.z === windows.store.zCounter;
   const titleId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<PointerInteraction | null>(null);

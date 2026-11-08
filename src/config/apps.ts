@@ -329,8 +329,6 @@ export const apps: AppDefinition[] = [
   },
 ];
 
-export const desktopApps = apps.filter((app) => app.desktop);
-
 export const desktopTileApps: AppDefinition[] = apps.filter((app) => app.desktop);
 
 export const launcherApps: AppDefinition[] = apps.filter((app) => app.launcher);

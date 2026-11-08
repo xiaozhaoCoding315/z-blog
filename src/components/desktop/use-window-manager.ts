@@ -25,7 +25,6 @@ export function useWindowManager() {
   const pathname = usePathname();
   const [store, dispatch] = useReducer(windowReducer, initialWindowStore);
   const [bounds, setBounds] = useState<DesktopBounds>(DEFAULT_BOUNDS);
-  const nodeRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
 
   /*
@@ -36,7 +35,6 @@ export function useWindowManager() {
   const boundsRef = useCallback((node: HTMLDivElement | null) => {
     observerRef.current?.disconnect();
     observerRef.current = null;
-    nodeRef.current = node;
     if (!node) return;
 
     const measure = () => {
