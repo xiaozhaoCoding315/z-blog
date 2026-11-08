@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { GithubActivity } from "@/lib/github-server";
 
 /**
@@ -21,11 +22,16 @@ export function ActivityStrip({ activity }: { activity: GithubActivity }) {
         role="img"
         aria-label={`近 90 天提交密度，共 ${activity.total90} 次`}
       >
-        {activity.days.map((d) => (
+        {activity.days.map((d, index) => (
           <span
             key={d.date}
-            className="size-[7px] rounded-[1px] bg-data"
-            style={{ opacity: d.count === 0 ? 0.12 : Math.min(0.3 + d.count * 0.18, 1) }}
+            className="moment-cell size-[7px] rounded-[1px] bg-data"
+            style={
+              {
+                "--o": d.count === 0 ? 0.12 : Math.min(0.3 + d.count * 0.18, 1),
+                "--i": index,
+              } as CSSProperties
+            }
           />
         ))}
       </div>

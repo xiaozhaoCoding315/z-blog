@@ -447,6 +447,7 @@ html {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
@@ -455,6 +456,41 @@ html {
 /* ============ 主脊线 ============ */
 
 @layer components {
+/*
+ * 观测条数字上翻。
+ *
+ * 基础样式直接就是终点：`translate` 停在目标数字上；关键帧只写 from（0 位）。
+ * 动画只是把它从 0 滚到终点，跑不完或跑不了都还是正确读数。
+ */
+.moment-digit {
+  translate: 0 var(--to);
+  animation: digit-roll 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes digit-roll {
+  from {
+    translate: 0 0;
+  }
+}
+
+/*
+ * 90 天热图逐格点亮。
+ *
+ * 同理：opacity 的基础值就是这一格该有的深浅，关键帧只写 from（全透明）。
+ * backwards 让还在等延迟的格子保持透明，不会先亮一下再重来。
+ */
+.moment-cell {
+  opacity: var(--o);
+  animation: cell-in 180ms ease-out backwards;
+  animation-delay: calc(var(--i) * 5ms);
+}
+
+@keyframes cell-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* 主脊线：生活流的走线，也是时间轴。全站唯一的装饰性结构。 */
 .life-spine {
   position: absolute;

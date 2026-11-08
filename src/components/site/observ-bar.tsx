@@ -1,3 +1,5 @@
+import { DigitRoll } from "@/components/life/digit-roll";
+
 export interface Reading {
   /** 英文标签，mono 全大写，像进口仪器 */
   label: string;
@@ -26,9 +28,12 @@ export function ObservBar({ readings }: { readings: Reading[] }) {
           </dt>
           <dd className="mt-1.5">
             {r.available ? (
-              <span className="font-mono text-[24px] leading-none tabular-nums text-data">
-                {r.value}
-              </span>
+              <>
+                <span className="sr-only">{r.value}</span>
+                <span className="font-mono text-[24px] leading-none tabular-nums text-data">
+                  <DigitRoll text={r.value} />
+                </span>
+              </>
             ) : (
               <span className="font-mono text-[11px] leading-none text-muted-foreground">
                 NOT AVAILABLE
