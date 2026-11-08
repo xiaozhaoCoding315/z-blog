@@ -15,8 +15,9 @@ if (!titleArg) {
 }
 
 const today = new Date().toISOString().slice(0, 10);
+// slug 规则必须与 src/lib/content-core.ts 的 isValidNoteSlug 保持一致，否则会生成列表可见但详情 404 的笔记
 const slug =
-  slugArg && /^[a-z0-9-]+$/.test(slugArg)
+  slugArg && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slugArg)
     ? slugArg
     : `post-${today}-${Math.random().toString(36).slice(2, 6)}`;
 

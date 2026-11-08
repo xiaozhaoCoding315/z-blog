@@ -12,6 +12,10 @@ import matter from "gray-matter";
 const NOTES_DIR = path.join(process.cwd(), "content", "notes");
 const STARTED_AT = process.env.NEXT_PUBLIC_SITE_START_DATE || "2026-07-02";
 
+// 文件名 slug 规则必须与 src/lib/content-core.ts 的 isValidNoteSlug 保持一致；
+// 构建镜像可能用 Node 20，不能加载 TS，所以在这里写同一正则
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 /** 今天：允许写「今天」的笔记，但不允许写未来 */
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -36,6 +40,12 @@ if (files.length !== 10) {
 const seenDates = new Map();
 
 for (const file of files) {
+  // 坏 slug 会让列表页可见、详情页 404，必须在构建前拦住
+  const slug = file.slice(0, -".mdx".length);
+  if (!SLUG_RE.test(slug)) {
+    fail(file, "文件名 slug 只允许小写字母/数字，用单个连字符分段");
+  }
+
   let data, content;
   try {
     ({ data, content } = matter(fs.readFileSync(path.join(NOTES_DIR, file), "utf-8")));

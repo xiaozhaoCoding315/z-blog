@@ -1,6 +1,6 @@
 # 部署指南：从裸服务器到博客上线
 
-目标：在一台云服务器（Ubuntu/Debian）上，用 Docker Compose 把博客跑在 80 端口，数据持久化，更新只需 `git pull`。
+目标：在一台云服务器（Ubuntu/Debian）上，用 Docker Compose 把博客跑在 80 端口，数据持久化。2C2G 服务器永远不在服务器上构建：本地构建后用 `scripts/deploy.sh` 发布，服务器只 `docker load` + `docker compose up -d --no-build`；内存 ≥ 4G 的服务器才可以选择 `git pull` 后直接在服务器构建。
 
 > 部署前请先把仓库推送到 GitHub（建议公开仓库，便于版本管理与更新）。
 
@@ -15,7 +15,8 @@
 | 5432 | 博客数据库 | 只在 compose 内部网络通信，**不对外暴露** |
 
 - 已有项目不受影响：博客的 compose 项目名是 `blog`，容器/网络/卷与其它项目完全隔离。
-- **2G 内存必做**：首次构建 Next.js 较吃内存，先加 2G swap 防止 OOM：
+- **2C2G 不在服务器构建**：本地构建镜像后用 `scripts/deploy.sh` 发布（本地构建 → 上传 → 远端滚动更新），服务器只执行 `docker load` + `docker compose up -d --no-build`。**2C2G 永远不要执行 `--build`**，具体见 §2 方式 B。
+- **仅内存 ≥ 4G 且确实选择服务器直接构建时**：首次构建 Next.js 较吃内存，可先加 2G swap 作为兜底。2C2G 即使加了 swap 也不要执行 `--build`：
 
 ```bash
 sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
@@ -55,7 +56,7 @@ curl -fsSL https://get.docker.com | sh
 
 ## 2. 首次部署
 
-**方式 A：服务器直接构建（内存 ≥ 4G 推荐）**
+**方式 A：服务器直接构建（仅内存 ≥ 4G；2C2G 用方式 B）**
 
 ```bash
 # 用普通用户登录
@@ -82,7 +83,7 @@ NEXT_PUBLIC_SITE_URL=https://你的域名   # 构建期内联；没有 HTTPS 时
 ```
 
 ```bash
-# 构建并启动（首次构建 3-5 分钟；2G 内存请确认已完成上面的 swap 步骤）
+# 构建并启动（仅适用于内存 ≥ 4G；首次构建 3-5 分钟）
 docker compose up -d --build
 
 # 观察启动日志：应看到 entrypoint 自动完成内容同步与向量化
@@ -120,7 +121,7 @@ docker compose up -d --no-build
 
 ## 3. 日常更新
 
-**方式 A（服务器内存充足）：**
+**方式 A（仅内存 ≥ 4G）：**
 
 ```bash
 cd ~/blog
@@ -179,14 +180,14 @@ gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog bl
 }
 ```
 
-3. `.env` 中把 `NEXT_PUBLIC_SITE_URL` 改为 `https://你的域名.com`，重新构建镜像（`docker compose up -d --build`；2C2G 服务器改用本地 `scripts/deploy.sh`，不要在服务器上构建）。
+3. `.env` 中把 `NEXT_PUBLIC_SITE_URL` 改为 `https://你的域名.com`，本地重新构建并用 `scripts/deploy.sh` 发布。仅内存 ≥ 4G 且选择服务器直接构建的，可在服务器执行 `docker compose up -d --build`；2C2G 服务器永远不要在服务器上构建。
 
 ## 6. 上线前检查清单
 
 上线前逐条确认，任何一条没验证都不算部署完成：
 
 1. **HTTPS 与 `NEXT_PUBLIC_SITE_URL=https://…`**
-   站点必须通过 HTTPS 访问。`NEXT_PUBLIC_SITE_URL` 与 `NEXT_PUBLIC_CONTACT_EMAIL` 都在**构建期**内联进产物：**本地构建机的 `.env`（或执行命令时的环境变量）**必须已有 `NEXT_PUBLIC_SITE_URL=https://你的域名` 与 `NEXT_PUBLIC_CONTACT_EMAIL=你的邮箱`；服务器上的 `.env` 只影响运行期，不能补救构建期内联。改完必须重新 `docker compose build`（2C2G 用本地 `scripts/deploy.sh`，它会在构建前回显并检查要内联的站点地址）；只 `restart` 或只改运行期环境变量都不生效。没有 HTTPS 时登录 cookie 不会带 `Secure`。
+   站点必须通过 HTTPS 访问。`NEXT_PUBLIC_SITE_URL` 与 `NEXT_PUBLIC_CONTACT_EMAIL` 都在**构建期**内联进产物：**本地构建机的 `.env`（或执行命令时的环境变量）**必须已有 `NEXT_PUBLIC_SITE_URL=https://你的域名` 与 `NEXT_PUBLIC_CONTACT_EMAIL=你的邮箱`；服务器上的 `.env` 只影响运行期，不能补救构建期内联。改完必须重新构建并发布：2C2G 在本地重新构建后用 `scripts/deploy.sh` 发布（它会在构建前回显并检查要内联的站点地址）；仅内存 ≥ 4G 且选择服务器直接构建的，可在服务器执行 `docker compose up -d --build`。只 `restart` 或只改运行期环境变量都不生效；2C2G 永远不要在服务器上构建。没有 HTTPS 时登录 cookie 不会带 `Secure`。
 2. **反向代理写入可信 `X-Forwarded-For`**
    邮箱验证码、站内搜索与 AI 问答按客户端 IP 限频；评论按登录用户限频。应用只读 `X-Forwarded-For` 的**第一个值**，所以代理必须**覆盖写入**，不能追加：`$proxy_add_x_forwarded_for` 会把访客自带的 XFF 留在第一位，等于让访客自报 IP，限频可被伪造 IP 绕过。若代理完全不写 XFF，所有访客会共用代理 IP，限频会误伤。
 
@@ -220,4 +221,4 @@ gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog bl
 
 **Q：80 端口被占用？** `lsof -i :80` 查占用（常见是 nginx/apache），停掉或改 compose 中 `app.ports` 为 `"8080:3000"`（记得安全组同步放行）。
 
-**Q：构建时内存不足被 OOM kill？** 确认 swap 已开启（`free -h`）；仍失败可在本地构建镜像推送到镜像仓库，服务器只 `docker pull`。
+**Q：构建时内存不足被 OOM kill？** 2C2G 不要在服务器构建，直接在本地构建并用 `scripts/deploy.sh` 发布（或手工 `docker save` → 服务器 `docker load` + `docker compose up -d --no-build`）。仅内存 ≥ 4G 且选择服务器直接构建的，先确认 swap 已开启（`free -h`）；仍失败则改为本地构建。
