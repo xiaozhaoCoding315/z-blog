@@ -16,8 +16,38 @@ const schema = readFileSync(
   "utf8"
 );
 
-/** 把 ensureSchema 里的语句按空白压平，便于逐条断言 */
+/** 按空白压平整个文件，便于逐条断言 */
 const ddl = client.replace(/\s+/g, " ");
+
+/**
+ * 从压平后的 DDL 里取出某张表声明的列名。
+ *
+ * 不靠括号配对（`DEFAULT now()` 自带括号），改成「标识符 + 类型关键字」配对：
+ * 建表语句里只有列定义长这样，索引与约束都不带类型。
+ */
+function ddlColumns(table) {
+  const start = ddl.indexOf(`CREATE TABLE IF NOT EXISTS ${table} (`);
+  if (start === -1) return null;
+  const next = ddl.indexOf("CREATE ", start + 1);
+  const body = ddl.slice(start, next === -1 ? undefined : next);
+  return [...body.matchAll(/\b([a-z_]+) (bigserial|text|integer|jsonb|timestamptz|boolean)\b/g)]
+    .map((m) => m[1]);
+}
+
+/** 取 schema.ts 里某张表的定义片段（表名与 pgTable 之间可能换行） */
+function schemaTableBody(table) {
+  const match = new RegExp(`pgTable\\(\\s*"${table}"`).exec(schema);
+  if (!match) return null;
+  const start = match.index;
+  const next = schema.indexOf("pgTable(", start + match[0].length);
+  return schema.slice(start, next === -1 ? undefined : next);
+}
+
+/** drizzle schema 里是否声明了这一列（列名以字符串字面量出现在该表定义中） */
+function schemaHasColumn(table, column) {
+  const body = schemaTableBody(table);
+  return body !== null && body.includes(`("${column}"`);
+}
 
 test("老库的 users.github_id 必须被放开为可空", () => {
   assert.match(
@@ -59,10 +89,39 @@ test("moments 有发布时间的倒序索引，且卡片数据能落库", () => 
   );
 });
 
-test("drizzle schema 与 DDL 保持同名同列", () => {
-  for (const name of ["login_codes", "moments"]) {
-    assert.ok(schema.includes(`"${name}"`), `schema.ts 里缺少表 ${name}`);
+test("drizzle schema 与 DDL 逐列对得上", () => {
+  // 这条是防漂移的唯一护栏：DDL 是部署时的建表入口，schema.ts 是查询入口，
+  // 两边列名一旦分叉，运行时才会以「column does not exist」的形式暴露。
+  // 所以按列名逐个比对，而不是只查表名——只查表名的话，删掉 users.email
+  // 也能被 login_codes.email 蒙混过关。
+  const expected = {
+    users: ["id", "github_id", "email", "role", "login", "avatar_url", "created_at", "last_seen_at"],
+    login_codes: ["id", "email", "code_hash", "expires_at", "attempts", "created_at"],
+    moments: ["id", "kind", "body", "images", "mood", "weather", "place", "card", "published_at", "created_at"],
+  };
+
+  for (const [table, columns] of Object.entries(expected)) {
+    const inDdl = ddlColumns(table);
+    // 按集合比，不按顺序：users 的 email / role 是后面 ALTER 补的，
+    // 落在 CREATE TABLE 之后，顺序和 schema.ts 天然不同。顺序对这条守卫没有意义。
+    assert.deepEqual(
+      [...inDdl].sort(),
+      [...columns].sort(),
+      `${table} 的 DDL 列与预期不符（多列或少列）`
+    );
+    for (const column of columns) {
+      assert.ok(
+        schemaHasColumn(table, column),
+        `schema.ts 的 ${table} 缺少列 ${column}`
+      );
+    }
   }
-  assert.ok(schema.includes('"email"'));
-  assert.ok(schema.includes('"role"'));
+});
+
+test("github_id 与 email 必须都可空——两种身份来源各缺一半", () => {
+  // GitHub 用户没有 email，邮箱用户没有 github_id；
+  // 任一列被写回 notNull() 都会让另一条登录路径写库失败。
+  const users = schemaTableBody("users");
+  assert.match(users, /githubId: text\("github_id"\)\.unique\(\)/);
+  assert.match(users, /email: text\("email"\)\.unique\(\)/);
 });
