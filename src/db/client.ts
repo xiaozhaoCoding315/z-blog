@@ -122,6 +122,7 @@ export async function ensureSchema() {
       kind text NOT NULL,
       body text NOT NULL DEFAULT '',
       images jsonb NOT NULL DEFAULT '[]'::jsonb,
+      tags jsonb NOT NULL DEFAULT '[]'::jsonb,
       mood text,
       weather text,
       place text,

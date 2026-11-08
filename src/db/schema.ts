@@ -140,6 +140,7 @@ export const moments = pgTable(
     kind: text("kind").notNull(),
     body: text("body").notNull().default(""),
     images: jsonb("images").$type<string[]>().notNull().default([]),
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
     mood: text("mood"),
     weather: text("weather"),
     place: text("place"),

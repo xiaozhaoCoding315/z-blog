@@ -1,4 +1,5 @@
 import type { Moment, MomentKind } from "./life";
+import { readTags } from "./tags.ts";
 
 /**
  * 数据库行 → 生活流条目。
@@ -43,6 +44,7 @@ export interface MomentDbRowLike {
   kind: string;
   body: string;
   images: unknown;
+  tags?: unknown;
   mood: string | null;
   weather: string | null;
   place: string | null;
@@ -94,6 +96,8 @@ export function toMoment(row: MomentDbRowLike): Moment {
   };
 
   if (images.length > 0) moment.images = images;
+  const tags = readTags(row.tags);
+  if (tags.length > 0) moment.tags = tags;
   const mood = text(row.mood);
   const weather = text(row.weather);
   const place = text(row.place);

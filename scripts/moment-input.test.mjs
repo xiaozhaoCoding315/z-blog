@@ -32,6 +32,34 @@ test("纯文字：正文够长就能发，卡片字段被丢掉", () => {
   assert.equal(r.value.card, undefined);
 });
 
+test("标签：# 前缀与空白拆分，去重保序", () => {
+  const r = parseMomentInput(fd({ kind: "text", body: "x", tags: "#杭州 雨天" }));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.value.tags, ["杭州", "雨天"]);
+});
+
+test("标签：没填就是空数组", () => {
+  const r = parseMomentInput(fd({ kind: "text", body: "x" }));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.value.tags, []);
+});
+
+test("标签：最多 5 个，第 6 个被拒绝", () => {
+  const r = parseMomentInput(
+    fd({ kind: "text", body: "x", tags: "a b c d e f" })
+  );
+  assert.equal(r.ok, false);
+  assert.match(r.error, /最多 5 个/);
+});
+
+test("标签：单个最多 16 字素，超长被拒绝", () => {
+  const r = parseMomentInput(
+    fd({ kind: "text", body: "x", tags: "字".repeat(17) })
+  );
+  assert.equal(r.ok, false);
+  assert.match(r.error, /最多 16 个字符/);
+});
+
 test("图文：没有图也没有正文要拒绝", () => {
   const r = parseMomentInput(fd({ kind: "photo", body: "" }));
   assert.equal(r.ok, false);

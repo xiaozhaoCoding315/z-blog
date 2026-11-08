@@ -32,7 +32,8 @@ export async function createMoment(
   const db = getDb();
   if (!db) return { error: "数据库暂时不可用" };
 
-  const { kind, body, images, mood, weather, place, card } = parsed.value;
+  const { kind, body, images, tags, mood, weather, place, card } =
+    parsed.value;
 
   let id: number;
   try {
@@ -42,6 +43,7 @@ export async function createMoment(
         kind,
         body,
         images,
+        tags,
         mood: mood ?? null,
         weather: weather ?? null,
         place: place ?? null,

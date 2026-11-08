@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Moment } from "./life";
+import { parseTagInput } from "./tags.ts";
 
 /**
  * 发布表单的校验。
@@ -78,6 +79,7 @@ export interface MomentInput {
   kind: Moment["kind"];
   body: string;
   images: string[];
+  tags: string[];
   mood?: string;
   weather?: string;
   place?: string;
@@ -108,11 +110,17 @@ export function parseMomentInput(formData: FormData): ParseResult {
     return { ok: false, error: first?.message ?? "表单内容不对" };
   }
 
+  // 标签不走 zod：解析规则（# 前缀、字素长度）都在 lib/tags.ts，
+  // 放在 zod 之后是为了让字段错误优先于标签错误。
+  const tags = parseTagInput(String(formData.get("tags") ?? ""));
+  if (!tags.ok) return { ok: false, error: tags.error };
+
   const v = parsed.data;
   const value: MomentInput = {
     kind: v.kind,
     body: v.body,
     images: v.images,
+    tags: tags.tags,
   };
   if (v.mood) value.mood = v.mood;
   if (v.weather) value.weather = v.weather;

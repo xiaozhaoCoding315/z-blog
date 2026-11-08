@@ -18,6 +18,8 @@ export interface Moment {
   publishedAt: string;
   body: string;
   images?: string[];
+  /** 老数据没有这一列，读到空数组时不赋这个字段 */
+  tags?: string[];
   mood?: string;
   weather?: string;
   place?: string;

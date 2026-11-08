@@ -81,6 +81,7 @@ test("moments 有发布时间的倒序索引，且卡片数据能落库", () => 
   assert.match(ddl, /CREATE TABLE IF NOT EXISTS moments/);
   assert.match(ddl, /kind text NOT NULL/);
   assert.match(ddl, /images jsonb NOT NULL DEFAULT '\[\]'::jsonb/);
+  assert.match(ddl, /tags jsonb NOT NULL DEFAULT '\[\]'::jsonb/);
   assert.match(ddl, /card jsonb/);
   assert.match(ddl, /published_at timestamptz NOT NULL DEFAULT now\(\)/);
   assert.match(
@@ -97,7 +98,7 @@ test("drizzle schema 与 DDL 逐列对得上", () => {
   const expected = {
     users: ["id", "github_id", "email", "role", "login", "avatar_url", "created_at", "last_seen_at"],
     login_codes: ["id", "email", "code_hash", "expires_at", "attempts", "created_at"],
-    moments: ["id", "kind", "body", "images", "mood", "weather", "place", "card", "published_at", "created_at"],
+    moments: ["id", "kind", "body", "images", "tags", "mood", "weather", "place", "card", "published_at", "created_at"],
   };
 
   for (const [table, columns] of Object.entries(expected)) {
