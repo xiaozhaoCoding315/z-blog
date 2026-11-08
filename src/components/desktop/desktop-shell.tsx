@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { publicApps } from "@/config/apps";
+import type {
+  TerminalNote,
+  TerminalSnippet,
+} from "@/components/terminal/commands";
 import { DesktopRuntimeContext } from "./desktop-runtime";
 import { GlobalWindows } from "./global-windows";
 import { Taskbar } from "./taskbar";
@@ -21,11 +25,19 @@ export function DesktopShell({
   accountMenu,
   hasFriends,
   aiEnabled,
+  notes,
+  snippets,
+  uptimeDays,
   children,
 }: {
   accountMenu: ReactNode;
   hasFriends: boolean;
   aiEnabled: boolean;
+  /** 终端 `apps`/`posts`/`open` 与 Spotlight（Task 5）共用的笔记索引 */
+  notes: TerminalNote[];
+  /** Phase 3 才有片段数据模型；当前由 layout 传入空数组 */
+  snippets: TerminalSnippet[];
+  uptimeDays: number | null;
   children: ReactNode;
 }) {
   const windows = useWindowManager();
@@ -92,7 +104,12 @@ export function DesktopShell({
       <div className="os-shell">
         <Wallpaper />
         <main className="os-main">{children}</main>
-        <GlobalWindows aiEnabled={aiEnabled} />
+        <GlobalWindows
+          aiEnabled={aiEnabled}
+          notes={notes}
+          snippets={snippets}
+          uptimeDays={uptimeDays}
+        />
         <Taskbar accountMenu={accountMenu} hasFriends={hasFriends} />
         <noscript>
           <nav className="os-noscript" aria-label="站点导航">
