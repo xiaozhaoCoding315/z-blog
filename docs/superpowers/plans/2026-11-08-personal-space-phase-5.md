@@ -62,7 +62,8 @@
 - Delete: `src/app/(site)/blog/page.tsx`、`src/app/(site)/blog/tag/[tag]/page.tsx`
 - Modify: `src/components/blog/post-card.tsx`、`src/components/blog/blog-browser.tsx`、`src/components/blog/related-posts.tsx`
 - Modify: `src/components/search/search-palette.tsx`
-- Modify: `src/app/layout.tsx`、`src/app/not-found.tsx`、`src/app/api/chat/route.ts`
+- Modify: `src/app/layout.tsx`、`src/app/(site)/layout.tsx`、`src/app/not-found.tsx`、`src/app/api/chat/route.ts`
+- Modify: `src/app/(site)/changelog/page.tsx`（Task 2 再改名为 journal）、`src/app/(site)/life/[id]/actions.ts`、`src/lib/activity.ts`、`src/lib/sync.ts`
 - Modify: `scripts/check-content.mjs`、`scripts/new-post.mjs`、`package.json`
 
 **Interfaces:**
@@ -160,6 +161,9 @@ export default async function LegacyBlogPost({
 - `src/app/not-found.tsx`：返回链接 `/blog` → `/notes`。
 - `src/app/api/chat/route.ts`：citation `href` 改 `/notes/${post_slug}#${heading}`。
 - `src/app/(site)/about/page.tsx`：两处 `/blog/...` 改 `/notes/...`；若链接到归档文章（不在 10 篇内），改成 `/notes` 或删除。
+- `src/app/(site)/layout.tsx`、`src/app/(site)/changelog/page.tsx`、`src/lib/activity.ts`：把 `getAllPosts` 改为 `getAllNotes`（函数改名后必须同步；Task 2 再把 changelog 文件改名为 journal）。
+- `src/lib/sync.ts`：`listRawPosts` → `listRawNotes`。
+- `src/app/(site)/life/[id]/actions.ts`（阶段 3 创建）：评论目标校验里的 `getPostBySlug` → `getNoteBySlug`。
 - `README.md`、`scripts/new-post.mjs` 的预览地址改 `localhost:3000/notes/<slug>`。
 - 笔记内部链接：`content/notes/build-blog-with-nextjs.mdx` 的 `/blog/rag-powered-blog` → `/notes/rag-powered-blog`；`content/notes/hello-world.mdx` 指向 `/blog/deploy-with-docker`（已归档）→ 改成 `/notes` 或删掉链接，不能留 301 链到列表的绕路。
 
@@ -182,7 +186,7 @@ Expected: 全部 exit 0；`check-content` 显示 10 篇、0 错；构建不再�
 - [ ] **Step 11: 提交**
 
 ```bash
-git add -A content/notes content/posts src/lib/content-core.ts src/content.ts src/app/'(site)'/notes src/app/'(site)'/blog src/app/blog src/app/'(site)'/about/page.tsx src/app/layout.tsx src/app/not-found.tsx src/app/api/chat/route.ts src/components/blog src/components/search/search-palette.tsx src/components/terminal/terminal-palette.tsx scripts/check-content.mjs scripts/new-post.mjs README.md package.json
+git add -A content/notes content/posts src/lib/content-core.ts src/content.ts src/app/'(site)'/notes src/app/'(site)'/blog src/app/blog src/app/'(site)'/about/page.tsx src/app/'(site)'/layout.tsx src/app/'(site)'/changelog/page.tsx src/app/'(site)'/life/'[id]'/actions.ts src/app/layout.tsx src/app/not-found.tsx src/app/api/chat/route.ts src/lib/activity.ts src/lib/sync.ts src/components/blog src/components/search/search-palette.tsx src/components/terminal/terminal-palette.tsx scripts/check-content.mjs scripts/new-post.mjs README.md package.json
 git commit -m "feat(phase-5): 10 篇笔记迁入 /notes，旧 /blog 链接 301"
 ```
 

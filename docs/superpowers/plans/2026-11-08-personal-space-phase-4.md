@@ -361,6 +361,7 @@ git commit -m "feat(phase-4): 书架页与站长书架维护"
 - Modify: `src/app/(site)/playlist/page.tsx`
 - Modify: `src/app/(site)/admin/page.tsx`
 - Modify: `src/app/(site)/admin/actions.ts`
+- Modify: `src/components/site/account-menu.tsx`（「我的推荐」链接改 `/playlist#mine`）
 
 **Interfaces:**
 - Produces: `addSong(formData: FormData): Promise<void>`、`pinSong(formData: FormData): Promise<void>`、`deleteSong(formData: FormData): Promise<void>`。
@@ -411,12 +412,12 @@ export async function deleteSong(formData: FormData): Promise<void> {
 }
 ```
 
-`await requireOwner()` 在 `addSong` 里调用了两次——实现时先存 `const owner = await requireOwner(); if (!owner) return;`，不要重复查会话。`pinSong` 只允许 pin 已通过的歌曲：在事务前查 `status === 'approved'`，不通过就返回。
+`await requireOwner()` 在 `addSong` 里调用了两次——实现时先存 `const owner = await requireOwner(); if (!owner) return;`，不要重复查会话。`pinSong` 只允许 pin 已通过、且 `source = 'owner'` 的歌曲（页面「此刻循环」只展示 owner 歌曲，pin 访客歌曲会变成不可见状态）：在事务前查 `status === 'approved' && source === 'owner'`，不满足就返回。
 
 - [ ] **Step 2: 在 `/admin` 页加「歌单」段**
 
 - 添加表单：`title`、`artist`、`url`、`note`；`<form action={addSong}>`。
-- 列表：直接查 DB `songs`（approved + pending 都显示，方便站长管理）；每行显示 title/artist/status/pinned + 「设为此刻循环」按钮（`pinSong`）+ 删除按钮（`deleteSong`）。pending 的访客推荐在此也能直接看到并删除；通过/驳回仍走阶段 3 的「待审歌曲」段。
+- 列表：直接查 DB `songs`（approved + pending 都显示，方便站长管理）；每行显示 title/artist/status/pinned + 删除按钮（`deleteSong`）。只有 `status = 'approved'` 且 `source = 'owner'` 的行才显示「设为此刻循环」按钮（`pinSong`）；pending 的访客推荐在此也能直接看到并删除，通过/驳回仍走阶段 3 的「待审歌曲」段。
 - 没有歌曲 → 「歌单还空着」；DB 不可用 → `NOT AVAILABLE`。
 
 - [ ] **Step 3: 补全 `/playlist` 页面**
@@ -441,7 +442,7 @@ Expected: exit 0。
 - [ ] **Step 5: 提交**
 
 ```bash
-git add src/app/'(site)'/playlist/page.tsx src/app/'(site)'/admin/page.tsx src/app/'(site)'/admin/actions.ts
+git add src/app/'(site)'/playlist/page.tsx src/app/'(site)'/admin/page.tsx src/app/'(site)'/admin/actions.ts src/components/site/account-menu.tsx
 git commit -m "feat(phase-4): 歌单此刻循环与站长歌曲维护"
 ```
 
