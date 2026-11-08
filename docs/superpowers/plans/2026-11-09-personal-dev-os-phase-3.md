@@ -222,6 +222,7 @@ export function collectTags(moments: Moment[]): { tag: string; count: number }[]
   - `/life` 页面 `searchParams: Promise<{ tag?: string | string[] }>`；`const raw = ...; const active = readTags(Array.isArray(raw.tag) ? raw.tag : raw.tag ? [raw.tag] : [])`；过滤 `filterByTags(life.moments, active)`。
   - `TagFilter` 渲染全部标签（`collectTags(life.moments)`），每个是 `Link`，点击切换：已选则移除，未选则追加；`aria-pressed`；active 用 `border-data text-data`，其余 `border-rule text-muted-foreground`。URL 用 `URLSearchParams` 生成，保留多个 `tag`。
   - 顶部显示 `N 条 · 标签 AND`；没有匹配时「没有同时带这些标签的动态」+「清除过滤」；数据库不可用时沿用 `Not Available`，不显标签条。
+  - 桌面日志窗口顶部也渲染同一批 chips（最多显示 8 个），窗口内点击是真实 `Link` 到 `/life?tag=...`，不在窗口内做过滤；底部「全部日志 →」。站长在 `/life` 与窗口内都显示「+ 写一条」。
   - 页面底部「← 桌面」。
 - [ ] **Step 2: 动态标签**
   - `MomentTags`：小号等宽 `#tag`，`Link` 到 `/life?tag=...`；放在 `Moment` 下方的 `MomentMeta` 之后；单条页也显示。
@@ -253,25 +254,25 @@ export function collectTags(moments: Moment[]): { tag: string; count: number }[]
 - `<StatusWidget weather={Weather|null} listening={string} reading={string[]} activity={GithubActivity} />`。
 - `<DeskObjects photo={{src,momentId}|null />`。
 
-- [ ] **Step 1: 相册纯函数测试** — 收集所有 `images`，只留 `/media/`，按时间倒序；同一 `src` 去重；无图返回空。`scripts/gallery.test.mjs` 覆盖这四点。
+- [ ] **Step 1: 相册纯函数测试** — 收集所有 `images`，只留 `/media/`，按时间倒序；同一 `src` 去重；无图返回空；每张图带 `momentId/date/place/body/tags`。`scripts/gallery.test.mjs` 覆盖这些点。
 - [ ] **Step 2: 实现 `gallery.ts` 与 `GalleryView`**
-  - 网格 `columns-2 gap-3 sm:columns-3`，每张 `<button>` 包 `<img loading="lazy" decoding="async" className="w-full">`；`break-inside-avoid`；alt 用「{日期} 的照片」。
-  - Lightbox：`role="dialog" aria-modal="true"`，打开时锁 body 滚动、焦点进关闭按钮、Esc 关闭、←/→ 切换、关闭归还焦点；背景 `--desk` 95%；图片 `object-contain`；底部日期 + `查看动态 →`。
-  - 空状态：`还没有照片。` + 「去写一条」链接。
+  - 网格 `columns-2 gap-3 sm:columns-3`，每张 `<button>` 包 `<img loading="lazy" decoding="async" className="w-full">`；`break-inside-avoid`；alt 用「{日期} 的照片」；悬停显示日期 + `momentExcerpt(moment,30)`。
+  - Lightbox：`role="dialog" aria-modal="true"`，打开时锁 body 滚动、焦点进关闭按钮、Esc 关闭、←/→ 切换、关闭归还焦点；背景 `--desk` 95%；图片 `object-contain`；底部日期、地点、正文摘要、标签 + `查看动态 →`。
+  - 空状态：「还没有照片。等第一条带图的动态。」+「去写一条」链接；不放假图。
   - 窗口内 lightbox 用 `absolute inset-0`，独立滚动；`/gallery` 页用 `fixed inset-0`。用 `variant` prop 控制。
 - [ ] **Step 3: `/gallery` 页与窗口内容**
-  - 页面 `connection()` + `getMoments()`；不可用显示 Not Available；可用渲染 `GalleryView`（variant page）。
-  - 首页窗口内容传 `GalleryView`（variant window），最多 24 张。
+  - 页面 `connection()` + `getMoments()`；不可用显示 Not Available；可用渲染 `GalleryView`（variant page，全部图片）。
+  - 首页窗口内容传 `GalleryView`（variant window），按时间取最近 12 张。
 - [ ] **Step 4: 状态组件**
-  - 服务端传真实读数：天气、`portfolio.now.listening`、`reading`、`activity.days.slice(-14)` 求和 + `truncated`。
-  - 收起 280×？：两行；第一行时钟（`Clock withSeconds`）+ 日期；第二行 `杭州 18° 多云 · 14D 提交 N`；展开 360px：天气、在听、在读、14 天提交、`数据更新于 …`。展开按钮 `aria-expanded`。
-  - 明确标注手动字段「手动」；天气/提交不可用显示 `NOT AVAILABLE`；无在线/心跳。
+  - 服务端传真实读数：天气、`portfolio.now.listening`、`reading`、`activity.days.slice(-14)` 求和 + `truncated`、`getObservation()` 的建站天数/动态总数/本月条数、`activity.days` 90 天。
+  - 收起 280×56：两行；第一行时钟（`Clock withSeconds`）+ 日期；第二行 `杭州 18° 多云 · 14D 提交 N`；展开 360px：天气、在听、在读、14 天提交、建站天数、动态总数、本月条数、90 天提交热图（复用 `ActivityHeatmap` 的纯展示部分或简化格点），`数据更新于 …`。展开按钮 `aria-expanded`。
+  - 明确标注手动字段「手动」；天气/提交不可用显示 `NOT AVAILABLE`；`truncated` 时提交数前加 `≥`；无在线/心跳。
   - 客户端 Clock 已有；组件整体可客户端（只接收已算好的 props）。
-  - CSS 右下定位，`bottom: 64px; right: 24px;` 280px，展开 360px；移动端隐藏（移动端有状态卡）。
+  - CSS 右下定位，`bottom: 64px; right: 24px;` 280px，展开 360px；`< 1024px` 折叠为 280×56 窄条放在任务栏上方，移动端变成图标网格下方两列卡片（不隐藏）。
 - [ ] **Step 5: 桌面物件**
-  - `DeskObjects` 客户端：咖啡杯（CSS 杯体 + 热气，点击触发 `z-os:coffee` 自定义事件并短暂冒热气）、拍立得（真实最新照片，`Link` 到 `/gallery`）、磁带（`Link` 到 `/playlist`，标签写 `mixtape`）。
+  - `DeskObjects` 客户端：咖啡杯（CSS 杯体 + 热气，点击触发 `z-os:coffee` 自定义事件并短暂冒热气；若终端已打开，终端打印 ASCII 咖啡）、拍立得（真实最新照片；无图时空白相纸 + `NO PHOTO`，`Link` 到 `/gallery`）、磁带（`Link` 到 `/playlist`，标签固定 `PLAYLIST`，不冒充实时播放）。
   - 桌面杯子左下 `left:24px; bottom:72px`；拍立得右下在状态组件上方；磁带底部中间偏右。窗口层 z-index 低于窗口；物件 `pointer-events` 不挡窗口。
-  - 移动端只保留拍立得小图或全部隐藏；减少动效时热气/浮动停止。
+  - 移动端隐藏；减少动效时热气/浮动/回正停止。
 - [ ] **Step 6: 首页接线**
   - `(site)/page.tsx` 计算 `statusWidget`、`photo`、`galleryImages`；`DesktopHome` 接收并渲染。
   - 状态组件与便签不重叠：便签右上，状态右下，物件左下。
@@ -290,21 +291,21 @@ export function collectTags(moments: Moment[]): { tag: string; count: number }[]
 - `snippets: Snippet[]`，`Snippet = { id; title; language; description; code; source; tags }`
 - `highlightSnippets(): Promise<{ id; html }[]>`（`use cache`，Shiki `css-variables`）
 
-- [ ] **Step 1: 看板纯函数测试** — `进行中`→doing；`维护中`→doing；`已完成`→done；未知→backlog；顺序保持配置顺序；`groupProjects` 三列齐全。
+- [ ] **Step 1: 看板纯函数测试** — `进行中`→doing；`维护中`→doing；`已完成`→done；`待启动`→backlog；未知→doing（开发环境 `console.warn`，生产不猜）；顺序保持配置顺序；`groupProjects` 三列齐全。
 - [ ] **Step 2: 实现 `kanban.ts` 与看板**
   - 三列 `grid-cols-3`（窄窗口单列/横向滚动），列头 `待启动 2`；卡片：项目名、tagline、stack 前 3、状态徽标（维护中 amber）、仓库/访问链接（阻止冒泡）。
   - 点击卡片打开右侧详情面板（`项目名 / 状态 / Why / Feeling / Highlights / Outcomes / Stack / 链接`），关闭按钮；Esc 关闭。
   - 拖拽：HTML5 `draggable`，`onDragStart` 存项目名，`onDrop` 改本地列与顺序；`localStorage` 键 `z-os:kanban`，只存 `{name:{column,order}}`；「重置顺序」按钮。无 JS/键盘：每张卡提供「← / →」按钮移动。
   - 窗口 880×560 内横向滚动；`/projects` 页同样渲染。
-- [ ] **Step 3: 6 条真实片段**
+- [ ] **Step 3: 6 条真实片段（严格按设计文档 §6.6 的选题）**
   - `src/config/snippets.ts` 放 6 条，代码从以下文件原样摘录（由实现者读取并复制，不许改写逻辑）：
-    1. `window-reducer` — `src/components/desktop/window-state.ts` 的 `clampRect`。
-    2. `commit-count` — `src/lib/github-activity.ts` 的 `countCommitsByDay`。
-    3. `moment-id` — `src/lib/moment-core.ts` 的 `parseMomentId`。
-    4. `rate-limit` — `src/lib/rate-limit.ts` 的 `rateLimit`。
-    5. `semantic-search` — `src/app/api/search/route.ts` 的 SQL 片段（`SELECT DISTINCT ON … LIMIT 8`）。
-    6. `tag-parse` — 新增的 `src/lib/tags.ts` 的 `parseTagInput`。
-  - 每条补 `title`/`description`/`tags`/`source`（`文件:行`），`language` 用 shiki 支持名（`ts`/`sql`）。
+    1. `next-connection` — `src/app/(site)/page.tsx` 的 `connection()` + `instant = false` 注释与导出（标题「Next 16：数据库页面别把空数据烤进静态壳」，`tsx`）。
+    2. `clock-store` — 阶段 1 Task 4 创建的 `src/components/desktop/clock-store.ts` 的 `useSyncExternalStore` 时钟（标题「useSyncExternalStore 版站内时钟」，`ts`）。
+    3. `spine-scroll` — `src/app/globals.css` 的 `.life-spine-fill` / `animation-timeline: scroll(...)` 规则（标题「滚动驱动的脊线：CSS animation-timeline」，`css`）。
+    4. `pgvector-hnsw` — `src/db/client.ts` 的 pgvector 列与 HNSW 余弦索引 DDL（标题「Drizzle + pgvector：HNSW 余弦索引」，`sql`）。
+    5. `token-contrast` — `scripts/tokens.test.mjs` 的 `contrast()` / `chroma()` 与阈值断言（标题「设计 token 的 WCAG 护栏」，`js`）。
+    6. `ai-citations` — `src/app/api/chat/route.ts` 的 `data-sources` 引用随流下发片段（标题「AI SDK：把引用来源随流下发」，`ts`）。
+  - 每条补 `title`/`useCase`/`tags`/`code`/`source`（`文件:行`），`language` 用 shiki 支持名（`ts`/`tsx`/`css`/`sql`/`js`）。`useCase` 是一句话用途，不是标题复读。
 - [ ] **Step 4: Shiki 高亮**
   - `snippets-server.ts`：`import { codeToHtml } from "shiki"`；`"use cache"; cacheLife("max"); cacheTag("snippets")`；`codeToHtml(code, { lang, theme: "css-variables" })`；返回 id/html。
   - `globals.css` 定义 `.shiki` 变量：foreground ink、background transparent、comment ink-dim、constant/function phosphor、string ok、keyword/operator warn、number danger、variable/parameter ink-dim。禁止蓝紫。
@@ -321,9 +322,9 @@ export function collectTags(moments: Moment[]): { tag: string; count: number }[]
 **Files:** Create `src/components/about/about-profile.tsx`；Modify `src/app/(site)/about/page.tsx`、`src/app/(site)/page.tsx`、`globals.css`、`package.json`；Test all.
 
 - [ ] **Step 1: 实现档案组件**
-  - 两栏：左 8 行 ASCII `Z` 标（纯文本，不用图片），右 `key: value`；`OS: Z·OS`、`Host: 杭州`、`Uptime: 建站 N 天`、`Shell: zsh (simulated)`、`Stack: Next.js 16 / React 19 / PostgreSQL`、`Notes: N`、`Commits·90D: N`、`AI: 已配置/未配置`、`Theme: 夜班/稿纸/蓝图`（由客户端 settings 读取；服务端渲染默认「夜班」并标注「客户端可切换」避免水合不一致）。
-  - 真实数据：`siteConfig`、`getUptimeSnapshot()`、`getAllNotes().length`、`getGithubActivity()`、`aiEnabled`。
-  - 下方保留现有「现在 / 能力 / 关于本站」三段，全部 token 化；移除旧 `Image` 印章或改成小 `Z` 标。
+  - 顶部两栏：左侧现有 `siteConfig.author.avatar` 的 Z 字标（`next/image` unoptimized）、姓名、状态句、GitHub/邮箱；右侧 `key: value` 档案卡：`OS: Z·OS`、`Host: 杭州`、`Uptime: 建站 N 天`、`Shell: zsh (simulated)`、`Stack: Next.js 16 / React 19 / PostgreSQL`、`Apps: 12`、`Notes: N`、`AI: 已配置/未配置`。
+  - 真实数据：`siteConfig`、`getStatusSentence()`、`getUptimeSnapshot()`、`getAllNotes().length`、`aiEnabled`；不写死版本号。
+  - 下方保留现有「现在 / 能力 / 关于本站」三段，全部 token 化；「现在」标「手动 · 更新于」；移动端单列，档案卡可横向滚动。
 - [ ] **Step 2: 关于窗口** — 首页 `windowContent.about` 渲染 `AboutProfile` + 「打开完整关于页 →」；`/about` 页复用。
 - [ ] **Step 3: 阶段 3 验证**
   - `npm test`（新增 tags/gallery/kanban）、`npm run type-check`、`npm run lint`、`npm run build`。
