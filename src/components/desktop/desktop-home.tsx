@@ -131,7 +131,8 @@ export function DesktopHome({
     app: AppDefinition,
     event: ReactMouseEvent<HTMLElement>
   ) => {
-    // 键盘 Enter/Space 的 click detail 为 0；触屏单击直接打开。
+    // 键盘 Enter 的 click detail 为 0（button 的 Space 也会产生 click，
+    // 链接的 Space 不触发 click，由锚点的 onKeyDown 单独处理）；触屏单击直接打开。
     if (
       event.detail === 0 ||
       pointerTypeRef.current === "touch" ||
@@ -252,6 +253,13 @@ export function DesktopHome({
                 onClick={(event) => {
                   event.preventDefault();
                   onWindowIconClick(app, event);
+                }}
+                onKeyDown={(event) => {
+                  // 原生链接的 Space 不触发 click；与 Enter 一样直接开窗。
+                  if (event.key === " ") {
+                    event.preventDefault();
+                    openAppFromDesktop(app);
+                  }
                 }}
                 onDoubleClick={() => {
                   if (pointerTypeRef.current !== "touch") {
