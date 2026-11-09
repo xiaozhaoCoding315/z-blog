@@ -85,7 +85,7 @@ export function BlogBrowser({
               )}
             >
               {tag}
-              <span className="ml-0.5 opacity-50">{count}</span>
+              <span className="ml-0.5">{count}</span>
             </button>
           ))}
         </div>
@@ -93,8 +93,8 @@ export function BlogBrowser({
 
       {filtered.length === 0 ? (
         <div className="py-16 text-center">
-          <p className="text-sm text-muted-foreground">没有匹配的文章</p>
-          <p className="mt-1 font-mono text-[11px] text-muted-foreground/70">
+          <p className="text-sm text-muted-foreground">没有匹配的笔记</p>
+          <p className="mt-1 font-mono text-[11px] text-muted-foreground">
             换个关键词，或按 ⌘K 用语义搜索
           </p>
         </div>

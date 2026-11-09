@@ -1,172 +1,303 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
-import { FileText, Search, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { launcherApps } from "@/config/apps";
+import { useDesktopRuntime } from "@/components/desktop/desktop-runtime";
+import { useFocusTrap } from "@/components/desktop/focus-trap";
 import {
-  Command,
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-
-export interface SearchablePost {
-  slug: string;
-  title: string;
-  tags: string[];
-}
+  filterLocalApps,
+  filterLocalNotes,
+  filterLocalSnippets,
+  mergeNoteHits,
+  type SearchableNote,
+  type SearchableSnippet,
+} from "./search-local";
 
 interface SemanticItem {
   post_slug: string;
   title: string;
   heading: string | null;
   snippet: string;
-  similarity: number;
 }
 
-export function SearchPalette({ posts }: { posts: SearchablePost[] }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [semantic, setSemantic] = useState<SemanticItem[]>([]);
-  const [searching, setSearching] = useState(false);
-  const router = useRouter();
+interface SemanticState {
+  /** 结果对应的查询词；与当前输入不一致时视为过期，不展示 */
+  query: string;
+  items: SemanticItem[];
+}
 
-  // ⌘K / Ctrl+K 唤起，Esc 关闭由 Dialog 自带
+const SEARCH_DEBOUNCE_MS = 200;
+const EMPTY_SEMANTIC: SemanticItem[] = [];
+
+/**
+ * 只索引启动器里的应用，避免把 admin/write/login 和开发用的 style 暴露给
+ * 访客；注册表只保留 Spotlight 需要的字段。
+ * settings 没有 path，打开的是系统菜单而不是路由。
+ * 空友链时好友页与任务栏/MoreWindow 一起隐藏，避免把访客送进空页。
+ */
+const launcherAppIndex = launcherApps.map(
+  ({ id, title, keywords, path, kind }) => ({
+    id,
+    title,
+    keywords,
+    path,
+    kind,
+  })
+);
+
+/**
+ * Spotlight 面板。
+ *
+ * 组件由 DesktopShell 动态导入，只在打开时加载 cmdk。关闭时不接收
+ * 函数 prop，而是广播 `z-os:close-spotlight`，由外壳卸载本组件。
+ * 本地过滤立即出结果，语义检索 200ms 防抖后合并；接口失败静默降级。
+ */
+export function SearchPalette({
+  notes,
+  snippets,
+  hasFriends,
+}: {
+  notes: SearchableNote[];
+  snippets: SearchableSnippet[];
+  /** 客户端到客户端的布尔值；不把真实友链数据带进动态 chunk。 */
+  hasFriends: boolean;
+}) {
+  const router = useRouter();
+  const runtime = useDesktopRuntime();
+  const [query, setQuery] = useState("");
+  const [semantic, setSemantic] = useState<SemanticState>({
+    query: "",
+    items: [],
+  });
+  const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const appIndex = useMemo(
+    () =>
+      launcherAppIndex.filter((app) => app.id !== "friends" || hasFriends),
+    [hasFriends]
+  );
+
+  const close = useCallback(() => {
+    window.dispatchEvent(new Event("z-os:close-spotlight"));
+  }, []);
+
+  // 焦点限制与 Esc 由共享 hook 负责：输入框自动聚焦、Tab 循环、
+  // 捕获阶段消费 Esc（不波及底下的窗口），卸载时把焦点还给打开者。
+  useFocusTrap(panelRef, true, close);
+
+  // 遮罩打开期间锁住页面滚动，关闭时恢复原值。
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((v) => !v);
-      }
-    }
-    function onOpenEvent() {
-      setOpen(true);
-    }
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("blog:open-search", onOpenEvent);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("blog:open-search", onOpenEvent);
+      document.body.style.overflow = previous;
     };
   }, []);
 
-  // 输入防抖后请求语义搜索；过短查询在回调里重置状态
+  // 200ms 防抖调用语义搜索（只查笔记）。AI 未配置或请求失败时静默降级。
   useEffect(() => {
     const q = query.trim();
-    const delay = q.length >= 2 ? 350 : 0;
-    const timer = setTimeout(() => {
-      if (q.length < 2) {
-        setSemantic([]);
-        setSearching(false);
-        return;
-      }
-      setSearching(true);
-      fetch(`/api/search?q=${encodeURIComponent(q)}`)
-        .then((r) => (r.ok ? r.json() : { items: [] }))
-        .then((d) => setSemantic(Array.isArray(d.items) ? d.items : []))
-        .catch(() => setSemantic([]))
-        .finally(() => setSearching(false));
-    }, delay);
-    return () => clearTimeout(timer);
+    if (!q) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+        signal: controller.signal,
+      })
+        .then((response) => (response.ok ? response.json() : { items: [] }))
+        .then((data) => {
+          setSemantic({
+            query: q,
+            items: Array.isArray(data.items) ? data.items : [],
+          });
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setSemantic({ query: q, items: [] });
+          }
+        });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [query]);
 
-  // 本地关键词匹配（标题/标签）
-  const localMatches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return posts.slice(0, 6);
-    return posts
-      .filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.tags.some((t) => t.toLowerCase().includes(q))
-      )
-      .slice(0, 6);
-  }, [posts, query]);
-
-  const navigate = useCallback(
-    (href: string) => {
-      setOpen(false);
-      setQuery("");
-      router.push(href);
-    },
-    [router]
+  const trimmedQuery = query.trim();
+  const appResults = useMemo(
+    () => filterLocalApps(appIndex, query),
+    [appIndex, query]
   );
+  const localNotes = useMemo(
+    () => filterLocalNotes(notes, query),
+    [notes, query]
+  );
+  const snippetResults = useMemo(
+    () => filterLocalSnippets(snippets, query),
+    [snippets, query]
+  );
+  const semanticItems =
+    semantic.query === trimmedQuery ? semantic.items : EMPTY_SEMANTIC;
+  const noteResults = useMemo(
+    () => mergeNoteHits(localNotes, semanticItems, notes),
+    [localNotes, semanticItems, notes]
+  );
+  const hasResults =
+    appResults.length > 0 ||
+    noteResults.length > 0 ||
+    snippetResults.length > 0;
 
-  return (
-    <CommandDialog
-      open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (!v) setQuery("");
+  const selectApp = (app: (typeof launcherAppIndex)[number]) => {
+    // 先关闭面板，再执行动作；Spotlight 不持有导航状态。
+    close();
+    if (app.id === "settings") {
+      runtime.openSettings();
+      return;
+    }
+    if (app.kind === "route") {
+      if (app.path) router.push(app.path);
+      return;
+    }
+    runtime.windows.openApp(app.id);
+  };
+
+  const selectNote = (slug: string) => {
+    close();
+    router.push(`/notes/${slug}`);
+  };
+
+  const selectSnippet = (id: string) => {
+    close();
+    router.push(`/snippets?s=${encodeURIComponent(id)}`);
+  };
+
+  const askAssistant = () => {
+    close();
+    runtime.openAssistant();
+  };
+
+  return createPortal(
+    <div
+      className="os-spotlight-layer"
+      onPointerDown={(event) => {
+        // 只处理遮罩本身；面板内部的 pointerdown 不关闭。
+        if (event.target === event.currentTarget) close();
       }}
-      className="sm:max-w-xl"
     >
-      <Command shouldFilter={false}>
-        <CommandInput
-          value={query}
-          onValueChange={setQuery}
-          placeholder="搜索文章：关键词或自然语言（语义搜索）…"
-        />
-        <CommandList>
-        <CommandEmpty>
-          {searching ? "语义搜索中…" : "没有找到相关内容"}
-        </CommandEmpty>
+      <Command
+        ref={panelRef}
+        className="os-spotlight"
+        label="搜索"
+        aria-label="搜索"
+        role="dialog"
+        aria-modal="true"
+        shouldFilter={false}
+      >
+        <div className="os-spotlight-input-row">
+          <span className="os-spotlight-prompt" aria-hidden="true">
+            &gt;
+          </span>
+          <Command.Input
+            ref={inputRef}
+            className="os-spotlight-input"
+            value={query}
+            onValueChange={setQuery}
+            placeholder="搜索应用、笔记或代码片段…"
+            autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <kbd className="os-spotlight-kbd">Esc</kbd>
+        </div>
 
-        {semantic.length > 0 && (
-          <CommandGroup heading="语义搜索（向量检索）">
-            {semantic.map((item) => (
-              <CommandItem
-                key={`s-${item.post_slug}`}
-                value={`semantic-${item.post_slug}`}
-                onSelect={() => navigate(`/blog/${item.post_slug}`)}
+        <Command.List label="搜索结果">
+          {appResults.length > 0 && (
+            <Command.Group heading="应用">
+              {appResults.map((app) => (
+                <Command.Item
+                  key={`app:${app.id}`}
+                  value={`app:${app.id}`}
+                  onSelect={() => selectApp(app)}
+                >
+                  <span className="os-spotlight-item-title">{app.title}</span>
+                  <span className="os-spotlight-item-meta">
+                    {app.path ?? app.id}
+                  </span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+          )}
+
+          {noteResults.length > 0 && (
+            <Command.Group heading="笔记">
+              {noteResults.map((note) => (
+                <Command.Item
+                  key={`note:${note.slug}`}
+                  value={`note:${note.slug}`}
+                  onSelect={() => selectNote(note.slug)}
+                >
+                  <span className="os-spotlight-item-title">{note.title}</span>
+                  <span className="os-spotlight-item-meta">
+                    {note.tags.length > 0
+                      ? note.tags.map((tag) => `#${tag}`).join(" ")
+                      : note.detail}
+                  </span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+          )}
+
+          {snippetResults.length > 0 && (
+            <Command.Group heading="代码片段">
+              {snippetResults.map((snippet) => (
+                <Command.Item
+                  key={`snippet:${snippet.id}`}
+                  value={`snippet:${snippet.id}`}
+                  onSelect={() => selectSnippet(snippet.id)}
+                >
+                  <span className="os-spotlight-item-title">
+                    {snippet.title}
+                  </span>
+                  <span className="os-spotlight-item-meta">
+                    {snippet.language}
+                    {snippet.tags.length > 0
+                      ? ` · ${snippet.tags.map((tag) => `#${tag}`).join(" ")}`
+                      : ""}
+                  </span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+          )}
+
+          {!hasResults && (
+            <div className="os-spotlight-empty">
+              <p>没有找到。试试直接问助理。</p>
+              <button
+                type="button"
+                className="os-spotlight-ask"
+                onClick={askAssistant}
+                onKeyDown={(event) => {
+                  // cmdk 根节点会对 Enter 调用 preventDefault，吞掉按钮的
+                  // 原生激活；在按钮上阻断冒泡，让 Enter 仍按按钮语义点击。
+                  if (event.key === "Enter") event.stopPropagation();
+                }}
               >
-                <Sparkles className="size-4 shrink-0 text-primary" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{item.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {item.heading ? `${item.heading} · ` : ""}
-                    {item.snippet}
-                  </p>
-                </div>
-                <span className="ml-2 shrink-0 font-mono text-[10px] text-muted-foreground">
-                  {(item.similarity * 100).toFixed(0)}%
-                </span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
+                打开助理
+              </button>
+            </div>
+          )}
+        </Command.List>
 
-        <CommandGroup heading="文章">
-          {localMatches.map((post) => (
-            <CommandItem
-              key={post.slug}
-              value={`local-${post.slug}`}
-              onSelect={() => navigate(`/blog/${post.slug}`)}
-            >
-              <FileText className="size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{post.title}</p>
-                {post.tags.length > 0 && (
-                  <p className="truncate text-xs text-muted-foreground">
-                    {post.tags.join(" · ")}
-                  </p>
-                )}
-              </div>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-
-        {query.trim().length >= 2 && !searching && semantic.length === 0 && (
-          <p className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground">
-            <Search className="size-3" />
-            语义搜索无结果——AI 可能未启用，或文章尚未同步
-          </p>
-        )}
-        </CommandList>
+        <div className="os-spotlight-foot" aria-hidden="true">
+          <span>↑↓ 选择 · Enter 打开 · Esc 关闭</span>
+          <span>{trimmedQuery ? "本地 + 站内检索" : "⌘K 搜索"}</span>
+        </div>
       </Command>
-    </CommandDialog>
+    </div>,
+    document.body
   );
 }

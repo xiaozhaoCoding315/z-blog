@@ -8,6 +8,26 @@ HOST="${DEPLOY_HOST:-root@60.205.0.224}"
 DIR="${DEPLOY_DIR:-/opt/blog}"
 IMAGE="blog-app:latest"
 
+# 构建前预检：NEXT_PUBLIC_* 在构建期内联，服务器上的 .env 不参与本地构建。
+# 生效值优先取 shell 环境变量，其次取本地 .env；非 https:// 只警告，不中断发布。
+ENV_FILE="$(dirname "$0")/../.env"
+SITE_URL="${NEXT_PUBLIC_SITE_URL:-}"
+if [ -z "$SITE_URL" ] && [ -f "$ENV_FILE" ]; then
+  SITE_URL=$(sed -n 's/^[[:space:]]*NEXT_PUBLIC_SITE_URL[[:space:]]*=[[:space:]]*//p' "$ENV_FILE" \
+    | tail -n 1 | tr -d '\r' \
+    | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+fi
+
+echo "==> 本次构建将内联的站点地址：${SITE_URL:-（未设置）}"
+case "$SITE_URL" in
+  https://*) ;;
+  *)
+    echo "⚠️  警告：NEXT_PUBLIC_SITE_URL 不是 https:// 地址。"
+    echo "    上线门槛要求 HTTPS；该值在构建期内联进镜像，构建完成后无法用运行期环境变量补救。"
+    echo "    请在本地 .env 或命令行设置 https://你的域名 后重新构建。"
+    ;;
+esac
+
 echo "==> [1/5] 本地构建镜像..."
 docker compose build app
 

@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-/** 动态 favicon：渐变 Z 品牌图标（与站点 logo 同源） */
+/** 动态 favicon：夜班桌面底 + 磷光字母 Z（与站点暗色 token 同源） */
 export const size = { width: 64, height: 64 };
 export const contentType = "image/png";
 
@@ -14,9 +14,9 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: 14,
-          background: "linear-gradient(135deg, #7c5cff, #38bdf8)",
-          color: "#fff",
+          borderRadius: 8,
+          background: "#0f0e0c",
+          color: "#d9a05b",
           fontSize: 44,
           fontWeight: 800,
           fontFamily: "sans-serif",

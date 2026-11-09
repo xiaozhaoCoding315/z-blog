@@ -1,8 +1,8 @@
 # 部署指南：从裸服务器到博客上线
 
-目标：在一台云服务器（Ubuntu/Debian）上，用 Docker Compose 把博客跑在 80 端口，数据持久化，更新只需 `git pull`。
+目标：在一台云服务器（Ubuntu/Debian）上，用 Docker Compose 把博客跑在 80 端口，数据持久化。2C2G 服务器永远不在服务器上构建：本地构建后用 `scripts/deploy.sh` 发布，服务器只 `docker load` + `docker compose up -d --no-build`；内存 ≥ 4G 的服务器才可以选择 `git pull` 后直接在服务器构建。
 
-> 部署前请先把仓库推送到 GitHub（建议公开仓库，Giscus 评论依赖它）。
+> 部署前请先把仓库推送到 GitHub（建议公开仓库，便于版本管理与更新）。
 
 ## 0. 端口与资源规划（先看这里）
 
@@ -15,7 +15,8 @@
 | 5432 | 博客数据库 | 只在 compose 内部网络通信，**不对外暴露** |
 
 - 已有项目不受影响：博客的 compose 项目名是 `blog`，容器/网络/卷与其它项目完全隔离。
-- **2G 内存必做**：首次构建 Next.js 较吃内存，先加 2G swap 防止 OOM：
+- **2C2G 不在服务器构建**：本地构建镜像后用 `scripts/deploy.sh` 发布（本地构建 → 上传 → 远端滚动更新），服务器只执行 `docker load` + `docker compose up -d --no-build`。**2C2G 永远不要执行 `--build`**，具体见 §2 方式 B。
+- **仅内存 ≥ 4G 且确实选择服务器直接构建时**：首次构建 Next.js 较吃内存，可先加 2G swap 作为兜底。2C2G 即使加了 swap 也不要执行 `--build`：
 
 ```bash
 sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
@@ -55,7 +56,7 @@ curl -fsSL https://get.docker.com | sh
 
 ## 2. 首次部署
 
-**方式 A：服务器直接构建（内存 ≥ 4G 推荐）**
+**方式 A：服务器直接构建（仅内存 ≥ 4G；2C2G 用方式 B）**
 
 ```bash
 # 用普通用户登录
@@ -78,11 +79,11 @@ DB_PASSWORD=一个强密码
 AI_API_KEY=你的智谱key             # 聊天/摘要（https://open.bigmodel.cn）
 EMBEDDING_API_KEY=你的百炼key       # 向量化（https://bailian.console.aliyun.com）
 SYNC_SECRET=一串随机字符           # openssl rand -hex 16
-NEXT_PUBLIC_SITE_URL=http://服务器IP
+NEXT_PUBLIC_SITE_URL=https://你的域名   # 构建期内联；没有 HTTPS 时登录 cookie 不会带 Secure
 ```
 
 ```bash
-# 构建并启动（首次构建 3-5 分钟；2G 内存请确认已完成上面的 swap 步骤）
+# 构建并启动（仅适用于内存 ≥ 4G；首次构建 3-5 分钟）
 docker compose up -d --build
 
 # 观察启动日志：应看到 entrypoint 自动完成内容同步与向量化
@@ -91,11 +92,13 @@ docker compose logs -f app
 
 **方式 B：本地构建镜像上传（2C2G 服务器必用，实测有效）**
 
-2G 内存即使加了 swap，`next build` 也会把整台服务器拖进 swap 风暴（SSH 失联、其它服务卡死）。**在小内存服务器上永远不要执行 `--build`**，改用：
+2G 内存即使加了 swap，`next build` 也会把整台服务器拖进 swap 风暴（SSH 失联、其它服务卡死）。**在小内存服务器上永远不要执行 `--build`**。日常更新直接跑仓库里的 `scripts/deploy.sh`（本地构建 → 打包源码 → 上传 → 远端滚动更新）；下面的手工命令用于首次部署或排障：
+
+注意：这些命令在**本地开发机**执行。`NEXT_PUBLIC_*` 在构建期内联进产物，**本地构建机的 `.env`（或执行命令时的环境变量）必须已是生产值**：服务器上的 `.env` 只影响运行期，`scripts/deploy.sh` 上传源码时还会 `--exclude=.env`，补不了构建期。先改本地 `.env`，或直接照抄下面的环境变量写法：
 
 ```bash
 # 1. 本地（开发机）构建并导出镜像
-docker compose build app
+NEXT_PUBLIC_SITE_URL=https://你的域名 NEXT_PUBLIC_CONTACT_EMAIL=你的邮箱 docker compose build app
 docker save blog-app:latest | gzip > /tmp/blog-app.tar.gz   # 约 74MB
 
 # 2. 上传（5Mbps 带宽约 2-3 分钟）
@@ -112,13 +115,13 @@ docker compose up -d --no-build
 
 浏览器打开 `http://服务器IP` —— 完成 🎉
 
-容器启动时自动执行：建表（幂等）→ 按 SHA-256 哈希增量同步文章 → 向量化 + AI 摘要。
+容器启动时自动执行：建表（幂等）→ 按 SHA-256 哈希增量同步笔记 → 向量化 + AI 摘要。
 
 **别忘了安全组**：阿里云控制台 → ECS → 安全组 → 入方向添加：自定义 TCP / 80 / 0.0.0.0/0。
 
 ## 3. 日常更新
 
-**方式 A（服务器内存充足）：**
+**方式 A（仅内存 ≥ 4G）：**
 
 ```bash
 cd ~/blog
@@ -127,6 +130,8 @@ docker compose up -d --build
 ```
 
 **方式 B（2C2G，配合上面的本地构建流程）：**
+
+本地 `.env` 要保存生产值（`NEXT_PUBLIC_SITE_URL=https://你的域名`、`NEXT_PUBLIC_CONTACT_EMAIL=你的邮箱`）：这两个变量在构建期内联，服务器上的 `.env` 不参与本地构建，也无法在运行期补救。
 
 ```bash
 # 本地
@@ -138,22 +143,7 @@ cd /opt/blog && git pull && docker load < /tmp/blog-app.tar.gz && docker compose
 
 写了新文章 → 部署新镜像 → 容器重启时入口脚本自动向量化新增文章（未变更的文章按哈希跳过，秒级）。
 
-## 4. Giscus 评论（可选）
-
-1. 博客仓库需为**公开**仓库：Settings → General → Features → 勾选 **Discussions**
-2. 打开 [giscus.app](https://giscus.app/zh-CN)，填入仓库名，选 `Announcements` 分类
-3. 把页面生成的 `data-repo-id` 和 `data-category-id` 填进服务器 `.env`：
-
-```ini
-NEXT_PUBLIC_GISCUS_REPO=你的用户名/你的仓库
-NEXT_PUBLIC_GISCUS_REPO_ID=R_xxxxxxx
-NEXT_PUBLIC_GISCUS_CATEGORY=Announcements
-NEXT_PUBLIC_GISCUS_CATEGORY_ID=DIC_xxxxxxx
-```
-
-4. `docker compose up -d --build` 后文章页出现评论区。
-
-## 5. 数据备份
+## 4. 数据备份
 
 ```bash
 # 手动备份（建议加到 crontab 每日执行）
@@ -163,7 +153,7 @@ docker compose exec db pg_dump -U blog blog | gzip > ~/backup_$(date +%F).sql.gz
 gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog blog
 ```
 
-## 6. 以后买了域名怎么加 HTTPS
+## 5. 以后买了域名怎么加 HTTPS
 
 1. 域名 A 记录指向服务器 IP（国内服务器需备案）
 2. 在 compose 中加一个 Caddy 服务并删掉 app 的 80 端口映射：
@@ -190,11 +180,40 @@ gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog bl
 }
 ```
 
-3. `.env` 中把 `NEXT_PUBLIC_SITE_URL` 改为 `https://你的域名.com`，`docker compose up -d --build`。
+3. `.env` 中把 `NEXT_PUBLIC_SITE_URL` 改为 `https://你的域名.com`，本地重新构建并用 `scripts/deploy.sh` 发布。仅内存 ≥ 4G 且选择服务器直接构建的，可在服务器执行 `docker compose up -d --build`；2C2G 服务器永远不要在服务器上构建。
+
+## 6. 上线前检查清单
+
+上线前逐条确认，任何一条没验证都不算部署完成：
+
+1. **HTTPS 与 `NEXT_PUBLIC_SITE_URL=https://…`**
+   站点必须通过 HTTPS 访问。`NEXT_PUBLIC_SITE_URL` 与 `NEXT_PUBLIC_CONTACT_EMAIL` 都在**构建期**内联进产物：**本地构建机的 `.env`（或执行命令时的环境变量）**必须已有 `NEXT_PUBLIC_SITE_URL=https://你的域名` 与 `NEXT_PUBLIC_CONTACT_EMAIL=你的邮箱`；服务器上的 `.env` 只影响运行期，不能补救构建期内联。改完必须重新构建并发布：2C2G 在本地重新构建后用 `scripts/deploy.sh` 发布（它会在构建前回显并检查要内联的站点地址）；仅内存 ≥ 4G 且选择服务器直接构建的，可在服务器执行 `docker compose up -d --build`。只 `restart` 或只改运行期环境变量都不生效；2C2G 永远不要在服务器上构建。没有 HTTPS 时登录 cookie 不会带 `Secure`。
+2. **反向代理写入可信 `X-Forwarded-For`**
+   邮箱验证码、站内搜索与 AI 问答按客户端 IP 限频；评论按登录用户限频。应用只读 `X-Forwarded-For` 的**第一个值**，所以代理必须**覆盖写入**，不能追加：`$proxy_add_x_forwarded_for` 会把访客自带的 XFF 留在第一位，等于让访客自报 IP，限频可被伪造 IP 绕过。若代理完全不写 XFF，所有访客会共用代理 IP，限频会误伤。
+
+   - **单层 nginx 直接反代**：`proxy_set_header X-Forwarded-For $remote_addr;`
+   - **nginx 前面还有 CDN / 负载均衡**：先用 `real_ip` 模块只信任实际回源网段（禁止 `0.0.0.0/0`），再同样覆盖写入：
+
+     ```nginx
+     # http / server 块：只信任 CDN 或负载均衡的回源网段
+     set_real_ip_from <回源网段>;
+     real_ip_header X-Forwarded-For;
+     real_ip_recursive on;
+
+     # location 块：覆盖写入，不要用 $proxy_add_x_forwarded_for
+     proxy_set_header X-Forwarded-For $remote_addr;
+     ```
+   - **Caddy**：直连反代由 Caddy 写入 XFF；前面还有 CDN / 负载均衡时，配置 `trusted_proxies` 只信任回源地址。
+3. **真实 SMTP 发信测试**
+   用 QQ 邮箱授权码（不是登录密码）分别验证 465 与 587 端口，从前端走一遍邮箱验证码登录，确认验证码能实际收到；收不到时先查垃圾箱与 `docker compose logs app` 里的 SMTP 报错。
+4. **`uploads` 命名卷可写、重启后图片仍在**
+   发布一条图文动态，确认图片能正常显示；`docker compose restart app` 后再次访问，图片仍在。`docker volume inspect blog_uploads` 应能看到挂载点，重建容器不会清空卷。
+5. **2C2G 服务器不构建镜像**
+   始终在本地构建并用 `scripts/deploy.sh` 上传，服务器只 `docker load` + `docker compose up -d --no-build`。上线前清理服务器上此前构建遗留的 Docker 构建缓存（当时服务器剩余 16G，缓存约 7.7G）：`docker system df` 查看占用，`docker builder prune -af` 清理后再次确认磁盘余量。
 
 ## 常见问题
 
-**Q：改了 `.env` 不生效？** 环境变量在构建期（NEXT_PUBLIC_*）和运行期都会用到，改完执行 `docker compose up -d --build`。
+**Q：改了 `.env` 不生效？** 环境变量在构建期（NEXT_PUBLIC_*）和运行期都会用到：本地重新构建并用 `scripts/deploy.sh` 发布；2C2G 服务器只执行 `docker compose up -d --no-build`（禁止在服务器构建）；内存 ≥ 4G 且选择服务器直接构建的，按 §2/§3 方式 A 重新构建。
 
 **Q：AI 问答报「AI 功能未启用」？** 检查 `.env` 的 `AI_API_KEY`（智谱）和 `EMBEDDING_API_KEY`（百炼），然后 `docker compose restart app`。
 
@@ -202,4 +221,4 @@ gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog bl
 
 **Q：80 端口被占用？** `lsof -i :80` 查占用（常见是 nginx/apache），停掉或改 compose 中 `app.ports` 为 `"8080:3000"`（记得安全组同步放行）。
 
-**Q：构建时内存不足被 OOM kill？** 确认 swap 已开启（`free -h`）；仍失败可在本地构建镜像推送到镜像仓库，服务器只 `docker pull`。
+**Q：构建时内存不足被 OOM kill？** 2C2G 不要在服务器构建，直接在本地构建并用 `scripts/deploy.sh` 发布（或手工 `docker save` → 服务器 `docker load` + `docker compose up -d --no-build`）。仅内存 ≥ 4G 且选择服务器直接构建的，先确认 swap 已开启（`free -h`）；仍失败则改为本地构建。

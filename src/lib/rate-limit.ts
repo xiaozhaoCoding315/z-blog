@@ -4,8 +4,14 @@
  * 模块级变量在副本间不共享，而 globalThis 在同进程内唯一。
  */
 
+interface RateLimitBucket {
+  times: number[];
+  /** 该桶自己的窗口，清理时按它算过期，而不是统一用某个固定值 */
+  windowMs: number;
+}
+
 interface RateLimitState {
-  buckets: Map<string, number[]>;
+  buckets: Map<string, RateLimitBucket>;
   cleanup?: ReturnType<typeof setInterval>;
 }
 
@@ -33,13 +39,15 @@ export function rateLimit(
   windowMs: number
 ): boolean {
   const now = Date.now();
-  const list = (buckets.get(key) ?? []).filter((t) => now - t < windowMs);
-  if (list.length >= limit) {
-    buckets.set(key, list);
+  const times = (buckets.get(key)?.times ?? []).filter(
+    (t) => now - t < windowMs
+  );
+  if (times.length >= limit) {
+    buckets.set(key, { times, windowMs });
     return false;
   }
-  list.push(now);
-  buckets.set(key, list);
+  times.push(now);
+  buckets.set(key, { times, windowMs });
   return true;
 }
 
@@ -47,10 +55,10 @@ export function rateLimit(
 if (typeof setInterval !== "undefined" && !state.cleanup) {
   state.cleanup = setInterval(() => {
     const now = Date.now();
-    for (const [key, list] of buckets) {
-      const alive = list.filter((t) => now - t < 10 * 60_000);
+    for (const [key, bucket] of buckets) {
+      const alive = bucket.times.filter((t) => now - t < bucket.windowMs);
       if (alive.length === 0) buckets.delete(key);
-      else buckets.set(key, alive);
+      else buckets.set(key, { times: alive, windowMs: bucket.windowMs });
     }
   }, 10 * 60_000);
   // Node 环境下不阻止进程退出

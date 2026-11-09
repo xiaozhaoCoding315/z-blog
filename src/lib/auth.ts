@@ -142,16 +142,28 @@ export async function verifySession(
  * 两者都没有时返回 null，登录功能整体不可用（而不是用一个弱密钥签名）。
  */
 export function sessionSecret(): string | null {
-  return process.env.AUTH_SECRET ?? process.env.SYNC_SECRET ?? null;
+  // 用 || 而不是 ??：compose 会把未填的 AUTH_SECRET 定义成空字符串，
+  // 空串在 ?? 下算「有值」，文档里写的 SYNC_SECRET 回退就永远不会发生
+  return (
+    process.env.AUTH_SECRET?.trim() ||
+    process.env.SYNC_SECRET?.trim() ||
+    null
+  );
 }
 
 /**
  * 只接受站内相对路径，防止 `next` 参数被当成开放重定向
- * （`//evil.com` 和 `https://evil.com` 都是常见绕过手法）。
+ * （`//evil.com`、`https://evil.com` 都是常见绕过手法；
+ * `/\evil.com` 也会被 URL 规范化成 `https://evil.com/`，所以反斜杠一律拒绝）。
  */
 export function sanitizeNext(raw: string | null): string {
-  if (!raw) return "/interview";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/interview";
+  if (!raw) return "/";
+  // 反斜杠和控制字符都是 URL 解析器的坑，出现任何一个都不放行
+  const unsafe = [...raw].some((ch) => {
+    const code = ch.charCodeAt(0);
+    return ch === "\\" || code < 0x20 || code === 0x7f;
+  });
+  if (!raw.startsWith("/") || raw.startsWith("//") || unsafe) return "/";
   return raw;
 }
 

@@ -12,9 +12,13 @@ export interface Project {
   stack: string[];
   link?: string;
   repo?: string;
-  status: "进行中" | "已完成" | "维护中";
+  status: "进行中" | "已完成" | "维护中" | "待启动";
   role?: string;
   context?: string;
+  /** 为什么做这个项目，一句话 */
+  why?: string;
+  /** 做完或在做时最真实的感受 */
+  feeling?: string;
   outcomes?: string[];
   screenshot?: string;
 }
@@ -28,6 +32,8 @@ export const projects: Project[] = [
       "可自托管的开发者 AI 工作台。每条结论都附证据（文件:行号 真实性校验），改动先算清影响面，bug 在 Docker 沙箱中先复现再修复；失败测试、最小补丁、复跑结果与 diff 全程可见，经人工批准后写入仓库。",
     role: "架构设计与全栈实现",
     context: "面向真实开发流程的桌面级 Agent，需要在文件系统、终端、Git 和多模型之间保持状态一致。",
+    why: "想让 Agent 的每条结论都能被验证，而不是听起来对。",
+    feeling: "最满意的不是它能改代码，是失败时知道为什么失败。",
     highlights: [
       "证据化回答：引用的 文件:行号 逐条校验，标记「沙箱实测」",
       "红-绿修复闭环：失败测试复现 bug → 最小补丁 → 全量复跑 → 人工批准",
@@ -57,6 +63,8 @@ export const projects: Project[] = [
     name: "本博客",
     role: "全栈工程师与站点维护者",
     context: "从静态博客演进为可交互技术内容平台，同时保持构建速度、运行稳定性和 SEO 可维护性。",
+    why: "想有一个自己的地方记录生活和学习，而不是被平台的时间线推着走。",
+    feeling: "从技术博客改成个人空间后，发布压力小了，反而更愿意写。",
     description:
       "一个真实运行的个人技术工作站：MDX 内容主编、pgvector 语义搜索、RAG 问答助手，Docker 一键部署。",
     stack: ["Next.js", "PostgreSQL", "pgvector", "AI SDK", "Docker"],
@@ -69,6 +77,8 @@ export const projects: Project[] = [
     role: "Agent 编排、检索与容错设计",
     context:
       "一次旅行规划要同时权衡天气、交通、住宿、景点四类信息，单次 LLM 生成既容易漏项，也无法在数据缺失时优雅降级。",
+    why: "一次旅行要同时权衡天气、交通、住宿、景点，单次生成总会漏。",
+    feeling: "评审 Agent 驳回重跑的那几轮，比我手动改行程更接近真实决策。",
     description:
       "多智能体旅行规划系统：四个信息采集 Agent 并行跑，结果交给行程编排与评审 Agent，评审不通过就带着意见重跑，最多三轮；规划过程通过 WebSocket 实时推给前端，并在地图上画出路线。",
     highlights: [

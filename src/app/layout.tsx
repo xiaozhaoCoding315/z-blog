@@ -46,14 +46,23 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0d0d12" },
-    { media: "(prefers-color-scheme: light)", color: "#f8f8fa" },
-  ],
+  themeColor: "#0f0e0c",
 };
 
+const PRESET_SCRIPT = `(() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem("z-os:settings") || "{}");
+    const preset = saved.preset === "paper" || saved.preset === "blueprint" ? saved.preset : "night";
+    const root = document.documentElement;
+    root.dataset.wallpaper = preset;
+    root.classList.toggle("dark", preset !== "paper");
+    root.dataset.deskObjects = saved.objects === false ? "off" : "on";
+    root.style.colorScheme = preset === "paper" ? "light" : "dark";
+  } catch {}
+})();`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  // 站点级结构化数据：让搜索引擎知道这是一个人在持续维护的技术博客
+  // 站点级结构化数据：让搜索引擎知道这是一个人在持续维护的个人空间
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -67,32 +76,25 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       url: siteConfig.url,
       sameAs: [siteConfig.links.github],
     },
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${siteConfig.url}/blog?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
   };
 
   return (
     <html
       lang="zh-CN"
       suppressHydrationWarning
+      data-wallpaper="night"
       className={cn(
-        "h-full antialiased",
+        // 夜班是默认：把 dark 写进服务端 HTML，关掉 JS 也还是夜班
+        "dark h-full antialiased",
         geistSans.variable,
         geistMono.variable
       )}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: PRESET_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        <ThemeProvider>{children}</ThemeProvider>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

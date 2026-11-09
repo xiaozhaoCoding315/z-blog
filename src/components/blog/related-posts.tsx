@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 
 interface RelatedItem {
   slug: string;
@@ -49,8 +48,8 @@ export function RelatedPosts({
       <h2 className="mb-4 inline-flex items-center gap-2 font-heading text-lg font-bold tracking-tight">
         相关文章
         {upgraded && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-normal text-primary">
-            <Sparkles className="size-3" /> 向量推荐
+          <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-normal text-primary">
+            向量推荐
           </span>
         )}
       </h2>
@@ -58,7 +57,7 @@ export function RelatedPosts({
         {items.map((item) => (
           <Link
             key={item.slug}
-            href={`/blog/${item.slug}`}
+            href={`/notes/${item.slug}`}
             className="card-surface-hover rounded-lg p-4 text-sm font-medium leading-snug"
           >
             {item.title}

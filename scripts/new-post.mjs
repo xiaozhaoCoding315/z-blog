@@ -1,6 +1,6 @@
 /**
- * 新文章脚手架：npm run new -- "文章标题" [slug]
- * 生成 content/posts/<slug>.mdx 模板（date 自动填今天），写完 npm run deploy 发布。
+ * 新笔记脚手架：npm run new -- "笔记标题" [slug]
+ * 生成 content/notes/<slug>.mdx 模板（date 自动填今天），写完 npm run deploy 发布。
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -9,20 +9,21 @@ import readline from "node:readline/promises";
 const [, , titleArg, slugArg] = process.argv;
 
 if (!titleArg) {
-  console.log('用法：npm run new -- "文章标题" [英文slug]');
+  console.log('用法：npm run new -- "笔记标题" [英文slug]');
   console.log('示例：npm run new -- "我的第一篇随笔" my-first-post');
   process.exit(0);
 }
 
 const today = new Date().toISOString().slice(0, 10);
+// slug 规则必须与 src/lib/content-core.ts 的 isValidNoteSlug 保持一致，否则会生成列表可见但详情 404 的笔记
 const slug =
-  slugArg && /^[a-z0-9-]+$/.test(slugArg)
+  slugArg && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slugArg)
     ? slugArg
     : `post-${today}-${Math.random().toString(36).slice(2, 6)}`;
 
-const filepath = path.join(process.cwd(), "content", "posts", `${slug}.mdx`);
+const filepath = path.join(process.cwd(), "content", "notes", `${slug}.mdx`);
 if (fs.existsSync(filepath)) {
-  console.error(`已存在同名文章：${filepath}`);
+  console.error(`已存在同名笔记：${filepath}`);
   process.exit(1);
 }
 
@@ -58,7 +59,7 @@ console.log(hello); // 这一行会高亮
 
 fs.mkdirSync(path.dirname(filepath), { recursive: true });
 fs.writeFileSync(filepath, template, "utf-8");
-console.log(`✅ 已创建：content/posts/${slug}.mdx`);
-console.log(`   本地预览：npm run dev 后打开 http://localhost:3000/blog/${slug}`);
+console.log(`✅ 已创建：content/notes/${slug}.mdx`);
+console.log(`   本地预览：npm run dev 后打开 http://localhost:3000/notes/${slug}`);
 console.log("   发布上线：npm run deploy");
 void readline;

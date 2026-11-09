@@ -63,10 +63,10 @@ export function LikeButton({ slug }: { slug: string }) {
       onClick={like}
       className={cn(
         "relative inline-flex items-center gap-1.5 text-sm transition-colors",
-        liked ? "text-rose-400" : "text-muted-foreground hover:text-rose-400"
+        liked ? "text-danger" : "text-muted-foreground hover:text-danger"
       )}
     >
-      <Heart className={cn("size-4 transition-transform", liked && "fill-rose-400 scale-110")} />
+      <Heart className={cn("size-4 transition-transform", liked && "fill-danger scale-110")} />
       {count !== null && <span>{count}</span>}
       <AnimatePresence>
         {burst && (
@@ -83,9 +83,9 @@ export function LikeButton({ slug }: { slug: string }) {
                 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.7, ease: "easeOut" }}
-                className="pointer-events-none absolute left-1 top-0 text-rose-400"
+                className="pointer-events-none absolute left-1 top-0 text-danger"
               >
-                <Heart className="size-3 fill-rose-400" />
+                <Heart className="size-3 fill-danger" />
               </motion.span>
             ))}
           </>

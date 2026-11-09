@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { List } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useScrollRoot } from "@/components/desktop/app-frame";
 
 export interface TocItem {
   level: 2 | 3;
@@ -15,6 +16,7 @@ export interface TocItem {
  */
 export function TableOfContents({ items }: { items: TocItem[] }) {
   const [activeId, setActiveId] = useState<string>("");
+  const scrollRoot = useScrollRoot();
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -32,11 +34,15 @@ export function TableOfContents({ items }: { items: TocItem[] }) {
           }
         }
       },
-      { rootMargin: "-80px 0px -70% 0px", threshold: 0 }
+      {
+        root: scrollRoot?.current ?? null,
+        rootMargin: "-80px 0px -70% 0px",
+        threshold: 0,
+      }
     );
     headings.forEach((h) => observer.observe(h));
     return () => observer.disconnect();
-  }, [items]);
+  }, [items, scrollRoot]);
 
   if (items.length === 0) return null;
 
