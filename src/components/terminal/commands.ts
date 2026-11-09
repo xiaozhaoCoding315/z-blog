@@ -32,6 +32,8 @@ export interface TerminalSnippet {
   id: string;
   title: string;
   language: string;
+  /** Spotlight 本地过滤用；配置层传入 tags，缺省视为空数组 */
+  tags?: string[];
 }
 
 export interface TerminalContext {

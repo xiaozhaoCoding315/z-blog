@@ -16,8 +16,10 @@ import { useDesktopRuntime } from "@/components/desktop/desktop-runtime";
 import {
   filterLocalApps,
   filterLocalNotes,
+  filterLocalSnippets,
   mergeNoteHits,
   type SearchableNote,
+  type SearchableSnippet,
 } from "./search-local";
 
 interface SemanticItem {
@@ -56,7 +58,13 @@ const appIndex = launcherApps.map(({ id, title, keywords, path, kind }) => ({
  * 函数 prop，而是广播 `z-os:close-spotlight`，由外壳卸载本组件。
  * 本地过滤立即出结果，语义检索 200ms 防抖后合并；接口失败静默降级。
  */
-export function SearchPalette({ notes }: { notes: SearchableNote[] }) {
+export function SearchPalette({
+  notes,
+  snippets,
+}: {
+  notes: SearchableNote[];
+  snippets: SearchableSnippet[];
+}) {
   const router = useRouter();
   const runtime = useDesktopRuntime();
   const [query, setQuery] = useState("");
@@ -136,13 +144,20 @@ export function SearchPalette({ notes }: { notes: SearchableNote[] }) {
     () => filterLocalNotes(notes, query),
     [notes, query]
   );
+  const snippetResults = useMemo(
+    () => filterLocalSnippets(snippets, query),
+    [snippets, query]
+  );
   const semanticItems =
     semantic.query === trimmedQuery ? semantic.items : EMPTY_SEMANTIC;
   const noteResults = useMemo(
     () => mergeNoteHits(localNotes, semanticItems, notes),
     [localNotes, semanticItems, notes]
   );
-  const hasResults = appResults.length > 0 || noteResults.length > 0;
+  const hasResults =
+    appResults.length > 0 ||
+    noteResults.length > 0 ||
+    snippetResults.length > 0;
 
   const selectApp = (app: (typeof appIndex)[number]) => {
     // 先关闭面板，再执行动作；Spotlight 不持有导航状态。
@@ -161,6 +176,11 @@ export function SearchPalette({ notes }: { notes: SearchableNote[] }) {
   const selectNote = (slug: string) => {
     close();
     router.push(`/notes/${slug}`);
+  };
+
+  const selectSnippet = (id: string) => {
+    close();
+    router.push(`/snippets?s=${encodeURIComponent(id)}`);
   };
 
   const askAssistant = () => {
@@ -270,10 +290,28 @@ export function SearchPalette({ notes }: { notes: SearchableNote[] }) {
             </Command.Group>
           )}
 
-          {/*
-           * 代码片段组：阶段 3 才引入数据模型，当前没有片段就整组不渲染，
-           * 不用占位行假装有内容。
-           */}
+          {snippetResults.length > 0 && (
+            <Command.Group heading="代码片段">
+              {snippetResults.map((snippet) => (
+                <Command.Item
+                  key={`snippet:${snippet.id}`}
+                  value={`snippet:${snippet.id}`}
+                  onSelect={() => selectSnippet(snippet.id)}
+                >
+                  <span className="os-spotlight-item-title">
+                    {snippet.title}
+                  </span>
+                  <span className="os-spotlight-item-meta">
+                    {snippet.language}
+                    {snippet.tags.length > 0
+                      ? ` · ${snippet.tags.map((tag) => `#${tag}`).join(" ")}`
+                      : ""}
+                  </span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+          )}
+
           {!hasResults && (
             <div className="os-spotlight-empty">
               <p>没有找到。试试直接问助理。</p>

@@ -3045,3 +3045,674 @@ html {
     }
   }
 }
+
+/* ============ Personal Dev OS 项目看板 ============ */
+@layer components {
+  .os-kanban {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .os-kanban--window {
+    min-height: 100%;
+    padding: 18px 20px 22px;
+  }
+
+  .os-kanban-toolbar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .os-kanban-reset {
+    padding: 4px 10px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    cursor: pointer;
+    transition:
+      color 150ms ease,
+      border-color 150ms ease;
+  }
+
+  .os-kanban-reset:hover,
+  .os-kanban-reset:focus-visible {
+    border-color: var(--phosphor);
+    color: var(--ink);
+  }
+
+  /*
+   * 三列固定最小宽度：窄窗口 / 手机上由这一层横向滚动，
+   * 不让整页出现横向溢出（overscroll 限制在列容器内）。
+   */
+  .os-kanban-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(230px, 1fr));
+    align-items: start;
+    gap: 10px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: 4px;
+    scrollbar-color: var(--rule) transparent;
+    scrollbar-width: thin;
+  }
+
+  .os-kanban-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 140px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--window-2) 45%, transparent);
+    transition:
+      border-color 150ms ease,
+      background 150ms ease;
+  }
+
+  .os-kanban-column[data-over="true"] {
+    border-color: color-mix(in srgb, var(--phosphor) 60%, var(--rule));
+    background: color-mix(in srgb, var(--phosphor) 7%, var(--window-2));
+  }
+
+  .os-kanban-column-head {
+    display: flex;
+    flex: none;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .os-kanban-column-head h2 {
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .os-kanban-count {
+    color: var(--phosphor);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .os-kanban-column-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 96px;
+    padding: 8px;
+  }
+
+  .os-kanban-empty {
+    margin: auto;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    opacity: 0.7;
+  }
+
+  .os-kanban-card {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--window);
+    transition:
+      border-color 150ms ease,
+      opacity 150ms ease,
+      transform 150ms ease;
+  }
+
+  .os-kanban-card:hover {
+    border-color: color-mix(in srgb, var(--phosphor) 40%, var(--rule));
+  }
+
+  .os-kanban-card[data-selected="true"] {
+    border-color: var(--phosphor);
+  }
+
+  .os-kanban-card[data-dragging="true"] {
+    opacity: 0.45;
+  }
+
+  .os-kanban-card-open {
+    display: block;
+    width: 100%;
+    padding: 9px 10px 7px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .os-kanban-card-name {
+    font-family: var(--font-heading);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .os-kanban-card-tagline {
+    margin-top: 2px;
+    color: var(--primary);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .os-kanban-card-stack {
+    margin-top: 4px;
+    overflow: hidden;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .os-kanban-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 0 10px 8px;
+  }
+
+  .os-kanban-status {
+    flex: none;
+    padding: 1px 6px;
+    border: 1px solid var(--rule);
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+
+  .os-kanban-status[data-tone="doing"] {
+    border-color: color-mix(in srgb, var(--phosphor) 45%, var(--rule));
+    color: var(--phosphor);
+  }
+
+  /* 维护中用琥珀色，和「进行中」的磷光橙区分开。 */
+  .os-kanban-status[data-tone="warn"] {
+    border-color: color-mix(in srgb, var(--warn) 55%, var(--rule));
+    color: var(--warn);
+  }
+
+  .os-kanban-status[data-tone="done"] {
+    border-color: color-mix(in srgb, var(--ok) 45%, var(--rule));
+    color: var(--ok);
+  }
+
+  .os-kanban-card-links {
+    display: flex;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+  }
+
+  .os-kanban-card-links a {
+    color: var(--ink-dim);
+  }
+
+  .os-kanban-card-links a:hover,
+  .os-kanban-card-links a:focus-visible {
+    color: var(--phosphor);
+  }
+
+  .os-kanban-move {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+  }
+
+  .os-kanban-move button {
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink-dim);
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .os-kanban-move button:hover:not(:disabled),
+  .os-kanban-move button:focus-visible:not(:disabled) {
+    border-color: var(--phosphor);
+    color: var(--ink);
+  }
+
+  .os-kanban-move button:disabled {
+    cursor: default;
+    opacity: 0.3;
+  }
+
+  /* ---------- 右侧详情抽屉 ---------- */
+  .os-kanban-detail {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(320px, 100%);
+    max-height: 100%;
+    padding: 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--rule);
+    background: var(--window);
+    box-shadow: -16px 0 36px -24px color-mix(in srgb, #000 45%, transparent);
+    scrollbar-color: var(--rule) transparent;
+    scrollbar-width: thin;
+  }
+
+  .os-kanban-detail-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .os-kanban-detail-head h2 {
+    margin-top: 3px;
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .os-kanban-detail-close {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink-dim);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .os-kanban-detail-close:hover,
+  .os-kanban-detail-close:focus-visible {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  .os-kanban-detail-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .os-kanban-detail-role {
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  .os-kanban-detail-description {
+    color: var(--muted-foreground);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .os-kanban-detail section {
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .os-kanban-detail section h3 {
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .os-kanban-detail section p,
+  .os-kanban-detail section li {
+    margin-top: 5px;
+    color: var(--muted-foreground);
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  .os-kanban-detail section ul {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    list-style: none;
+  }
+
+  .os-kanban-detail section li::before {
+    content: "— ";
+    color: var(--phosphor);
+  }
+
+  .os-kanban-detail-stack {
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .os-kanban-detail-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 6px;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .os-kanban-detail-links a {
+    color: var(--phosphor);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .os-kanban-reset,
+    .os-kanban-column,
+    .os-kanban-card {
+      transition: none;
+    }
+  }
+}
+
+/* ============ Personal Dev OS 代码片段 ============ */
+@layer components {
+  /*
+   * Shiki 的 css-variables 主题在这组变量上取色。
+   * 只用站内 ink / phosphor / ok / warn / danger，不引入蓝紫。
+   */
+  .shiki {
+    --shiki-foreground: var(--ink);
+    --shiki-background: transparent;
+    --shiki-token-comment: var(--ink-dim);
+    --shiki-token-constant: var(--phosphor);
+    --shiki-token-function: var(--phosphor);
+    --shiki-token-string: var(--ok);
+    --shiki-token-string-expression: var(--ok);
+    --shiki-token-keyword: var(--warn);
+    --shiki-token-operator: var(--warn);
+    --shiki-token-number: var(--danger);
+    --shiki-token-variable: var(--ink-dim);
+    --shiki-token-parameter: var(--ink-dim);
+    --shiki-token-punctuation: var(--ink-dim);
+    --shiki-token-link: var(--phosphor);
+  }
+
+  .os-snippets {
+    min-width: 0;
+  }
+
+  .os-snippets-empty {
+    padding: 24px 0;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .os-snippets-list {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: 8px;
+    scrollbar-color: var(--rule) transparent;
+    scrollbar-width: thin;
+  }
+
+  .os-snippet-tab {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink-dim);
+    text-align: left;
+    cursor: pointer;
+    transition:
+      color 150ms ease,
+      border-color 150ms ease,
+      background 150ms ease;
+  }
+
+  .os-snippet-tab:hover,
+  .os-snippet-tab:focus-visible {
+    border-color: color-mix(in srgb, var(--phosphor) 45%, var(--rule));
+    color: var(--ink);
+  }
+
+  .os-snippet-tab[data-active="true"] {
+    border-color: var(--phosphor);
+    background: var(--window-2);
+    color: var(--ink);
+  }
+
+  .os-snippet-tab-title {
+    font-family: var(--font-heading);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .os-snippet-tab-meta {
+    display: flex;
+    gap: 8px;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .os-snippet-tab-tags {
+    color: var(--muted-foreground);
+  }
+
+  .os-snippet-panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--window-2) 55%, transparent);
+  }
+
+  .os-snippet-head {
+    display: flex;
+    flex: none;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .os-snippet-heading {
+    min-width: 0;
+  }
+
+  .os-snippet-heading h2 {
+    margin-top: 2px;
+    font-family: var(--font-heading);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .os-snippet-description {
+    max-width: 62ch;
+    margin-top: 4px;
+    color: var(--muted-foreground);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .os-snippet-copy {
+    flex: none;
+    padding: 5px 10px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition:
+      color 150ms ease,
+      border-color 150ms ease;
+  }
+
+  .os-snippet-copy:hover,
+  .os-snippet-copy:focus-visible {
+    border-color: var(--phosphor);
+    color: var(--ink);
+  }
+
+  .os-snippet-copy[data-state="copied"] {
+    border-color: color-mix(in srgb, var(--ok) 55%, var(--rule));
+    color: var(--ok);
+  }
+
+  .os-snippet-copy[data-state="failed"] {
+    border-color: color-mix(in srgb, var(--danger) 55%, var(--rule));
+    color: var(--danger);
+  }
+
+  .os-snippet-code {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--rule) transparent;
+    scrollbar-width: thin;
+  }
+
+  .os-snippet-code .shiki {
+    display: block;
+    margin: 0;
+    padding: 14px 16px;
+    overflow-x: auto;
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.75;
+    tab-size: 2;
+  }
+
+  .os-snippet-code .shiki code {
+    display: block;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .os-snippet-code pre:not(.shiki) {
+    margin: 0;
+    padding: 14px 16px;
+    overflow-x: auto;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.75;
+  }
+
+  .os-snippet-code pre:not(.shiki) code {
+    display: block;
+    width: max-content;
+    min-width: 100%;
+    white-space: pre;
+  }
+
+  /* 页面版：单栏（列表行在上，代码面板在下）。 */
+  .os-snippets[data-variant="page"] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .os-snippets[data-variant="page"] .os-snippet-panel {
+    max-height: min(70vh, 640px);
+    margin-top: 6px;
+  }
+
+  /* 窗口版：两栏，列表独立滚动，代码区填满剩余高度。 */
+  .os-snippets[data-variant="window"] {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    padding: 18px 20px 22px;
+  }
+
+  .os-snippets[data-variant="window"] .os-snippets-list {
+    flex-direction: column;
+    gap: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0 10px 0 0;
+    border-right: 1px solid var(--rule);
+  }
+
+  .os-snippets[data-variant="window"] .os-snippet-tab {
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .os-snippets[data-variant="window"] .os-snippet-tab[data-active="true"] {
+    padding-left: 8px;
+    border-left: 2px solid var(--phosphor);
+    background: var(--window-2);
+  }
+
+  .os-snippets[data-variant="window"] .os-snippet-panel {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .os-snippets[data-variant="window"] .os-snippet-head {
+    padding: 0 0 10px 14px;
+  }
+
+  .os-snippets[data-variant="window"] .os-snippet-code {
+    padding-left: 14px;
+  }
+
+  @media (max-width: 767px) {
+    .os-snippets[data-variant="page"] .os-snippet-panel {
+      max-height: none;
+    }
+
+    .os-snippets[data-variant="page"] .os-snippet-code {
+      max-height: 60vh;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .os-snippet-tab,
+    .os-snippet-copy {
+      transition: none;
+    }
+  }
+}

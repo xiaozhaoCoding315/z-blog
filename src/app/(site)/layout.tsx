@@ -7,6 +7,7 @@ import type {
 import { AccountMenu } from "@/components/site/account-menu";
 import { DesktopShell } from "@/components/desktop/desktop-shell";
 import { friends } from "@/config/portfolio";
+import { snippetSummaries } from "@/config/snippets";
 import { getAllNotes } from "@/content";
 import { chatEnabled } from "@/lib/ai";
 import { getUptimeSnapshot } from "@/lib/uptime-server";
@@ -29,14 +30,19 @@ export default async function SiteLayout({
     </Suspense>
   );
 
-  // 终端与 Spotlight（Task 5）共用同一份笔记索引；内容层直接读文件，不查库。
+  // 终端与 Spotlight 共用同一份笔记索引；内容层直接读文件，不查库。
   const notes: TerminalNote[] = getAllNotes().map((note) => ({
     slug: note.slug,
     title: note.meta.title,
     tags: note.meta.tags ?? [],
   }));
-  // Phase 3 才引入代码片段数据模型；这里先给空数组，不编造数据。
-  const snippets: TerminalSnippet[] = [];
+  // 片段来自静态配置；TerminalSnippet 只拿摘要，不把完整代码带进客户端索引。
+  const snippets: TerminalSnippet[] = snippetSummaries.map((snippet) => ({
+    id: snippet.id,
+    title: snippet.title,
+    language: snippet.language,
+    tags: snippet.tags,
+  }));
   // Cache Components 下不能在预渲染期直接 Date.now()；复用站点既有的
   // 「use cache + cacheLife(hours)」快照，拿到的仍是真实建站天数。
   const uptime = await getUptimeSnapshot();

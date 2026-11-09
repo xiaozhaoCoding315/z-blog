@@ -13,7 +13,10 @@ import type {
   TerminalNote,
   TerminalSnippet,
 } from "@/components/terminal/commands";
-import type { SearchableNote } from "@/components/search/search-local";
+import type {
+  SearchableNote,
+  SearchableSnippet,
+} from "@/components/search/search-local";
 import { DesktopRuntimeContext } from "./desktop-runtime";
 import { GlobalWindows } from "./global-windows";
 import { Taskbar } from "./taskbar";
@@ -50,9 +53,9 @@ export function DesktopShell({
   accountMenu: ReactNode;
   hasFriends: boolean;
   aiEnabled: boolean;
-  /** 终端 `apps`/`posts`/`open` 与 Spotlight（Task 5）共用的笔记索引 */
+  /** 终端 `apps`/`posts`/`open` 与 Spotlight 共用的笔记索引 */
   notes: TerminalNote[];
-  /** Phase 3 才有片段数据模型；当前由 layout 传入空数组 */
+  /** 终端 `snippets`/`open` 与 Spotlight 共用的片段索引 */
   snippets: TerminalSnippet[];
   uptimeDays: number | null;
   children: ReactNode;
@@ -70,7 +73,7 @@ export function DesktopShell({
     window.dispatchEvent(new Event("z-os:open-settings"));
   }, []);
 
-  // 终端与 Spotlight 共用笔记索引；Spotlight 需要非可选标签数组。
+  // 终端与 Spotlight 共用笔记/片段索引；Spotlight 需要非可选标签数组。
   const searchNotes = useMemo<SearchableNote[]>(
     () =>
       notes.map((note) => ({
@@ -79,6 +82,16 @@ export function DesktopShell({
         tags: note.tags ?? [],
       })),
     [notes]
+  );
+  const searchSnippets = useMemo<SearchableSnippet[]>(
+    () =>
+      snippets.map((snippet) => ({
+        id: snippet.id,
+        title: snippet.title,
+        language: snippet.language,
+        tags: snippet.tags ?? [],
+      })),
+    [snippets]
   );
 
   useEffect(() => {
@@ -144,7 +157,9 @@ export function DesktopShell({
           snippets={snippets}
           uptimeDays={uptimeDays}
         />
-        {spotlightOpen && <SearchPalette notes={searchNotes} />}
+        {spotlightOpen && (
+          <SearchPalette notes={searchNotes} snippets={searchSnippets} />
+        )}
         <Taskbar accountMenu={accountMenu} hasFriends={hasFriends} />
         <noscript>
           <nav className="os-noscript" aria-label="站点导航">

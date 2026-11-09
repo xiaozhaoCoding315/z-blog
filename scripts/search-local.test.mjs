@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   filterLocalApps,
   filterLocalNotes,
+  filterLocalSnippets,
   mergeNoteHits,
 } from "../src/components/search/search-local.ts";
 
@@ -20,6 +21,51 @@ const notes = [
   { slug: "rag-notes", title: "RAG 笔记", tags: ["AI", "检索"] },
   { slug: "frontend", title: "前端日志", tags: ["前端", "css"] },
   { slug: "next-16", title: "Next 16 笔记", tags: ["Next"] },
+];
+
+const snippets = [
+  {
+    id: "window-reducer",
+    title: "窗口矩形收敛",
+    language: "ts",
+    tags: ["desktop", "window"],
+  },
+  {
+    id: "semantic-search",
+    title: "语义搜索去重",
+    language: "sql",
+    tags: ["postgres", "pgvector"],
+  },
+  {
+    id: "tag-parse",
+    title: "标签输入解析",
+    language: "ts",
+    tags: ["life", "tags"],
+  },
+  {
+    id: "commit-count",
+    title: "提交按天聚合",
+    language: "ts",
+    tags: ["github"],
+  },
+  {
+    id: "moment-id",
+    title: "动态 id 校验",
+    language: "ts",
+    tags: ["life"],
+  },
+  {
+    id: "rate-limit",
+    title: "滑动窗口限频",
+    language: "ts",
+    tags: ["api"],
+  },
+  {
+    id: "extra",
+    title: "第七条",
+    language: "ts",
+    tags: [],
+  },
 ];
 
 test("空查询时应用列表只截前 6 条", () => {
@@ -56,6 +102,31 @@ test("笔记按标题或标签过滤，空查询只截前 6 条", () => {
     ["frontend"]
   );
   assert.deepEqual(filterLocalNotes(notes, "不存在"), []);
+});
+
+test("片段按 id、标题、语言或标签过滤，大小写不敏感", () => {
+  assert.deepEqual(
+    filterLocalSnippets(snippets, "WINDOW-REDUCER").map((item) => item.id),
+    ["window-reducer"]
+  );
+  assert.deepEqual(
+    filterLocalSnippets(snippets, "语义").map((item) => item.id),
+    ["semantic-search"]
+  );
+  assert.deepEqual(
+    filterLocalSnippets(snippets, "sql").map((item) => item.id),
+    ["semantic-search"]
+  );
+  assert.deepEqual(
+    filterLocalSnippets(snippets, "github").map((item) => item.id),
+    ["commit-count"]
+  );
+  assert.deepEqual(filterLocalSnippets(snippets, "不存在"), []);
+});
+
+test("片段空查询只截前 6 条", () => {
+  assert.equal(filterLocalSnippets(snippets, "   ").length, 6);
+  assert.equal(filterLocalSnippets(snippets, "   ")[0].id, "window-reducer");
 });
 
 test("语义命中补在本地命中之后并按 slug 去重", () => {

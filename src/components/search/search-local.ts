@@ -17,6 +17,13 @@ export interface SearchableApp {
   keywords: string[];
 }
 
+export interface SearchableSnippet {
+  id: string;
+  title: string;
+  language: string;
+  tags: string[];
+}
+
 export interface SemanticNoteHit {
   post_slug: string;
   title: string;
@@ -32,6 +39,7 @@ export interface NoteHit extends SearchableNote {
 /** 空查询时 Spotlight 只列一小段，避免把整个注册表铺满面板 */
 const EMPTY_APP_LIMIT = 6;
 const EMPTY_NOTE_LIMIT = 6;
+const EMPTY_SNIPPET_LIMIT = 6;
 
 function needleOf(query: string) {
   return query.trim().toLowerCase();
@@ -60,6 +68,22 @@ export function filterLocalNotes<T extends SearchableNote>(
     (note) =>
       note.title.toLowerCase().includes(needle) ||
       note.tags.some((tag) => tag.toLowerCase().includes(needle))
+  );
+}
+
+/** 片段按 id、标题、语言或标签过滤；空查询只列前 6 条。 */
+export function filterLocalSnippets<T extends SearchableSnippet>(
+  snippets: readonly T[],
+  query: string
+): T[] {
+  const needle = needleOf(query);
+  if (!needle) return snippets.slice(0, EMPTY_SNIPPET_LIMIT);
+  return snippets.filter(
+    (snippet) =>
+      snippet.id.toLowerCase().includes(needle) ||
+      snippet.title.toLowerCase().includes(needle) ||
+      snippet.language.toLowerCase().includes(needle) ||
+      snippet.tags.some((tag) => tag.toLowerCase().includes(needle))
   );
 }
 

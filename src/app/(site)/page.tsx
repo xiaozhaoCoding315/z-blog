@@ -11,14 +11,20 @@ import { StatusWidget } from "@/components/desktop/status-widget";
 import { StickyNote } from "@/components/desktop/sticky-note";
 import { GalleryView } from "@/components/gallery/gallery-view";
 import { Moment, NODE_CLASS } from "@/components/life/moment";
-import { NotYetOpen } from "@/components/site/not-yet-open";
+import { KanbanBoard } from "@/components/projects/kanban-board";
+import { SnippetBrowser } from "@/components/snippets/snippet-browser";
 import { getChangelogStats } from "@/config/changelog";
 import { now as portfolioNow, friends, projects } from "@/config/portfolio";
 import { siteConfig } from "@/config/site";
+import { snippets } from "@/config/snippets";
 import { collectGalleryImages, type GalleryImage } from "@/lib/gallery";
 import { getGithubActivity } from "@/lib/github-server";
 import { getMoments, type MomentsResult } from "@/lib/moments-server";
 import { getPinnedMoment, getStatusSentence } from "@/lib/settings-server";
+import {
+  highlightSnippets,
+  type HighlightedSnippet,
+} from "@/lib/snippets-server";
 import { getWeather } from "@/lib/weather-server";
 
 /**
@@ -135,71 +141,23 @@ function GalleryWindowContent({
   );
 }
 
-/** 项目窗口：Phase 2 先渲染真实项目列表，Phase 3 替换为看板。 */
+/** 项目窗口：与 /projects 共用看板，仅容器尺寸不同。 */
 function ProjectsWindowContent() {
-  return (
-    <div className="os-window-pane">
-      <p className="os-pane-label">项目 · {projects.length}</p>
-      <ul className="flex flex-col gap-4">
-        {projects.map((project) => (
-          <li
-            key={project.name}
-            className="border-t border-rule pt-3 first:border-0 first:pt-0"
-          >
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-heading text-[15px] font-bold">
-                {project.name}
-              </h2>
-              <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                {project.status}
-              </span>
-            </div>
-            {project.tagline && (
-              <p className="mt-0.5 text-[12px] text-primary">
-                {project.tagline}
-              </p>
-            )}
-            <p className="mt-1 line-clamp-3 text-[12px] leading-5 text-muted-foreground">
-              {project.description}
-            </p>
-            <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">
-              {project.stack.join(" · ")}
-            </p>
-            {project.repo && (
-              <a
-                href={project.repo}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="mt-1 inline-block font-mono text-[10px] text-primary hover:underline"
-              >
-                源码 ↗
-              </a>
-            )}
-          </li>
-        ))}
-      </ul>
-      <Link href="/projects" className="os-pane-link">
-        <span>打开项目页</span>
-        <span aria-hidden>→</span>
-      </Link>
-    </div>
-  );
+  return <KanbanBoard projects={projects} variant="window" />;
 }
 
-/** 代码片段：Phase 3 才有数据模型，现在不编造标题。 */
-function SnippetsWindowContent() {
+/** 代码片段窗口：与 /snippets 共用浏览器，两栏布局。 */
+function SnippetsWindowContent({
+  highlighted,
+}: {
+  highlighted: HighlightedSnippet[];
+}) {
   return (
-    <div className="os-window-pane">
-      <NotYetOpen
-        title="代码片段"
-        phase="阶段 3 上线"
-        description="这里会放这个站里真正跑过的短代码，带语法高亮和一键复制。现在还没有片段数据，不搬示例充数。"
-      />
-      <Link href="/snippets" className="os-pane-link">
-        <span>打开代码片段</span>
-        <span aria-hidden>→</span>
-      </Link>
-    </div>
+    <SnippetBrowser
+      snippets={snippets}
+      highlighted={highlighted}
+      variant="window"
+    />
   );
 }
 
@@ -290,13 +248,15 @@ function MoreWindowContent({ hasFriends }: { hasFriends: boolean }) {
 
 export default async function HomePage() {
   await connection();
-  const [status, life, pinned, weather, activity] = await Promise.all([
-    getStatusSentence(),
-    getMoments(),
-    getPinnedMoment(),
-    getWeather(),
-    getGithubActivity(),
-  ]);
+  const [status, life, pinned, weather, activity, highlightedSnippets] =
+    await Promise.all([
+      getStatusSentence(),
+      getMoments(),
+      getPinnedMoment(),
+      getWeather(),
+      getGithubActivity(),
+      highlightSnippets(),
+    ]);
 
   const galleryImages = life.available
     ? collectGalleryImages(life.moments)
@@ -313,7 +273,9 @@ export default async function HomePage() {
     life: <LifeWindowContent life={life} />,
     gallery: <GalleryWindowContent life={life} images={windowGallery} />,
     projects: <ProjectsWindowContent />,
-    snippets: <SnippetsWindowContent />,
+    snippets: (
+      <SnippetsWindowContent highlighted={highlightedSnippets} />
+    ),
     about: <AboutWindowContent />,
     more: <MoreWindowContent hasFriends={friends.length > 0} />,
   };
