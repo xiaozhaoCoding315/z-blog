@@ -252,101 +252,108 @@ export function DesktopHome({
         aria-label="应用"
         onKeyDown={onGridKeyDown}
       >
-        {desktopTileApps.map((app, index) => {
-          const icon = (
-            <>
-              <span className="os-icon-tile">
-                <AppIcon name={app.icon} className="size-6" />
-              </span>
-              <span className="os-icon-label">{app.title}</span>
-            </>
-          );
-          const style = { "--i": index } as IconStyle;
-
-          if (app.kind === "route" && app.path) {
-            return (
-              <Link
-                key={app.id}
-                href={app.path}
-                className="os-icon"
-                title={app.description}
-                style={style}
-                data-app-index={index}
-                ref={(node) => {
-                  iconRefs.current[index] = node;
-                }}
-              >
-                {icon}
-              </Link>
+        {/* ul/li 用 display:contents 摊平进网格：列表语义保留，布局与
+            键盘索引（data-app-index 在链接/按钮上）不变。 */}
+        <ul className="os-icon-list" role="list">
+          {desktopTileApps.map((app, index) => {
+            const icon = (
+              <>
+                <span className="os-icon-tile">
+                  <AppIcon name={app.icon} className="size-6" />
+                </span>
+                <span className="os-icon-label">{app.title}</span>
+              </>
             );
-          }
+            const style = { "--i": index } as IconStyle;
 
-          // 有真实路由的窗口型应用也是链接：无 JS 时直接跳到全屏应用页。
-          // 有 JS 时拦下默认导航，保留单击选择、双击开窗、Enter/触屏开窗。
-          if (app.kind === "window" && app.path) {
+            if (app.kind === "route" && app.path) {
+              return (
+                <li key={app.id} role="listitem">
+                  <Link
+                    href={app.path}
+                    className="os-icon"
+                    title={app.description}
+                    style={style}
+                    data-app-index={index}
+                    ref={(node) => {
+                      iconRefs.current[index] = node;
+                    }}
+                  >
+                    {icon}
+                  </Link>
+                </li>
+              );
+            }
+
+            // 有真实路由的窗口型应用也是链接：无 JS 时直接跳到全屏应用页。
+            // 有 JS 时拦下默认导航，保留单击选择、双击开窗、Enter/触屏开窗。
+            if (app.kind === "window" && app.path) {
+              return (
+                <li key={app.id} role="listitem">
+                  <a
+                    href={app.path}
+                    className="os-icon"
+                    title={app.description}
+                    style={style}
+                    data-app-index={index}
+                    data-selected={selectedId === app.id ? "true" : undefined}
+                    ref={(node) => {
+                      iconRefs.current[index] = node;
+                    }}
+                    onPointerDown={(event) => {
+                      pointerTypeRef.current = event.pointerType;
+                    }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      onWindowIconClick(app, event);
+                    }}
+                    onKeyDown={(event) => {
+                      // 原生链接的 Space 不触发 click；与 Enter 一样直接开窗。
+                      if (event.key === " ") {
+                        event.preventDefault();
+                        openAppFromDesktop(app);
+                      }
+                    }}
+                    onDoubleClick={() => {
+                      if (pointerTypeRef.current !== "touch") {
+                        openAppFromDesktop(app);
+                      }
+                    }}
+                  >
+                    {icon}
+                  </a>
+                </li>
+              );
+            }
+
             return (
-              <a
-                key={app.id}
-                href={app.path}
-                className="os-icon"
-                title={app.description}
-                style={style}
-                data-app-index={index}
-                data-selected={selectedId === app.id ? "true" : undefined}
-                ref={(node) => {
-                  iconRefs.current[index] = node;
-                }}
-                onPointerDown={(event) => {
-                  pointerTypeRef.current = event.pointerType;
-                }}
-                onClick={(event) => {
-                  event.preventDefault();
-                  onWindowIconClick(app, event);
-                }}
-                onKeyDown={(event) => {
-                  // 原生链接的 Space 不触发 click；与 Enter 一样直接开窗。
-                  if (event.key === " ") {
-                    event.preventDefault();
-                    openAppFromDesktop(app);
-                  }
-                }}
-                onDoubleClick={() => {
-                  if (pointerTypeRef.current !== "touch") {
-                    openAppFromDesktop(app);
-                  }
-                }}
-              >
-                {icon}
-              </a>
+              <li key={app.id} role="listitem">
+                <button
+                  type="button"
+                  className="os-icon"
+                  title={app.description}
+                  style={style}
+                  data-app-index={index}
+                  data-selected={selectedId === app.id ? "true" : undefined}
+                  ref={(node) => {
+                    iconRefs.current[index] = node;
+                  }}
+                  onPointerDown={(event) => {
+                    pointerTypeRef.current = event.pointerType;
+                  }}
+                  onClick={(event) => onWindowIconClick(app, event)}
+                  onDoubleClick={() => {
+                    if (pointerTypeRef.current !== "touch") {
+                      openAppFromDesktop(app);
+                    }
+                  }}
+                >
+                  {icon}
+                </button>
+              </li>
             );
-          }
-
-          return (
-            <button
-              key={app.id}
-              type="button"
-              className="os-icon"
-              title={app.description}
-              style={style}
-              data-app-index={index}
-              data-selected={selectedId === app.id ? "true" : undefined}
-              ref={(node) => {
-                iconRefs.current[index] = node;
-              }}
-              onPointerDown={(event) => {
-                pointerTypeRef.current = event.pointerType;
-              }}
-              onClick={(event) => onWindowIconClick(app, event)}
-              onDoubleClick={() => {
-                if (pointerTypeRef.current !== "touch") {
-                  openAppFromDesktop(app);
-                }
-              }}
-            >
-              {icon}
-            </button>
-          );
-        })}
+          })}
+        </ul>
       </nav>
 
       {/* 移动端 source order：最近日志 → 状态 → 便签；桌面上三者都是绝对定位，

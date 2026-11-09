@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useFocusTrap } from "@/components/desktop/focus-trap";
 import type { GalleryImage } from "@/lib/gallery";
 import { formatDay } from "@/lib/life";
 
@@ -26,6 +27,7 @@ export function GalleryView({
   const [mounted, setMounted] = useState(false);
   const isOpen = openIndex !== null;
   const closeRef = useRef<HTMLButtonElement>(null);
+  const lightboxRef = useRef<HTMLDivElement>(null);
   /** 打开灯箱的那张图；关闭时把焦点还给它 */
   const openerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -35,6 +37,13 @@ export function GalleryView({
   }, []);
 
   const close = useCallback(() => setOpenIndex(null), []);
+
+  // Tab 限制与 Esc 由共享 hook 负责；页面版要等 portal 挂载后容器才存在。
+  useFocusTrap(
+    lightboxRef,
+    isOpen && (variant === "window" || mounted),
+    close
+  );
 
   const step = useCallback(
     (delta: number) => {
@@ -55,7 +64,6 @@ export function GalleryView({
       (document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null);
-    closeRef.current?.focus();
 
     // 页面版锁 body；窗口版锁窗口的滚动容器（窗口内容区自己滚动）。
     const scrollRoot =
@@ -66,10 +74,7 @@ export function GalleryView({
     if (scrollRoot) scrollRoot.style.overflow = "hidden";
 
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpenIndex(null);
-      } else if (event.key === "ArrowLeft") {
+      if (event.key === "ArrowLeft") {
         event.preventDefault();
         step(-1);
       } else if (event.key === "ArrowRight") {
@@ -102,6 +107,7 @@ export function GalleryView({
 
   const lightbox = current ? (
     <div
+      ref={lightboxRef}
       className={`os-gallery-lightbox ${
         variant === "page" ? "fixed inset-0 z-[70]" : "absolute inset-0 z-30"
       }`}

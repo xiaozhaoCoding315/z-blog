@@ -16,7 +16,7 @@ const DOCK_APPS: { href: string; label: string; icon: IconKey }[] = [
  * 移动端 56px dock：四条真实路由，等分四列，触控目标铺满整格。
  *
  * 只在首页渲染（由 DesktopShell 判断 pathname）；应用页沿用 AppFrame 的
- * 顶部返回栏。当前路由用 aria-current + 琥珀色标记。
+ * 顶部返回栏。因此 aria-current 在首页不会命中，保留作防御性标记。
  */
 export function MobileDock() {
   const pathname = usePathname();

@@ -565,6 +565,32 @@ html {
     overscroll-behavior: contain;
   }
 
+  /* 跳过链接：平时完全隐藏但仍可聚焦；第一次 Tab 时出现在左上角。 */
+  .os-skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 100;
+    padding: 8px 12px;
+    border: 1px solid var(--phosphor);
+    background: var(--window);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    opacity: 0;
+    clip-path: inset(50%);
+    pointer-events: none;
+  }
+
+  .os-skip-link:focus,
+  .os-skip-link:focus-visible {
+    opacity: 1;
+    clip-path: none;
+    pointer-events: auto;
+    outline: 2px solid var(--phosphor);
+    outline-offset: 2px;
+  }
+
   .os-wallpaper {
     position: absolute;
     inset: 0;
@@ -642,6 +668,14 @@ html {
   @supports not (backdrop-filter: blur(1px)) {
     .os-taskbar::before {
       background: var(--window);
+    }
+  }
+
+  /* 减少透明：任务栏退回纯色，不再做磨砂。 */
+  @media (prefers-reduced-transparency: reduce) {
+    .os-taskbar::before {
+      background: var(--window);
+      backdrop-filter: none;
     }
   }
 
@@ -952,6 +986,19 @@ html {
     width: max-content;
     margin: auto 0;
     align-content: center;
+  }
+
+  /*
+   * 图标列表：ul/li 不生成盒子，链接/按钮仍是同一个网格的子项，
+   * 布局、gap、--i stagger 与 data-app-index 键盘导航都不变。
+   * 显式 role=list/listitem 抵消 display:contents 可能带来的语义丢失。
+   */
+  .os-icon-list,
+  .os-icon-list > li {
+    display: contents;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
   .os-icon {
@@ -1408,6 +1455,12 @@ html {
 
   .os-window[data-dragging="true"] .os-window-titlebar {
     cursor: grabbing;
+  }
+
+  /* 打开/恢复窗口时标题栏获得程序化焦点；只在键盘可见时画一圈。 */
+  .os-window-titlebar:focus-visible {
+    outline: 1px solid var(--phosphor);
+    outline-offset: -2px;
   }
 
   .os-window-icon {
@@ -3891,15 +3944,16 @@ html {
     background: var(--rule);
   }
 
-  /* 系统菜单里的开关行：与链接同排版，右侧显示开/关。 */
-  .os-menu-switch {
+  /* 系统菜单里的开关行：与链接同排版，右侧显示开/关。
+     选择器要压过 `.os-system-menu .os-menu-link` 的 display:block（0,2,0）。 */
+  .os-system-menu .os-menu-switch {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
   }
 
-  .os-menu-switch[aria-pressed="true"] {
+  .os-system-menu .os-menu-switch[aria-pressed="true"] {
     color: var(--ink);
   }
 
@@ -4200,6 +4254,8 @@ html {
       z-index: 70;
     }
 
+    /* z-index 不写死：让状态里的 state.z 决定终端/助理谁在上层。
+       外层 .os-global-windows 的 z-index:70 已经保证盖住任务栏。 */
     .os-global-windows > .os-window {
       inset: 0 !important;
       width: 100% !important;
@@ -4208,18 +4264,24 @@ html {
       min-height: 0 !important;
       border: 0;
       border-radius: 0;
-      z-index: 70 !important;
     }
 
     .os-global-windows > .os-window .os-window-resize {
       display: none;
     }
 
+    /* 触屏上关闭是唯一的指针出口：标题栏与关闭钮都放大到 44px。 */
     .os-global-windows > .os-window .os-window-titlebar {
+      height: 44px;
       cursor: default;
     }
 
-    /* 覆盖层只保留关闭与返回；最小化/最大化没有意义。 */
+    .os-global-windows > .os-window .os-window-control.is-close {
+      width: 44px;
+      height: 44px;
+    }
+
+    /* 覆盖层只保留关闭；最小化/最大化没有意义。 */
     .os-global-windows
       > .os-window
       .os-window-control:is(

@@ -122,7 +122,9 @@ export function ContextMenu({
       onKeyDown={onKeyDown}
       onContextMenu={(event) => event.preventDefault()}
     >
-      <p className="os-menu-label">桌面预设</p>
+      <p className="os-menu-label" aria-hidden="true">
+        桌面预设
+      </p>
       <div role="group" aria-label="桌面预设">
         {PRESETS.map((item) => (
           <button

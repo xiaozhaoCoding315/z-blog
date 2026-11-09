@@ -34,6 +34,23 @@ interface PointerInteraction {
 const INTERACTIVE = "button, a, input, textarea, select, [contenteditable='true']";
 
 /**
+ * 打开窗口前的焦点。
+ *
+ * 必须在首次渲染时读取：终端输入框等内容在子组件 effect 里 autofocus，
+ * 父组件的 effect 等到那时再读，拿到的已经是窗口内部元素，关闭窗口后
+ * 它随窗口卸载，焦点就只能走兜底。body/documentElement 不算触发元素。
+ */
+function openerFocus(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return null;
+  if (active === document.body || active === document.documentElement) {
+    return null;
+  }
+  return active;
+}
+
+/**
  * ≤767px 的终端/助理窗口是铺满视口的覆盖层：不拖拽、不缩放、不最大化。
  * 与 desktop-home / use-window-manager 的断点保持一致。
  */
@@ -60,13 +77,48 @@ export function Window({ id, app, title, children }: WindowProps) {
   const focused = !!state && !state.minimized && state.z === windows.store.zCounter;
   const titleId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const titlebarRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<PointerInteraction | null>(null);
   const resizeRef = useRef<PointerInteraction | null>(null);
+  const wasMinimizedRef = useRef(state?.minimized ?? false);
+  // useRef 只用首次渲染的值；之后的重渲染不会覆盖打开者。
+  const previousFocusRef = useRef<HTMLElement | null>(openerFocus());
 
   const minWidth = app.window?.minWidth ?? 0;
   const minHeight = app.window?.minHeight ?? 0;
   // §5.4：终端/助理是模态 dialog，其余桌面窗口是 region。
   const isDialog = app.id === "terminal" || app.id === "assistant";
+
+  // 窗口打开时把焦点送进标题栏（tabIndex=-1），关闭时归还给打开它的元素。
+  // 只在挂载/卸载时执行：windows.focus(id) 和窗口内的 pointerdown 都不能
+  // 抢走输入框焦点，否则在终端里打字时任何一个操作都会把焦点拉回标题栏。
+  useEffect(() => {
+    const previous = previousFocusRef.current;
+    titlebarRef.current?.focus({ preventScroll: true });
+
+    return () => {
+      if (previous?.isConnected) {
+        previous.focus({ preventScroll: true });
+        return;
+      }
+      // 从任务栏打开的窗口项会随窗口关闭一起消失；退回到任务栏入口或桌面图标。
+      const fallback =
+        document.querySelector<HTMLElement>(".os-taskbar-menu-button") ??
+        document.querySelector<HTMLElement>(".os-launcher-button") ??
+        document.querySelector<HTMLElement>(".os-icon-grid .os-icon");
+      fallback?.focus({ preventScroll: true });
+    };
+  }, []);
+
+  // 最小化后从任务栏恢复：窗口没有重新挂载，这里补一次标题栏聚焦。
+  // 其它 windows.focus(id)（点窗口内部、点任务栏切换）不会触发。
+  useEffect(() => {
+    const minimized = !!state?.minimized;
+    if (wasMinimizedRef.current && !minimized) {
+      titlebarRef.current?.focus({ preventScroll: true });
+    }
+    wasMinimizedRef.current = minimized;
+  }, [state?.minimized]);
 
   // Esc 关闭聚焦窗口；面板/模态打开时把 Esc 留给它们。
   // 需要自己处理 Esc 的输入表面（如终端输入框）在本地 stopPropagation。
@@ -276,7 +328,9 @@ export function Window({ id, app, title, children }: WindowProps) {
       onPointerDown={() => windows.focus(id)}
     >
       <div
+        ref={titlebarRef}
         className="os-window-titlebar"
+        tabIndex={-1}
         onPointerDown={onTitleBarPointerDown}
         onPointerMove={onTitleBarPointerMove}
         onPointerUp={(event) => endDrag(event, true)}

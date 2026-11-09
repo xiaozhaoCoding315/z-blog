@@ -73,7 +73,7 @@ export function DesktopShell({
   const openTerminal = useCallback(() => openApp("terminal"), [openApp]);
   const openAssistant = useCallback(() => openApp("assistant"), [openApp]);
   const openSpotlight = useCallback(() => setSpotlightOpen(true), []);
-  // Phase 2 没有独立设置面板：让任务栏把系统菜单打开；Phase 4 再换成完整面板。
+  // 系统菜单就是设置面板：广播事件让任务栏打开它，不跨组件传回调。
   const openSettings = useCallback(() => {
     window.dispatchEvent(new Event("z-os:open-settings"));
   }, []);
@@ -154,8 +154,14 @@ export function DesktopShell({
   return (
     <DesktopRuntimeContext.Provider value={runtime}>
       <div className="os-shell" data-dock={showDock ? "true" : "false"}>
+        {/* 第一个可聚焦元素：Tab 先到跳过链接，再进桌面图标。 */}
+        <a href="#os-main" className="os-skip-link">
+          跳到主内容
+        </a>
         <Wallpaper />
-        <main className="os-main">{children}</main>
+        <main id="os-main" className="os-main">
+          {children}
+        </main>
         <GlobalWindows
           aiEnabled={aiEnabled}
           notes={notes}

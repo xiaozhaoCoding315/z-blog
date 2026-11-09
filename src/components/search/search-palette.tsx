@@ -2,17 +2,11 @@
 
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { launcherApps } from "@/config/apps";
 import { useDesktopRuntime } from "@/components/desktop/desktop-runtime";
+import { useFocusTrap } from "@/components/desktop/focus-trap";
 import {
   filterLocalApps,
   filterLocalNotes,
@@ -79,27 +73,9 @@ export function SearchPalette({
     window.dispatchEvent(new Event("z-os:close-spotlight"));
   }, []);
 
-  // 打开时记住焦点来源，卸载时归还；输入框自动聚焦。
-  useEffect(() => {
-    const previous = document.activeElement;
-    inputRef.current?.focus();
-    return () => {
-      if (previous instanceof HTMLElement && document.contains(previous)) {
-        previous.focus();
-      }
-    };
-  }, []);
-
-  // Esc 关闭。使用捕获阶段，避免聚焦窗口的 Esc 处理器先关掉别的窗口。
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      close();
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [close]);
+  // 焦点限制与 Esc 由共享 hook 负责：输入框自动聚焦、Tab 循环、
+  // 捕获阶段消费 Esc（不波及底下的窗口），卸载时把焦点还给打开者。
+  useFocusTrap(panelRef, true, close);
 
   // 遮罩打开期间锁住页面滚动，关闭时恢复原值。
   useEffect(() => {
@@ -188,35 +164,6 @@ export function SearchPalette({
     runtime.openAssistant();
   };
 
-  // 焦点限制在面板内：输入框之外只有无结果时的助理按钮可聚焦。
-  const onPanelKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "Tab") return;
-    const panel = panelRef.current;
-    if (!panel) return;
-    const focusables = Array.from(
-      panel.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input, textarea, select, [tabindex]:not([tabindex="-1"])'
-      )
-    ).filter((node) => node.getClientRects().length > 0);
-    if (focusables.length === 0) return;
-
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    const active = document.activeElement;
-    const outside = !panel.contains(active);
-    if (event.shiftKey) {
-      if (active === first || outside) {
-        event.preventDefault();
-        last.focus();
-      }
-      return;
-    }
-    if (active === last || outside) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
   return createPortal(
     <div
       className="os-spotlight-layer"
@@ -233,7 +180,6 @@ export function SearchPalette({
         role="dialog"
         aria-modal="true"
         shouldFilter={false}
-        onKeyDown={onPanelKeyDown}
       >
         <div className="os-spotlight-input-row">
           <span className="os-spotlight-prompt" aria-hidden="true">

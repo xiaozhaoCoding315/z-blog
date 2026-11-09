@@ -14,7 +14,8 @@ import {
 } from "./window-state";
 
 /**
- * 移动端不渲染窗口层：≤767px 时开窗入口改为跳转到应用的全屏路由。
+ * 移动端不渲染桌面窗口层：≤767px 时路由型应用改为跳转全屏路由，
+ * 终端/助理改以全屏覆盖打开（窗框仍由 GlobalWindows 渲染）。
  * 与 desktop-home 的断点保持一致。
  */
 function isMobileViewport() {

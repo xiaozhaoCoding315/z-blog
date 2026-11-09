@@ -20,6 +20,18 @@ function focusableIn(container: HTMLElement | null): HTMLElement[] {
 }
 
 /**
+ * 当前打开的模态层，后打开的在栈顶。
+ *
+ * 多层同时打开时（Spotlight 盖住系统菜单、灯箱盖住页面）只有栈顶的
+ * 焦点限制生效：否则先注册的底层会先吃掉 Esc，或者把焦点抢回自己里面。
+ */
+const activeTraps: HTMLElement[] = [];
+
+function isTopTrap(container: HTMLElement) {
+  return activeTraps[activeTraps.length - 1] === container;
+}
+
+/**
  * 模态面板的焦点限制。
  *
  * active 时记录打开前的焦点，把焦点送进面板第一项；focusin 跑出面板就拉回，
@@ -49,6 +61,8 @@ export function useFocusTrap(
         ? document.activeElement
         : null;
 
+    activeTraps.push(container);
+
     const focusFirst = () => {
       const items = focusableIn(container);
       (items[0] ?? container).focus();
@@ -56,6 +70,8 @@ export function useFocusTrap(
     focusFirst();
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!isTopTrap(container)) return;
+
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -75,20 +91,25 @@ export function useFocusTrap(
       const last = items[items.length - 1];
       const current = document.activeElement;
       const inside = current instanceof Node && container.contains(current);
+      // 容器自身（tabIndex=-1）被聚焦时也当成首项：Tab 去第一项，
+      // Shift+Tab 去最后一项，否则浏览器默认行为会先跑出面板再被 focusin 拉回。
+      const onContainer = current === container;
 
       if (event.shiftKey) {
-        if (!inside || current === first) {
+        if (onContainer || !inside || current === first) {
           event.preventDefault();
           last.focus();
         }
-      } else if (!inside || current === last) {
+      } else if (onContainer || !inside || current === last) {
         event.preventDefault();
         first.focus();
       }
     };
 
     // 焦点被 Tab 以外的路径（地址栏、浏览器 UI、其他浮层）带走时拉回来。
+    // 只有栈顶的模态层负责收拢焦点，避免多层同时打开时互相抢。
     const onFocusIn = (event: FocusEvent) => {
+      if (!isTopTrap(container)) return;
       if (event.target instanceof Node && container.contains(event.target)) {
         return;
       }
@@ -100,6 +121,8 @@ export function useFocusTrap(
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
       document.removeEventListener("focusin", onFocusIn);
+      const index = activeTraps.lastIndexOf(container);
+      if (index !== -1) activeTraps.splice(index, 1);
       if (previouslyFocused?.isConnected) previouslyFocused.focus();
     };
   }, [active, ref]);

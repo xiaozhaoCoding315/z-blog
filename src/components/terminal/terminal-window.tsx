@@ -319,6 +319,7 @@ export function TerminalWindow({
         ref={outputRef}
         className="os-terminal-output"
         role="log"
+        aria-live="polite"
         aria-label="终端输出"
       >
         {showWelcome && (
