@@ -13,6 +13,7 @@ export const DESKTOP_PIN_KEY = "desktop_pin_moment";
 /**
  * 页头状态句：站长在后台改，读不到库时回退配置文件里的默认值。
  * 这是文案的回退，不是读数——不会把「连不上」伪装成某个真实状态。
+ * 失败按 60 秒回查；expire=300 秒保持 Next 16 可预渲染的静态壳下限。
  */
 export async function getStatusSentence(): Promise<string> {
   return getStatusSentenceCached();
@@ -20,11 +21,13 @@ export async function getStatusSentence(): Promise<string> {
 
 async function getStatusSentenceCached(): Promise<string> {
   "use cache";
-  cacheLife("minutes");
   cacheTag("settings");
 
   const db = getDb();
-  if (!db) return siteConfig.status;
+  if (!db) {
+    cacheLife({ stale: 60, revalidate: 60, expire: 300 });
+    return siteConfig.status;
+  }
 
   try {
     const [row] = await db
@@ -32,8 +35,10 @@ async function getStatusSentenceCached(): Promise<string> {
       .from(siteSettings)
       .where(eq(siteSettings.key, STATUS_KEY))
       .limit(1);
+    cacheLife("minutes");
     return row?.value?.trim() || siteConfig.status;
   } catch {
+    cacheLife({ stale: 60, revalidate: 60, expire: 300 });
     return siteConfig.status;
   }
 }
@@ -51,11 +56,13 @@ export async function getDesktopPin(): Promise<string | null> {
 
 async function getDesktopPinCached(): Promise<string | null> {
   "use cache";
-  cacheLife("minutes");
   cacheTag("settings");
 
   const db = getDb();
-  if (!db) return null;
+  if (!db) {
+    cacheLife({ stale: 60, revalidate: 60, expire: 300 });
+    return null;
+  }
 
   try {
     const [row] = await db
@@ -63,10 +70,12 @@ async function getDesktopPinCached(): Promise<string | null> {
       .from(siteSettings)
       .where(eq(siteSettings.key, DESKTOP_PIN_KEY))
       .limit(1);
+    cacheLife("minutes");
     if (!row) return null;
     const id = parseMomentId(row.value.trim());
     return id === null ? null : String(id);
   } catch {
+    cacheLife({ stale: 60, revalidate: 60, expire: 300 });
     return null;
   }
 }

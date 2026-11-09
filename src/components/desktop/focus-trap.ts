@@ -64,6 +64,12 @@ export function useFocusTrap(
     activeTraps.push(container);
 
     const focusFirst = () => {
+      // 子组件已经把焦点送进面板（终端输入框 / 助理输入框）时不要抢：
+      // 动态 chunk 命中缓存后，子 effect 会先于父 effect 执行。
+      const active = document.activeElement;
+      if (active instanceof Node && active !== container && container.contains(active)) {
+        return;
+      }
       const items = focusableIn(container);
       (items[0] ?? container).focus();
     };

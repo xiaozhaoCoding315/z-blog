@@ -4,6 +4,7 @@ import {
   clampRect,
   initialWindowStore,
   preferredRect,
+  sanitizeSavedRects,
   windowReducer,
 } from "../src/components/desktop/window-state.ts";
 
@@ -119,4 +120,61 @@ test("reset 清空窗口与保存位置，但保持已水合标记", () => {
   assert.deepEqual(state.windows, {});
   assert.deepEqual(state.saved, {});
   assert.equal(state.hydrated, true);
+});
+
+test("sanitizeSavedRects：损坏 JSON 与数组/null 都回退空布局", () => {
+  for (const raw of [null, [], [rect], "not json", 42, true]) {
+    assert.deepEqual(sanitizeSavedRects(raw), {});
+  }
+  assert.deepEqual(sanitizeSavedRects(JSON.parse("{}")), {});
+});
+
+test("sanitizeSavedRects：字段类型错误或缺失整项丢弃", () => {
+  assert.deepEqual(
+    sanitizeSavedRects({
+      life: { x: 1, y: 2, w: "500", h: 400 },
+      gallery: { x: 1, y: 2, w: 500 },
+      terminal: { x: "0", y: 0, w: 760, h: 440 },
+      projects: null,
+      snippets: [1, 2, 3, 4],
+    }),
+    {}
+  );
+});
+
+test("sanitizeSavedRects：NaN/Infinity/非正尺寸与未知 id 都丢弃", () => {
+  assert.deepEqual(
+    sanitizeSavedRects({
+      life: { x: NaN, y: 2, w: 500, h: 400 },
+      gallery: { x: 1, y: Infinity, w: 500, h: 400 },
+      terminal: { x: 1, y: 2, w: 760, h: -Infinity },
+      projects: { x: 1, y: 2, w: 0, h: 400 },
+      snippets: { x: 1, y: 2, w: 760, h: -1 },
+      unknown: { x: 1, y: 2, w: 500, h: 400 },
+      notes: rect,
+    }),
+    {}
+  );
+});
+
+test("sanitizeSavedRects：保留注册表里有限四元组，hydrate 后仍钳制", () => {
+  const raw = {
+    life: { x: 20, y: 40, w: 480, h: 600 },
+    terminal: { x: 0, y: 0, w: 760, h: 440 },
+    about: { x: 1, y: 2, w: 520, h: 600 },
+    "bad-key": { x: 1, y: 2, w: 500, h: 400 },
+  };
+  const saved = sanitizeSavedRects(raw);
+  assert.deepEqual(Object.keys(saved).sort(), ["about", "life", "terminal"]);
+  assert.deepEqual(saved.life, { x: 20, y: 40, w: 480, h: 600 });
+  const hydrated = windowReducer(initialWindowStore, {
+    type: "hydrate",
+    saved,
+  });
+  assert.equal(hydrated.hydrated, true);
+  assert.equal(hydrated.saved["bad-key"], undefined);
+  assert.deepEqual(
+    preferredRect(hydrated.saved.life, rect, bounds, 420, 360),
+    { x: 20, y: 40, w: 480, h: 600 }
+  );
 });

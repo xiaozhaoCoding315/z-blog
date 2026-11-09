@@ -18,7 +18,9 @@ import type { Moment } from "@/lib/life";
  *    按 id 读的两个入口外面还有一层非缓存壳：先把 id 校成规范十进制再进缓存，
  *    否则每个垃圾 id 都会成为缓存键（`/life/1e30` 还会把 bigint 溢出报成「库连不上」）。
  * 2. 取不到就是 available: false，调用方显示 NOT AVAILABLE，
- *    不许拿空数组冒充「还没发过」。
+ *    不许拿空数组冒充「还没发过」。失败读数 60 秒后就重新查库；
+ *    expire 取 5 分钟是 Next 16 静态壳的下限，避免短 expire 把每个
+ *    只读页都变成构建期动态洞。
  * 3. 调用方必须在 `connection()` 之后调用。否则构建期（本地构建时没有
  *    DATABASE_URL）会把「没有数据」烤进静态壳，线上一直空着。
  */
@@ -30,22 +32,26 @@ export interface MomentsResult {
 
 export async function getMoments(): Promise<MomentsResult> {
   "use cache";
-  cacheLife("minutes");
   cacheTag("moments");
 
   const db = getDb();
-  if (!db) return { available: false, moments: [] };
+  if (!db) {
+    cacheLife({ stale: 60, revalidate: 60, expire: 300 });
+    return { available: false, moments: [] };
+  }
 
   try {
     const rows = await db
       .select()
       .from(momentsTable)
       .orderBy(desc(momentsTable.publishedAt), desc(momentsTable.id));
+    cacheLife("minutes");
     return {
       available: true,
       moments: rows.map((row) => toMoment(row as MomentDbRowLike)),
     };
   } catch {
+    cacheLife({ stale: 60, revalidate: 60, expire: 300 });
     return { available: false, moments: [] };
   }
 }
@@ -64,11 +70,13 @@ async function getMomentByIdCached(numeric: number): Promise<{
   moment: Moment | null;
 }> {
   "use cache";
-  cacheLife("minutes");
   cacheTag("moments");
 
   const db = getDb();
-  if (!db) return { available: false, moment: null };
+  if (!db) {
+    cacheLife({ stale: 60, revalidate: 60, expire: 300 });
+    return { available: false, moment: null };
+  }
 
   try {
     const [row] = await db
@@ -76,11 +84,13 @@ async function getMomentByIdCached(numeric: number): Promise<{
       .from(momentsTable)
       .where(eq(momentsTable.id, numeric))
       .limit(1);
+    cacheLife("minutes");
     return {
       available: true,
       moment: row ? toMoment(row as MomentDbRowLike) : null,
     };
   } catch {
+    cacheLife({ stale: 60, revalidate: 60, expire: 300 });
     return { available: false, moment: null };
   }
 }
@@ -103,11 +113,13 @@ async function getMomentNeighborsCached(numeric: number): Promise<{
   next: Moment | null;
 }> {
   "use cache";
-  cacheLife("minutes");
   cacheTag("moments");
 
   const db = getDb();
-  if (!db) return { prev: null, next: null };
+  if (!db) {
+    cacheLife({ stale: 60, revalidate: 60, expire: 300 });
+    return { prev: null, next: null };
+  }
 
   try {
     const [self] = await db
@@ -115,7 +127,10 @@ async function getMomentNeighborsCached(numeric: number): Promise<{
       .from(momentsTable)
       .where(eq(momentsTable.id, numeric))
       .limit(1);
-    if (!self) return { prev: null, next: null };
+    if (!self) {
+      cacheLife("minutes");
+      return { prev: null, next: null };
+    }
 
     const [older] = await db
       .select()
@@ -130,11 +145,13 @@ async function getMomentNeighborsCached(numeric: number): Promise<{
       .orderBy(asc(momentsTable.publishedAt))
       .limit(1);
 
+    cacheLife("minutes");
     return {
       prev: older ? toMoment(older as MomentDbRowLike) : null,
       next: newer ? toMoment(newer as MomentDbRowLike) : null,
     };
   } catch {
+    cacheLife({ stale: 60, revalidate: 60, expire: 300 });
     return { prev: null, next: null };
   }
 }

@@ -125,7 +125,7 @@ export function GalleryView({
             type="button"
             onClick={close}
             aria-label="关闭照片预览"
-            className="os-gallery-nav size-7"
+            className="os-gallery-nav os-gallery-nav-close"
           >
             ×
           </button>
@@ -142,7 +142,7 @@ export function GalleryView({
               type="button"
               onClick={() => step(-1)}
               aria-label="上一张"
-              className="os-gallery-nav absolute left-2 top-1/2 z-10 size-9 -translate-y-1/2"
+              className="os-gallery-nav os-gallery-nav-step absolute left-2 top-1/2 z-10 -translate-y-1/2"
             >
               ‹
             </button>
@@ -158,7 +158,7 @@ export function GalleryView({
               type="button"
               onClick={() => step(1)}
               aria-label="下一张"
-              className="os-gallery-nav absolute right-2 top-1/2 z-10 size-9 -translate-y-1/2"
+              className="os-gallery-nav os-gallery-nav-step absolute right-2 top-1/2 z-10 -translate-y-1/2"
             >
               ›
             </button>

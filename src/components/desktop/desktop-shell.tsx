@@ -98,6 +98,11 @@ export function DesktopShell({
       })),
     [snippets]
   );
+  // 友链为空时不给无 JS 导航留一个空页入口；其余真实路由保持完整。
+  const noScriptApps = useMemo(
+    () => publicApps.filter((app) => app.id !== "friends" || hasFriends),
+    [hasFriends]
+  );
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -169,14 +174,18 @@ export function DesktopShell({
           uptimeDays={uptimeDays}
         />
         {spotlightOpen && (
-          <SearchPalette notes={searchNotes} snippets={searchSnippets} />
+          <SearchPalette
+            notes={searchNotes}
+            snippets={searchSnippets}
+            hasFriends={hasFriends}
+          />
         )}
         {showDock && <MobileDock />}
         <Taskbar accountMenu={accountMenu} hasFriends={hasFriends} />
         <noscript>
           <nav className="os-noscript" aria-label="站点导航">
             <p>Personal Dev OS · 无脚本模式</p>
-            {publicApps.map((app) => (
+            {noScriptApps.map((app) => (
               <a key={app.id} href={app.path}>
                 {app.title}
               </a>

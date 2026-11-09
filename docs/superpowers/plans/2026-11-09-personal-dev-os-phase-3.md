@@ -14,7 +14,7 @@
 - 标签：最多 5 个、单个 1–16 字素、不存 `#`、AND 过滤；读取侧遇到脏数据要丢弃而不是让整页失败。
 - 钉选：只认 `parseMomentId` 的规范十进制；`site_settings` 里没有记录或动态被删时不显示便签，不显示占位。
 - 相册只收 `/media/` 站内图片；懒加载；空状态说「还没有照片」，不放假图。
-- 看板列：待启动 / 进行中 / 已完成；`维护中` 放进「进行中」并带徽标；未知状态回退「待启动」。列内顺序只存 `z-os:kanban`，不改 `portfolio.ts`。
+- 看板列：待启动 / 进行中 / 已完成；`维护中` 放进「进行中」并带徽标；未知状态归入「进行中」并在开发环境告警。列内顺序只存 `z-os:kanban`，不改 `portfolio.ts`。
 - 片段只有 6 条，全部来自本仓库真实代码；Shiki 服务端高亮，颜色映射语义 token，不允许蓝紫语法主题。
 - 关于页/状态组件只显示真实值；`neofetch` 标明 `Shell: zsh (simulated)`；没有 AI Key 就显示未配置。
 - 状态组件不出现「在线 / 心跳 / 实时在线人数」；提交读数按 `available` 与 `truncated` 显示。
@@ -220,7 +220,7 @@ export function collectTags(moments: Moment[]): { tag: string; count: number }[]
 
 - [ ] **Step 1: 标签过滤条**
   - `/life` 页面 `searchParams: Promise<{ tag?: string | string[] }>`；`const raw = ...; const active = readTags(Array.isArray(raw.tag) ? raw.tag : raw.tag ? [raw.tag] : [])`；过滤 `filterByTags(life.moments, active)`。
-  - `TagFilter` 渲染全部标签（`collectTags(life.moments)`），每个是 `Link`，点击切换：已选则移除，未选则追加；`aria-pressed`；active 用 `border-data text-data`，其余 `border-rule text-muted-foreground`。URL 用 `URLSearchParams` 生成，保留多个 `tag`。
+  - `TagFilter` 渲染全部标签（`collectTags(life.moments)`），每个是 `Link`，点击切换：已选则移除，未选则追加；用有效的 `aria-current="true"` + 可见「已选」文字表达选中态（不在链接上用无效的 `aria-pressed`）；active 用 `border-data text-data`，其余 `border-rule text-muted-foreground`。URL 用 `URLSearchParams` 生成，保留多个 `tag`。
   - 顶部显示 `N 条 · 标签 AND`；没有匹配时「没有同时带这些标签的动态」+「清除过滤」；数据库不可用时沿用 `Not Available`，不显标签条。
   - 桌面日志窗口顶部也渲染同一批 chips（最多显示 8 个），窗口内点击是真实 `Link` 到 `/life?tag=...`，不在窗口内做过滤；底部「全部日志 →」。站长在 `/life` 与窗口内都显示「+ 写一条」。
   - 页面底部「← 桌面」。

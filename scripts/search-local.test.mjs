@@ -25,40 +25,40 @@ const notes = [
 
 const snippets = [
   {
-    id: "window-reducer",
-    title: "窗口矩形收敛",
-    language: "ts",
-    tags: ["desktop", "window"],
+    id: "next-connection",
+    title: "Next 16：数据库页面别把空数据烤进静态壳",
+    language: "tsx",
+    tags: ["next", "cache-components"],
   },
   {
-    id: "semantic-search",
-    title: "语义搜索去重",
+    id: "clock-store",
+    title: "useSyncExternalStore 版站内时钟",
+    language: "ts",
+    tags: ["react", "clock"],
+  },
+  {
+    id: "spine-scroll",
+    title: "滚动驱动的脊线：CSS animation-timeline",
+    language: "css",
+    tags: ["css", "scroll"],
+  },
+  {
+    id: "pgvector-hnsw",
+    title: "Drizzle + pgvector：HNSW 余弦索引",
     language: "sql",
     tags: ["postgres", "pgvector"],
   },
   {
-    id: "tag-parse",
-    title: "标签输入解析",
-    language: "ts",
-    tags: ["life", "tags"],
+    id: "token-contrast",
+    title: "设计 token 的 WCAG 护栏",
+    language: "js",
+    tags: ["a11y", "css"],
   },
   {
-    id: "commit-count",
-    title: "提交按天聚合",
+    id: "ai-citations",
+    title: "AI SDK：把引用来源随流下发",
     language: "ts",
-    tags: ["github"],
-  },
-  {
-    id: "moment-id",
-    title: "动态 id 校验",
-    language: "ts",
-    tags: ["life"],
-  },
-  {
-    id: "rate-limit",
-    title: "滑动窗口限频",
-    language: "ts",
-    tags: ["api"],
+    tags: ["ai-sdk", "rag"],
   },
   {
     id: "extra",
@@ -106,27 +106,27 @@ test("笔记按标题或标签过滤，空查询只截前 6 条", () => {
 
 test("片段按 id、标题、语言或标签过滤，大小写不敏感", () => {
   assert.deepEqual(
-    filterLocalSnippets(snippets, "WINDOW-REDUCER").map((item) => item.id),
-    ["window-reducer"]
+    filterLocalSnippets(snippets, "NEXT-CONNECTION").map((item) => item.id),
+    ["next-connection"]
   );
   assert.deepEqual(
-    filterLocalSnippets(snippets, "语义").map((item) => item.id),
-    ["semantic-search"]
+    filterLocalSnippets(snippets, "站内时钟").map((item) => item.id),
+    ["clock-store"]
   );
   assert.deepEqual(
     filterLocalSnippets(snippets, "sql").map((item) => item.id),
-    ["semantic-search"]
+    ["pgvector-hnsw"]
   );
   assert.deepEqual(
-    filterLocalSnippets(snippets, "github").map((item) => item.id),
-    ["commit-count"]
+    filterLocalSnippets(snippets, "rag").map((item) => item.id),
+    ["ai-citations"]
   );
   assert.deepEqual(filterLocalSnippets(snippets, "不存在"), []);
 });
 
 test("片段空查询只截前 6 条", () => {
   assert.equal(filterLocalSnippets(snippets, "   ").length, 6);
-  assert.equal(filterLocalSnippets(snippets, "   ")[0].id, "window-reducer");
+  assert.equal(filterLocalSnippets(snippets, "   ")[0].id, "next-connection");
 });
 
 test("语义命中补在本地命中之后并按 slug 去重", () => {

@@ -39,6 +39,7 @@ export function SnippetBrowser({
   } | null>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const codeRef = useRef<HTMLDivElement>(null);
   const htmlById = useMemo(
     () => new Map(highlighted.map((item) => [item.id, item.html])),
     [highlighted]
@@ -63,6 +64,26 @@ export function SnippetBrowser({
 
   const copyState: CopyState =
     copyFeedback?.id === selected?.id ? copyFeedback.state : "idle";
+
+  /**
+   * Clipboard API 不可用/被拒绝时把页面上显示的代码选中，让访客能手动复制。
+   * Shiki 生成的结构是 <pre><code>，回退路径是普通 <pre><code>；
+   * 用 Range 包住 code 节点的内容，不动 DOM、不注入 HTML。
+   */
+  const selectDisplayedCode = (container: HTMLElement | null) => {
+    const code = container?.querySelector("pre code, code");
+    const selection = window.getSelection();
+    if (!code || !selection) return false;
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   if (!selected) {
     return (
@@ -110,6 +131,7 @@ export function SnippetBrowser({
       await navigator.clipboard.writeText(selected.code);
       setCopyFeedback({ id, state: "copied" });
     } catch {
+      selectDisplayedCode(codeRef.current);
       setCopyFeedback({ id, state: "failed" });
     }
     if (copyTimer.current) clearTimeout(copyTimer.current);
@@ -123,7 +145,7 @@ export function SnippetBrowser({
     copyState === "copied"
       ? "已复制"
       : copyState === "failed"
-        ? "复制失败"
+        ? "复制失败，请手动复制"
         : "复制";
 
   return (
@@ -171,12 +193,13 @@ export function SnippetBrowser({
         <header className="os-snippet-head">
           <div className="os-snippet-heading">
             <p className="os-pane-label">
-              {selected.language} · {selected.source}
+              {selected.language} · {selected.source ?? "本仓库"}
             </p>
             <h2>{selected.title}</h2>
-            <p className="os-snippet-description">
-              {selected.description}
-            </p>
+            <p className="os-snippet-description">{selected.useCase}</p>
+            {selected.note && (
+              <p className="os-snippet-note">{selected.note}</p>
+            )}
           </div>
           <button
             type="button"
@@ -188,7 +211,7 @@ export function SnippetBrowser({
           </button>
         </header>
 
-        <div className="os-snippet-code">
+        <div className="os-snippet-code" ref={codeRef}>
           {html ? (
             // html 由服务端的 Shiki 对本仓库静态配置生成，不含用户输入。
             <div dangerouslySetInnerHTML={{ __html: html }} />

@@ -17,7 +17,13 @@ function makeContext(overrides = {}) {
       { slug: "hello-world", title: "你好，世界" },
       { slug: "rag-notes", title: "RAG 笔记" },
     ],
-    snippets: [{ id: "debounce", title: "防抖", language: "ts" }],
+    snippets: [
+      {
+        id: "next-connection",
+        title: "Next 16：数据库页面别把空数据烤进静态壳",
+        language: "tsx",
+      },
+    ],
     theme: "night",
     uptimeDays: 129,
     aiEnabled: false,
@@ -63,13 +69,13 @@ test("posts 列出笔记 slug 与标题", () => {
 
 test("snippets 列出片段 id、标题与语言；空列表不编造内容", () => {
   const output = text(runCommand("snippets", makeContext()));
-  assert.ok(output.includes("debounce"));
-  assert.ok(output.includes("防抖"));
-  assert.ok(output.includes("[ts]"));
+  assert.ok(output.includes("next-connection"));
+  assert.ok(output.includes("Next 16：数据库页面别把空数据烤进静态壳"));
+  assert.ok(output.includes("[tsx]"));
 
   const empty = text(runCommand("snippets", makeContext({ snippets: [] })));
   assert.ok(empty.includes("还没有代码片段"));
-  assert.ok(!empty.includes("防抖"));
+  assert.ok(!empty.includes("next-connection"));
 });
 
 test("open 按 app → note slug → snippet id 的顺序解析", () => {
@@ -81,10 +87,10 @@ test("open 按 app → note slug → snippet id 的顺序解析", () => {
     type: "open",
     appId: "hello-world",
   });
-  assert.deepEqual(runCommand("open debounce", makeContext()).effect, {
-    type: "open",
-    appId: "debounce",
-  });
+  assert.deepEqual(
+    runCommand("open next-connection", makeContext()).effect,
+    { type: "open", appId: "next-connection" }
+  );
 });
 
 test("open 未知目标报错且不产生 effect", () => {
@@ -230,7 +236,7 @@ test("completeCommand 补全命令、应用 id、笔记 slug 与片段 id", () =
   assert.deepEqual(completeCommand("op", ctx), ["open"]);
   assert.ok(completeCommand("li", ctx).includes("life"));
   assert.deepEqual(completeCommand("rag", ctx), ["rag-notes"]);
-  assert.deepEqual(completeCommand("deb", ctx), ["debounce"]);
+  assert.deepEqual(completeCommand("next-co", ctx), ["next-connection"]);
   assert.deepEqual(completeCommand("zzz", ctx), []);
   assert.ok(completeCommand("", ctx).includes("help"));
 });

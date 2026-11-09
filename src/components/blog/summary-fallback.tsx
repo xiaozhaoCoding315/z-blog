@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { FileText } from "lucide-react";
 
 /**
  * frontmatter 缺少 description 时的兜底：
@@ -26,7 +26,7 @@ export function SummaryFallback({ slug }: { slug: string }) {
   if (!summary) return null;
   return (
     <p className="mt-4 flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/[0.05] px-4 py-3 text-sm leading-relaxed text-muted-foreground">
-      <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+      <FileText className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
       <span>
         <span className="mr-1.5 font-medium text-primary">AI 摘要</span>
         {summary}

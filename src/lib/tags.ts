@@ -44,14 +44,22 @@ export function parseTagInput(
   return { ok: true, tags };
 }
 
-export function filterByTags(moments: Moment[], tags: string[]): Moment[] {
+/** 筛选与计数只需要 id/tags；桌面筛选岛不把整条 Moment 带进客户端。 */
+export type Taggable = Pick<Moment, "id" | "tags">;
+
+export function filterByTags<T extends Taggable>(
+  moments: T[],
+  tags: string[]
+): T[] {
   if (tags.length === 0) return moments;
   return moments.filter((moment) =>
     tags.every((tag) => (moment.tags ?? []).includes(tag))
   );
 }
 
-export function collectTags(moments: Moment[]): { tag: string; count: number }[] {
+export function collectTags<T extends Pick<Moment, "tags">>(
+  moments: T[]
+): { tag: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const moment of moments) {
     for (const tag of moment.tags ?? []) {

@@ -12,6 +12,7 @@ import {
 } from "react";
 import type { AppDefinition } from "@/config/apps";
 import { useDesktopRuntime } from "./desktop-runtime";
+import { useFocusTrap } from "./focus-trap";
 import { AppIcon } from "./icons";
 import { clampRect, type Rect } from "./window-state";
 
@@ -106,6 +107,11 @@ export function Window({ id, app, title, children }: WindowProps) {
   const minHeight = app.window?.minHeight ?? 0;
   // §5.4：终端/助理是模态 dialog，其余桌面窗口是 region。
   const isDialog = app.id === "terminal" || app.id === "assistant";
+  const minimized = state?.minimized ?? false;
+
+  // 顶部模态层限定焦点并在关闭/卸载时归还打开者；最小化时不可见，不占顶层。
+  // 复用全局 trap 栈，避免终端/助理与 Spotlight / 灯箱互相抢 Esc。
+  useFocusTrap(rootRef, isDialog && !minimized, () => windows.close(id));
 
   // 窗口打开时把焦点送进标题栏（tabIndex=-1），关闭时归还给打开它的元素。
   // 只在挂载/卸载时执行：windows.focus(id) 和窗口内的 pointerdown 都不能
@@ -139,10 +145,10 @@ export function Window({ id, app, title, children }: WindowProps) {
     wasMinimizedRef.current = minimized;
   }, [state?.minimized]);
 
-  // Esc 关闭聚焦窗口；面板/模态打开时把 Esc 留给它们。
-  // 需要自己处理 Esc 的输入表面（如终端输入框）在本地 stopPropagation。
+  // 模态 dialog 的 Esc 由 useFocusTrap 在捕获阶段消费，这里只处理 region 窗口。
+  // 面板/模态打开时把 Esc 留给更上层的 trap。
   useEffect(() => {
-    if (!focused || state?.minimized) return;
+    if (isDialog || !focused || minimized) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       if (
@@ -156,7 +162,7 @@ export function Window({ id, app, title, children }: WindowProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focused, id, state?.minimized, windows]);
+  }, [focused, id, isDialog, minimized, windows]);
 
   if (!state) return null;
 

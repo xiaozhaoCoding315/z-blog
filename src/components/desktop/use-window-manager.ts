@@ -8,6 +8,7 @@ import {
   WINDOW_STORAGE_KEY,
   initialWindowStore,
   preferredRect,
+  sanitizeSavedRects,
   windowReducer,
   type DesktopBounds,
   type Rect,
@@ -69,15 +70,13 @@ export function useWindowManager() {
   useEffect(() => {
     let saved: Record<string, Rect> = {};
     try {
-      const parsed = JSON.parse(
-        localStorage.getItem(WINDOW_STORAGE_KEY) ?? "{}"
+      saved = sanitizeSavedRects(
+        JSON.parse(localStorage.getItem(WINDOW_STORAGE_KEY) ?? "{}")
       );
-      if (parsed && typeof parsed === "object") {
-        saved = parsed as Record<string, Rect>;
-      }
     } catch {
       // 存储损坏或不可用时按空布局启动
     }
+    // hydrate 是无条件的：即使所有条目都无效也必须置 hydrated=true。
     dispatch({ type: "hydrate", saved });
   }, []);
 

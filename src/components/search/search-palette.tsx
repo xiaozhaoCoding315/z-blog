@@ -36,14 +36,17 @@ const EMPTY_SEMANTIC: SemanticItem[] = [];
  * 只索引启动器里的应用，避免把 admin/write/login 和开发用的 style 暴露给
  * 访客；注册表只保留 Spotlight 需要的字段。
  * settings 没有 path，打开的是系统菜单而不是路由。
+ * 空友链时好友页与任务栏/MoreWindow 一起隐藏，避免把访客送进空页。
  */
-const appIndex = launcherApps.map(({ id, title, keywords, path, kind }) => ({
-  id,
-  title,
-  keywords,
-  path,
-  kind,
-}));
+const launcherAppIndex = launcherApps.map(
+  ({ id, title, keywords, path, kind }) => ({
+    id,
+    title,
+    keywords,
+    path,
+    kind,
+  })
+);
 
 /**
  * Spotlight 面板。
@@ -55,9 +58,12 @@ const appIndex = launcherApps.map(({ id, title, keywords, path, kind }) => ({
 export function SearchPalette({
   notes,
   snippets,
+  hasFriends,
 }: {
   notes: SearchableNote[];
   snippets: SearchableSnippet[];
+  /** 客户端到客户端的布尔值；不把真实友链数据带进动态 chunk。 */
+  hasFriends: boolean;
 }) {
   const router = useRouter();
   const runtime = useDesktopRuntime();
@@ -68,6 +74,12 @@ export function SearchPalette({
   });
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const appIndex = useMemo(
+    () =>
+      launcherAppIndex.filter((app) => app.id !== "friends" || hasFriends),
+    [hasFriends]
+  );
 
   const close = useCallback(() => {
     window.dispatchEvent(new Event("z-os:close-spotlight"));
@@ -115,7 +127,10 @@ export function SearchPalette({
   }, [query]);
 
   const trimmedQuery = query.trim();
-  const appResults = useMemo(() => filterLocalApps(appIndex, query), [query]);
+  const appResults = useMemo(
+    () => filterLocalApps(appIndex, query),
+    [appIndex, query]
+  );
   const localNotes = useMemo(
     () => filterLocalNotes(notes, query),
     [notes, query]
@@ -135,7 +150,7 @@ export function SearchPalette({
     noteResults.length > 0 ||
     snippetResults.length > 0;
 
-  const selectApp = (app: (typeof appIndex)[number]) => {
+  const selectApp = (app: (typeof launcherAppIndex)[number]) => {
     // 先关闭面板，再执行动作；Spotlight 不持有导航状态。
     close();
     if (app.id === "settings") {

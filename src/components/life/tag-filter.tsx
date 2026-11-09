@@ -28,6 +28,9 @@ export function TagFilter({ tags, active }: TagFilterProps) {
           <>
             <span>#{tag}</span>
             <span className="text-[10px] opacity-60">{count}</span>
+            {isActive && (
+              <span className="text-[10px]">已选</span>
+            )}
           </>
         );
 
@@ -59,7 +62,9 @@ export function TagFilter({ tags, active }: TagFilterProps) {
           <Link
             key={tag}
             href={query ? `/life?${query}` : "/life"}
-            aria-pressed={isActive}
+            // 链接不是按钮：aria-pressed 在这里是无效 ARIA。
+            // aria-current 表达「当前过滤 URL」，另用可见「已选」文字。
+            aria-current={isActive ? "true" : undefined}
             className={chipClass}
           >
             {label}

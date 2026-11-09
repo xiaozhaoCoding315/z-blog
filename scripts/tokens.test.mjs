@@ -208,3 +208,56 @@ test("标题字体是等宽，不再加载宋体", () => {
   assert.equal(css.includes("noto-serif"), false);
   assert.equal(css.includes("Noto Serif"), false);
 });
+
+test("入场动画只在 scripting 可用且允许动效时声明", () => {
+  const marker = "@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {";
+  const start = css.indexOf(marker);
+  assert.notEqual(start, -1, "missing combined entrance-animation gate");
+
+  let depth = 0;
+  let end = -1;
+  for (let index = start; index < css.length; index += 1) {
+    if (css[index] === "{") depth += 1;
+    if (css[index] === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        end = index;
+        break;
+      }
+    }
+  }
+  assert.notEqual(end, -1, "unterminated combined entrance-animation gate");
+
+  const gate = css.slice(start, end + 1);
+  const outside = `${css.slice(0, start)}\n${css.slice(end + 1)}`;
+  const entranceAnimations = [
+    "digit-roll",
+    "cell-in",
+    "os-panel-in",
+    "os-icon-in",
+    "os-window-open",
+    "os-window-maximize",
+    "os-window-minimize",
+    "os-spotlight-fade",
+    "os-spotlight-in",
+  ];
+
+  assert.match(gate, /\.os-icon\s*\{[^}]*animation:\s*os-icon-in/);
+  for (const name of entranceAnimations) {
+    assert.match(gate, new RegExp(`animation:\\s*${name}\\b`), `gate missing ${name}`);
+    assert.doesNotMatch(outside, new RegExp(`animation:\\s*${name}\\b`), `${name} outside gate`);
+  }
+  // 全局减少动效的 !important 延时重置、蒸汽错峰，以及组件层里的
+  // `animation: none` 兜底都可以留在外面；但 .os-icon 的入场动画/
+  // 错峰声明不能再出现在组合门之外。
+  for (const match of outside.matchAll(/\.os-icon\b[^{}]*\{([^}]*)\}/g)) {
+    const declarations = match[1];
+    for (const property of declarations.matchAll(/\banimation(?:-delay)?\s*:\s*([^;]+);/g)) {
+      assert.match(
+        property[1].trim(),
+        /^none(?:\s*!important)?$/,
+        `.os-icon entrance animation outside gate: ${property[0]}`
+      );
+    }
+  }
+});

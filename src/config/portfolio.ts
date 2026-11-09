@@ -12,7 +12,7 @@ export interface Project {
   stack: string[];
   link?: string;
   repo?: string;
-  status: "进行中" | "已完成" | "维护中";
+  status: "进行中" | "已完成" | "维护中" | "待启动";
   role?: string;
   context?: string;
   /** 为什么做这个项目，一句话 */

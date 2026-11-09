@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { GitCommitHorizontal, Sparkles, Timer, Zap } from "lucide-react";
+import { FileText, GitCommitHorizontal, Timer, Zap } from "lucide-react";
 import { getAllNotes } from "@/content";
 import { getChangelog, getChangelogStats, changeTypeMeta } from "@/config/changelog";
 import { siteConfig } from "@/config/site";
@@ -29,7 +29,7 @@ export default function JournalPage() {
   const overview = [
     { label: "记录迭代", value: stats.entries, unit: "次", icon: GitCommitHorizontal },
     { label: "活跃天数", value: stats.activeDays, unit: "天", icon: Timer },
-    { label: "沉淀文章", value: notes.length, unit: "篇", icon: Sparkles },
+    { label: "沉淀文章", value: notes.length, unit: "篇", icon: FileText },
     {
       label: "最近更新",
       value: stats.lastUpdated?.slice(5).replace("-", "/") ?? "—",

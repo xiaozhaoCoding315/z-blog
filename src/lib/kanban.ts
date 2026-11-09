@@ -36,11 +36,18 @@ export function isKanbanColumnId(value: unknown): value is KanbanColumnId {
   return value === "backlog" || value === "doing" || value === "done";
 }
 
-/** 进行中与维护中都算「在做」；未知状态进待启动，不丢项目。 */
+/**
+ * 进行中与维护中都算「在做」；显式「待启动」进 backlog。
+ * 未知状态不猜成待启动：归入 doing 并在开发环境告警，生产环境保持安静。
+ */
 export function columnOf(status: string): KanbanColumnId {
   if (status === "进行中" || status === "维护中") return "doing";
   if (status === "已完成") return "done";
-  return "backlog";
+  if (status === "待启动") return "backlog";
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(`[kanban] 未知项目状态：${status}，归入「进行中」`);
+  }
+  return "doing";
 }
 
 export function groupProjects(projects: readonly Project[]): KanbanBoard {

@@ -2,11 +2,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ThemeValue } from "@/components/about/theme-value";
 import { GithubIcon } from "@/components/icons/github";
+import { desktopTileApps } from "@/config/apps";
 import { siteConfig } from "@/config/site";
 import { now } from "@/config/portfolio";
 import { skillGroups } from "@/config/skills";
 import { getAllNotes } from "@/content";
-import { aiEnabled } from "@/lib/ai";
+import { chatEnabled } from "@/lib/ai";
 import {
   getGithubActivity,
   type GithubActivity,
@@ -72,6 +73,8 @@ export async function AboutProfile({
     },
     { label: "Shell", value: "zsh (simulated)" },
     { label: "Stack", value: STACK },
+    // 注册表真实值；终端 neofetch 的 Apps 行用的是同一份数据。
+    { label: "Apps", value: String(desktopTileApps.length) },
     { label: "Notes", value: String(notesCount) },
     {
       label: "Commits·90D",
@@ -79,7 +82,8 @@ export async function AboutProfile({
         <span className="text-wait">NOT AVAILABLE</span>
       ),
     },
-    { label: "AI", value: aiEnabled ? "已配置" : "未配置" },
+    // /api/chat 只需要聊天密钥；没有向量密钥时仍能无检索问答。
+    { label: "AI", value: chatEnabled ? "已配置" : "未配置" },
     { label: "Theme", value: <ThemeValue /> },
   ];
 

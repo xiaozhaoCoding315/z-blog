@@ -479,7 +479,6 @@ html {
  */
 .moment-digit {
   translate: 0 var(--to);
-  animation: digit-roll 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes digit-roll {
@@ -496,8 +495,6 @@ html {
  */
 .moment-cell {
   opacity: var(--o);
-  animation: cell-in 180ms ease-out backwards;
-  animation-delay: calc(var(--i) * 5ms);
 }
 
 @keyframes cell-in {
@@ -778,7 +775,6 @@ html {
     border: 1px solid var(--rule);
     background: var(--window);
     box-shadow: 0 18px 44px rgb(0 0 0 / 0.28);
-    animation: os-panel-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .os-launcher {
@@ -1012,8 +1008,6 @@ html {
     text-align: center;
     /* 触屏双击不缩放：图标本身的双击是“打开”，不需要浏览器的 300ms 缩放判定 */
     touch-action: manipulation;
-    animation: os-icon-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-delay: calc(var(--i) * 30ms);
     transition:
       background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
       border-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -1272,10 +1266,6 @@ html {
     .os-icon-tile {
       width: 44px;
       height: 44px;
-    }
-
-    .os-icon {
-      animation-delay: calc(var(--i) * 20ms);
     }
 
     .os-desktop-hint {
@@ -1617,7 +1607,6 @@ html {
 
   .os-window.is-open {
     transform-origin: 50% 40%;
-    animation: os-window-open 240ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   @keyframes os-window-open {
@@ -1628,7 +1617,7 @@ html {
   }
 
   .os-window[data-maximized="true"] {
-    animation: os-window-maximize 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    /* 最大化后的位置由 inset / border-radius 表达，动画在统一入口块里声明。 */
   }
 
   @keyframes os-window-maximize {
@@ -1648,11 +1637,6 @@ html {
     pointer-events: none;
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .os-window[data-minimized="true"] {
-      animation: os-window-minimize 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-  }
 
   @keyframes os-window-minimize {
     from {
@@ -2057,7 +2041,6 @@ html {
     justify-content: center;
     padding: 18vh 16px 16px;
     background: color-mix(in srgb, var(--desk) 46%, transparent);
-    animation: os-spotlight-fade 160ms ease-out;
   }
 
   @keyframes os-spotlight-fade {
@@ -2081,7 +2064,6 @@ html {
     outline: none;
     box-shadow: 0 18px 48px color-mix(in srgb, #000 42%, transparent);
     backdrop-filter: blur(14px);
-    animation: os-spotlight-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   @keyframes os-spotlight-in {
@@ -2642,9 +2624,12 @@ html {
   }
 
   .os-gallery-nav {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-grid;
+    place-items: center;
+    /* §5.4/§10.4：灯箱控件至少 44×44px 命中区，字形仍居中且紧凑。 */
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
     border: 1px solid var(--rule);
     background: color-mix(in srgb, var(--window) 88%, transparent);
     color: var(--ink-dim);
@@ -2656,6 +2641,12 @@ html {
       background-color 160ms ease,
       border-color 160ms ease,
       color 160ms ease;
+  }
+
+  /* 左右切换按钮保持 44px 方块，不覆盖图片主体区域。 */
+  .os-gallery-nav-step {
+    width: 44px;
+    height: 44px;
   }
 
   .os-gallery-nav:hover,
@@ -3011,6 +3002,19 @@ html {
     object-fit: cover;
   }
 
+  /* 无真实照片时只留一张空白相纸，不补示例图 / 渐变 / 图标。 */
+  .os-polaroid-blank {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: var(--window);
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+
   .os-polaroid-label {
     position: absolute;
     right: 0;
@@ -3107,6 +3111,7 @@ html {
   @media (prefers-reduced-transparency: reduce) {
     .os-coffee-cup,
     .os-polaroid,
+    .os-polaroid-blank,
     .os-mixtape-body {
       background: var(--window);
     }
@@ -3635,6 +3640,15 @@ html {
     line-height: 1.6;
   }
 
+  .os-snippet-note {
+    max-width: 62ch;
+    margin-top: 4px;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.7;
+  }
+
   .os-snippet-copy {
     flex: none;
     padding: 5px 10px;
@@ -3885,7 +3899,6 @@ html {
     border: 1px solid var(--rule);
     background: color-mix(in srgb, var(--window) 95%, transparent);
     box-shadow: 0 18px 44px rgb(0 0 0 / 0.28);
-    animation: os-panel-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .os-context-menu .os-menu-label {
@@ -4053,6 +4066,103 @@ html {
   .os-more-links .os-pane-link {
     align-items: center;
     min-height: 44px;
+  }
+}
+
+/* ============ 桌面日志窗口即时标签筛选 ============ */
+@layer components {
+  .os-desktop-tags {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .os-desktop-tags-bar {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .os-desktop-tag {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    min-height: 44px;
+    padding: 0 8px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition:
+      color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .os-desktop-tag:hover,
+  .os-desktop-tag:focus-visible {
+    border-color: var(--phosphor);
+    color: var(--ink);
+  }
+
+  .os-desktop-tag[data-active="true"] {
+    border-color: var(--phosphor);
+    color: var(--phosphor);
+  }
+
+  .os-desktop-tag:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .os-desktop-tag-count {
+    opacity: 0.6;
+    font-size: 10px;
+  }
+
+  .os-desktop-tag-selected {
+    font-size: 10px;
+  }
+
+  .os-desktop-tag.is-clear {
+    color: var(--ink-dim);
+  }
+
+  .os-desktop-tags-more {
+    margin-left: auto;
+    color: var(--phosphor);
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  .os-desktop-tags-empty {
+    padding: 12px 0;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .os-desktop-tags-hint {
+    margin-top: 4px;
+    font-size: 10px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .os-desktop-tag {
+      transition: none;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .os-desktop-tag {
+      background: var(--window);
+    }
   }
 }
 
@@ -4290,6 +4400,61 @@ html {
         [aria-label="还原窗口"]
       ) {
       display: none;
+    }
+  }
+}
+
+
+/* ============ 入场动效：仅在脚本可用且允许动效时声明 ============ */
+/*
+ * 基础样式永远停在终点；这里只声明从 from 关键帧出发的入场动画与错峰延迟。
+ * 没有脚本 / 减少动效时，连动画声明都不存在，读屏与静态 HTML 直接看到最终态。
+ * 关键帧仍定义在上文各自的组件层里；时长与曲线保持原值。
+ */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .moment-digit {
+    animation: digit-roll 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .moment-cell {
+    animation: cell-in 180ms ease-out backwards;
+    animation-delay: calc(var(--i) * 5ms);
+  }
+
+  .os-launcher,
+  .os-system-menu,
+  .os-context-menu {
+    animation: os-panel-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .os-icon {
+    animation: os-icon-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i) * 30ms);
+  }
+
+  .os-window.is-open {
+    animation: os-window-open 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .os-window[data-maximized="true"] {
+    animation: os-window-maximize 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .os-window[data-minimized="true"] {
+    animation: os-window-minimize 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .os-spotlight-layer {
+    animation: os-spotlight-fade 160ms ease-out;
+  }
+
+  .os-spotlight {
+    animation: os-spotlight-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (max-width: 767px) {
+    .os-icon {
+      animation-delay: calc(var(--i) * 20ms);
     }
   }
 }

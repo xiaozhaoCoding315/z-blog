@@ -22,7 +22,8 @@ import {
 
 type StatusTone = "doing" | "warn" | "done";
 
-function statusTone(status: Project["status"]): StatusTone {
+/** 未知 status 的徽标默认用 doing 色调；文字仍原样显示配置里的值。 */
+function statusTone(status: Project["status"] | string): StatusTone {
   if (status === "维护中") return "warn";
   if (status === "已完成") return "done";
   return "doing";

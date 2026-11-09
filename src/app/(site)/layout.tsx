@@ -7,7 +7,7 @@ import type {
 import { AccountMenu } from "@/components/site/account-menu";
 import { DesktopShell } from "@/components/desktop/desktop-shell";
 import { friends } from "@/config/portfolio";
-import { snippetSummaries } from "@/config/snippets";
+import { snippets as snippetConfig } from "@/config/snippets";
 import { getAllNotes } from "@/content";
 import { chatEnabled } from "@/lib/ai";
 import { getUptimeSnapshot } from "@/lib/uptime-server";
@@ -37,7 +37,7 @@ export default async function SiteLayout({
     tags: note.meta.tags ?? [],
   }));
   // 片段来自静态配置；TerminalSnippet 只拿摘要，不把完整代码带进客户端索引。
-  const snippets: TerminalSnippet[] = snippetSummaries.map((snippet) => ({
+  const snippets: TerminalSnippet[] = snippetConfig.map((snippet) => ({
     id: snippet.id,
     title: snippet.title,
     language: snippet.language,

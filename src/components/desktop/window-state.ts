@@ -5,6 +5,45 @@ export interface Rect {
   h: number;
 }
 
+/**
+ * `apps.ts` 里八个有窗口几何的应用（桌面图标 + 全局终端/助理）。
+ * 路由型应用不进 `z-os:windows`，这里不认它们的 id。
+ */
+export const SAVED_RECT_APP_IDS: readonly string[] = [
+  "terminal",
+  "life",
+  "gallery",
+  "projects",
+  "snippets",
+  "about",
+  "more",
+  "assistant",
+];
+
+/**
+ * localStorage 里的窗口几何是外部输入：只有注册表里已知的应用 id 和四个
+ * 有限数才可信。脏值会让 clampRect 算出 NaN 并写进内联 CSS / localStorage。
+ * 逐项丢弃坏数据，永远返回一个纯对象（可能是空对象）。
+ */
+export function sanitizeSavedRects(raw: unknown): Record<string, Rect> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const knownIds = new Set(SAVED_RECT_APP_IDS);
+  const result: Record<string, Rect> = {};
+  for (const [id, value] of Object.entries(raw)) {
+    if (!knownIds.has(id)) continue;
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const rect = value as Record<string, unknown>;
+    const numbers = [rect.x, rect.y, rect.w, rect.h];
+    if (!numbers.every((n) => typeof n === "number" && Number.isFinite(n))) {
+      continue;
+    }
+    const [x, y, w, h] = numbers as number[];
+    if (w <= 0 || h <= 0) continue;
+    result[id] = { x, y, w, h };
+  }
+  return result;
+}
+
 export interface DesktopBounds {
   width: number;
   height: number;
