@@ -22,7 +22,7 @@ import {
 
 export interface TerminalWindowProps {
   notes: TerminalNote[];
-  /** Phase 3 才会引入片段数据模型；本阶段由 layout 传入空数组。 */
+  /** 片段摘要由 layout 从数据源读取后传入，供 `open` 与补全使用。 */
   snippets: TerminalSnippet[];
   uptimeDays: number | null;
   aiEnabled: boolean;

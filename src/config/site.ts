@@ -23,7 +23,7 @@ export const siteConfig = {
    */
   status: "在杭州，最近在学做饭",
   // 站点建立日期：全站「运行天数」的唯一数据源（终端 neofetch / 关于页均读这里）
-  // 2026-07-02 起算，至今约 120 天
+  // 2026-07-02 起算；运行天数在运行时由该日期计算，不在注释里写死。
   startedAt: process.env.NEXT_PUBLIC_SITE_START_DATE ?? "2026-07-02",
   author: {
     name: "赵小元",

@@ -5,8 +5,7 @@ import { ObservBar } from "@/components/site/observ-bar";
 import { NotYetOpen } from "@/components/site/not-yet-open";
 import { AppIcon } from "@/components/desktop/icons";
 import { now as portfolioNow } from "@/config/portfolio";
-import { siteConfig } from "@/config/site";
-import { daysSince } from "@/lib/uptime";
+import { getUptimeSnapshot } from "@/lib/uptime-server";
 import { ICON_KEYS } from "@/config/apps";
 
 /**
@@ -16,11 +15,12 @@ import { ICON_KEYS } from "@/config/apps";
  * 走廊里的静态示例一律标注「示例」；读数没有真实数据源时显示
  * NOT AVAILABLE，不写占位数字。
  */
-export default function StylePage() {
+export default async function StylePage() {
   if (process.env.NODE_ENV === "production") notFound();
 
-  // Days 是唯一能在走廊里真实计算的读数；其余读数依赖数据库或网络。
-  const uptimeDays = daysSince(siteConfig.startedAt);
+  // Days 是走廊里唯一的真实读数，来自缓存快照；其余读数依赖数据库或网络。
+  const uptime = await getUptimeSnapshot();
+  const uptimeDays = uptime.days;
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6">
@@ -30,6 +30,9 @@ export default function StylePage() {
         <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
           桌面图标
         </h2>
+        <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+          示例 · 图标全集静态展示，不含交互。
+        </p>
         <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-6">
           {ICON_KEYS.map((name) => (
             <div
@@ -50,7 +53,7 @@ export default function StylePage() {
           观测条
         </h2>
         <p className="mt-2 font-mono text-[10px] text-muted-foreground">
-          示例 · Days 由 siteConfig.startedAt 实时计算；其余读数在走廊里不接入数据源。
+          示例 · Days 来自缓存的上线时间快照（不在渲染期读 Date.now）；其余读数在走廊里不接入数据源。
         </p>
         <div className="mt-6">
           <ObservBar
@@ -232,6 +235,9 @@ export default function StylePage() {
         <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
           语义色
         </h2>
+        <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+          示例 · 四个语义色 token，静态展示。
+        </p>
         <div className="mt-6 flex flex-wrap gap-6">
           {[
             ["完成 / 成立", "bg-ok"],
