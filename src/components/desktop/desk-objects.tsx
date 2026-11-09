@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface DeskObjectsProps {
   /** 最新一张真实照片；没有照片时不渲染拍立得，不放占位图 */
-  photo: { src: string; momentId: string } | null;
+  photo: { src: string } | null;
 }
 
 /**
@@ -27,7 +27,8 @@ export function DeskObjects({ photo }: DeskObjectsProps) {
     setSteamKey((key) => key + 1);
     setSteaming(true);
     if (timer.current !== null) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setSteaming(false), 2000);
+    // 三股热气最后一组 320ms 延迟 + 2s 动画，留一点余量再收掉
+    timer.current = setTimeout(() => setSteaming(false), 2400);
   }, []);
 
   useEffect(() => {
@@ -43,7 +44,6 @@ export function DeskObjects({ photo }: DeskObjectsProps) {
       <button
         type="button"
         className="os-coffee"
-        data-steaming={steaming ? "true" : "false"}
         aria-label="冲一杯咖啡"
         title="冲一杯咖啡"
         onClick={() => window.dispatchEvent(new Event("z-os:coffee"))}

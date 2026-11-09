@@ -113,65 +113,62 @@ export function StatusWidget({
         </span>
       </button>
 
-      {expanded && (
-        <div id={panelId} className="os-status-panel">
-          <div className="os-status-group">
-            <p className="os-status-label">Weather</p>
-            <p className="os-status-value">
-              {weather ? (
-                `${weather.temperature}° ${weather.label}`
-              ) : (
-                <span className="os-status-na">NOT AVAILABLE</span>
-              )}
-            </p>
-          </div>
-
-          <div className="os-status-group">
-            <p className="os-status-label">
-              <span>Now Playing</span>
-              <span className="os-status-manual">手动</span>
-            </p>
-            <p className="os-status-value">
-              {listening.trim() ? (
-                listening
-              ) : (
-                <span className="os-status-na">NOT AVAILABLE</span>
-              )}
-            </p>
-          </div>
-
-          <div className="os-status-group">
-            <p className="os-status-label">
-              <span>Reading</span>
-              <span className="os-status-manual">手动</span>
-            </p>
-            {reading.length > 0 ? (
-              <ul className="os-status-list">
-                {reading.map((item, index) => (
-                  <li key={`${index}-${item}`} className="os-status-value">
-                    {item}
-                  </li>
-                ))}
-              </ul>
+      {/* 面板始终渲染，收起时用 hidden 隐藏：aria-controls 指向的节点始终存在 */}
+      <div id={panelId} className="os-status-panel" hidden={!expanded}>
+        <div className="os-status-group">
+          <p className="os-status-label">Weather</p>
+          <p className="os-status-value">
+            {weather ? (
+              `${weather.temperature}° ${weather.label}`
             ) : (
-              <p className="os-status-value">
-                <span className="os-status-na">NOT AVAILABLE</span>
-              </p>
+              <span className="os-status-na">NOT AVAILABLE</span>
             )}
-          </div>
-
-          <div className="os-status-group">
-            <p className="os-status-label">Commits · 14D</p>
-            <p className="os-status-value">
-              <CommitReading activity={activity} commits14={commits14} />
-            </p>
-          </div>
-
-          <p className="os-status-updated">
-            手动字段更新于 {updatedAt}
           </p>
         </div>
-      )}
+
+        <div className="os-status-group">
+          <p className="os-status-label">
+            <span>Now Playing</span>
+            <span className="os-status-manual">手动</span>
+          </p>
+          <p className="os-status-value">
+            {listening.trim() ? (
+              listening
+            ) : (
+              <span className="os-status-na">NOT AVAILABLE</span>
+            )}
+          </p>
+        </div>
+
+        <div className="os-status-group">
+          <p className="os-status-label">
+            <span>Reading</span>
+            <span className="os-status-manual">手动</span>
+          </p>
+          {reading.length > 0 ? (
+            <ul className="os-status-list">
+              {reading.map((item, index) => (
+                <li key={`${index}-${item}`} className="os-status-value">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="os-status-value">
+              <span className="os-status-na">NOT AVAILABLE</span>
+            </p>
+          )}
+        </div>
+
+        <div className="os-status-group">
+          <p className="os-status-label">Commits · 14D</p>
+          <p className="os-status-value">
+            <CommitReading activity={activity} commits14={commits14} />
+          </p>
+        </div>
+
+        <p className="os-status-updated">手动字段更新于 {updatedAt}</p>
+      </div>
     </section>
   );
 }

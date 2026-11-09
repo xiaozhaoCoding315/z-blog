@@ -2629,10 +2629,8 @@ html {
     border: 1px solid var(--rule);
     background: color-mix(in srgb, var(--window) 96%, transparent);
     font-family: var(--font-mono);
-    transition:
-      width 200ms ease,
-      margin-left 200ms ease,
-      background-color 200ms ease;
+    /* 只过渡颜色；宽度变化直接跳变，不做尺寸动画 */
+    transition: background-color 200ms ease;
   }
 
   /* 展开时向左长到 360px，右边缘保持不动 */
@@ -2707,6 +2705,11 @@ html {
     padding: 10px 12px 12px;
     border-top: 1px solid var(--rule);
     background: color-mix(in srgb, var(--window-2) 55%, transparent);
+  }
+
+  /* hidden 属性要压过上面的 display:flex */
+  .os-status-panel[hidden] {
+    display: none;
   }
 
   .os-status-label {

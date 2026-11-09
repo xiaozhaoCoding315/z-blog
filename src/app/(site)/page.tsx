@@ -92,7 +92,7 @@ function LifeWindowContent({ life }: { life: MomentsResult }) {
 }
 
 /**
- * 生活胶囊窗口：最近 24 张真实照片，灯箱铺满窗口内容区。
+ * 生活胶囊窗口：最近 24 张真实照片，灯箱铺满整个窗口（含标题栏）。
  * 读不到库时不拿空相册冒充「还没发过」。
  */
 function GalleryWindowContent({
@@ -303,12 +303,7 @@ export default async function HomePage() {
     : [];
   // 首页窗口只铺最近 24 张；完整相册在 /gallery。
   const windowGallery = galleryImages.slice(0, 24);
-  const photo = galleryImages[0]
-    ? {
-        src: galleryImages[0].src,
-        momentId: galleryImages[0].momentId,
-      }
-    : null;
+  const photo = galleryImages[0] ? { src: galleryImages[0].src } : null;
   const commits14 = activity.days
     .slice(-14)
     .reduce((sum, day) => sum + day.count, 0);
