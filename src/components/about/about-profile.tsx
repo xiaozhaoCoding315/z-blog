@@ -6,7 +6,7 @@ import { siteConfig } from "@/config/site";
 import { now } from "@/config/portfolio";
 import { skillGroups } from "@/config/skills";
 import { getAllNotes } from "@/content";
-import { chatEnabled } from "@/lib/ai";
+import { aiEnabled } from "@/lib/ai";
 import {
   getGithubActivity,
   type GithubActivity,
@@ -16,7 +16,7 @@ import { getUptimeSnapshot } from "@/lib/uptime-server";
 
 /**
  * 8 行 ASCII Z 标：纯文本，不假装是照片，也不额外请求一张图片。
- * 它是装饰——旁边有可见的姓名，读屏器只需要 sr-only 的那一份。
+ * 它是装饰（aria-hidden）——姓名由旁边可见的标题承载，读屏器不再重复朗读。
  */
 const ASCII_Z = [
   "╔══════════╗",
@@ -79,7 +79,7 @@ export async function AboutProfile({
         <span className="text-wait">NOT AVAILABLE</span>
       ),
     },
-    { label: "AI", value: chatEnabled ? "已配置" : "未配置" },
+    { label: "AI", value: aiEnabled ? "已配置" : "未配置" },
     { label: "Theme", value: <ThemeValue /> },
   ];
 
@@ -140,7 +140,6 @@ export async function AboutProfile({
           <pre aria-hidden className="os-about-mark">
             {ASCII_Z}
           </pre>
-          <span className="sr-only">{siteConfig.author.name}</span>
         </div>
         <dl className="os-about-rows">
           {rows.map((row) => (
