@@ -3716,3 +3716,90 @@ html {
     }
   }
 }
+
+/* ============ Personal Dev OS 关于本机（Phase 3） ============ */
+@layer components {
+  /*
+   * 两栏 neofetch：左 ASCII Z 标，右 key: value。
+   * 档案是文本而不是图片；窄屏单列，右侧读数独立横向滚动，
+   * 不让最长的一行（Stack / Commits·90D）把整页撑出横向溢出。
+   */
+  .os-about-neofetch {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 28px;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .os-about-mark-wrap {
+    min-width: 0;
+  }
+
+  .os-about-mark {
+    margin: 0;
+    color: var(--phosphor);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.1;
+    letter-spacing: 0;
+    white-space: pre;
+    user-select: none;
+  }
+
+  .os-about-rows {
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 2px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-color: var(--rule) transparent;
+    scrollbar-width: thin;
+  }
+
+  .os-about-row {
+    display: grid;
+    grid-template-columns: 96px minmax(0, max-content);
+    align-items: baseline;
+    column-gap: 12px;
+    padding: 3px 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+
+  .os-about-row dt {
+    color: var(--ink-dim);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .os-about-row dd {
+    margin: 0;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  /* Theme 不是服务端观测值：标注它只反映当前客户端的预设。 */
+  .os-about-hint {
+    margin-left: 7px;
+    color: var(--ink-dim);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+  }
+
+  @media (max-width: 639px) {
+    .os-about-neofetch {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: start;
+      gap: 16px;
+    }
+
+    .os-about-mark {
+      font-size: 11px;
+    }
+  }
+}

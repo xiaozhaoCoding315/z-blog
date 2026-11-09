@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
+import { AboutProfile } from "@/components/about/about-profile";
 import { DeskObjects } from "@/components/desktop/desk-objects";
 import {
   DesktopHome,
@@ -18,7 +18,10 @@ import { now as portfolioNow, friends, projects } from "@/config/portfolio";
 import { siteConfig } from "@/config/site";
 import { snippets } from "@/config/snippets";
 import { collectGalleryImages, type GalleryImage } from "@/lib/gallery";
-import { getGithubActivity } from "@/lib/github-server";
+import {
+  getGithubActivity,
+  type GithubActivity,
+} from "@/lib/github-server";
 import { getMoments, type MomentsResult } from "@/lib/moments-server";
 import { getPinnedMoment, getStatusSentence } from "@/lib/settings-server";
 import {
@@ -161,55 +164,12 @@ function SnippetsWindowContent({
   );
 }
 
-/** 关于本机：Phase 2 的紧凑档案卡，数据全部来自站点配置。 */
-function AboutWindowContent() {
-  return (
-    <div className="os-window-pane">
-      <div className="flex items-center gap-4">
-        <Image
-          src={siteConfig.author.avatar}
-          alt={siteConfig.author.name}
-          width={52}
-          height={52}
-          unoptimized
-          className="shrink-0"
-        />
-        <div>
-          <h2 className="font-heading text-[17px] font-bold">
-            {siteConfig.author.name}
-          </h2>
-          <p className="font-mono text-[10px] text-muted-foreground">
-            全栈 · AI 应用
-          </p>
-        </div>
-      </div>
-      <p className="text-[13px] leading-6 text-muted-foreground">
-        {siteConfig.author.bio}
-      </p>
-      <p className="font-mono text-[10px] text-muted-foreground">
-        建站于 {siteConfig.startedAt}
-      </p>
-      <Link href="/about" className="os-pane-link">
-        <span>关于本机</span>
-        <span aria-hidden>→</span>
-      </Link>
-      <a
-        href={siteConfig.links.github}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="os-pane-link"
-      >
-        <span>GitHub</span>
-        <span aria-hidden>↗</span>
-      </a>
-      {siteConfig.author.email && (
-        <a href={`mailto:${siteConfig.author.email}`} className="os-pane-link">
-          <span>邮箱</span>
-          <span aria-hidden>↗</span>
-        </a>
-      )}
-    </div>
-  );
+/**
+ * 关于本机：与 /about 共用同一份档案（窗口只渲染紧凑版）。
+ * activity 由首页传入，避免同一请求向 GitHub 再取一次。
+ */
+function AboutWindowContent({ activity }: { activity: GithubActivity }) {
+  return <AboutProfile variant="window" activity={activity} />;
 }
 
 function MoreWindowContent({ hasFriends }: { hasFriends: boolean }) {
@@ -276,7 +236,7 @@ export default async function HomePage() {
     snippets: (
       <SnippetsWindowContent highlighted={highlightedSnippets} />
     ),
-    about: <AboutWindowContent />,
+    about: <AboutWindowContent activity={activity} />,
     more: <MoreWindowContent hasFriends={friends.length > 0} />,
   };
 
