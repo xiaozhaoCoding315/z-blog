@@ -51,6 +51,24 @@ function openerFocus(): HTMLElement | null {
 }
 
 /**
+ * 关闭窗口时能否把焦点还给打开者。
+ *
+ * 终端/助理最小化后仍挂载，只是 `visibility: hidden`——这种元素
+ * isConnected 为 true、getClientRects 也仍有布局盒，但 focus() 不生效。
+ * 用 checkVisibility() 同时排除 display:none 与 visibility:hidden；
+ * 老浏览器没有该方法时退回布局盒检查。
+ */
+function canRestoreFocus(node: HTMLElement | null): node is HTMLElement {
+  if (!node?.isConnected) return false;
+  if (typeof node.checkVisibility === "function") {
+    // visibilityProperty 默认不检查（默认只看 display/content-visibility）；
+    // 最小化窗口正是靠 visibility:hidden 隐藏的，显式打开这一项。
+    return node.checkVisibility({ visibilityProperty: true });
+  }
+  return node.getClientRects().length > 0;
+}
+
+/**
  * ≤767px 的终端/助理窗口是铺满视口的覆盖层：不拖拽、不缩放、不最大化。
  * 与 desktop-home / use-window-manager 的断点保持一致。
  */
@@ -97,7 +115,8 @@ export function Window({ id, app, title, children }: WindowProps) {
     titlebarRef.current?.focus({ preventScroll: true });
 
     return () => {
-      if (previous?.isConnected) {
+      // 终端/助理最小化时仍挂载但不可见；不可见的节点不能归还焦点。
+      if (canRestoreFocus(previous)) {
         previous.focus({ preventScroll: true });
         return;
       }

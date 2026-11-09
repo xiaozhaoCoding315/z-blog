@@ -67,9 +67,13 @@ export function ArticleTools() {
   }
 
   function backToTop() {
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    const behavior: ScrollBehavior = reduced ? "auto" : "smooth";
     const node = scrollRoot?.current;
-    if (node) node.scrollTo({ top: 0, behavior: "smooth" });
-    else window.scrollTo({ top: 0, behavior: "smooth" });
+    if (node) node.scrollTo({ top: 0, behavior });
+    else window.scrollTo({ top: 0, behavior });
   }
 
   const circumference = 2 * Math.PI * 15;
@@ -127,7 +131,7 @@ export function ArticleTools() {
         className="card-surface flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
       >
         {copied ? (
-          <Check className="size-4 text-emerald-500" />
+          <Check className="size-4 text-ok" />
         ) : (
           <Link2 className="size-4" />
         )}

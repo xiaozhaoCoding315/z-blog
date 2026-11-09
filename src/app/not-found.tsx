@@ -12,7 +12,7 @@ export const metadata: Metadata = {
  */
 export default function NotFound() {
   return (
-    <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
+    <main className="flex min-h-[70vh] items-center justify-center px-4 py-12">
       <div className="w-full max-w-xl border border-rule bg-window font-mono text-[13px] leading-relaxed text-ink">
         <div className="flex items-center justify-between gap-4 border-b border-rule bg-window-2 px-3 py-2 text-[11px] text-ink-dim">
           <h1>zsh — 404</h1>
@@ -42,6 +42,6 @@ export default function NotFound() {
           </nav>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

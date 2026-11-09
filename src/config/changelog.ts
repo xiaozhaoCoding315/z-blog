@@ -26,28 +26,28 @@ export const changeTypeMeta: Record<
 > = {
   feat: {
     label: "新功能",
-    className: "border-primary/40 bg-primary/10 text-primary",
-    dot: "bg-primary",
+    className: "border-data/40 bg-data/10 text-data",
+    dot: "bg-data",
   },
   fix: {
     label: "修复",
-    className: "border-rose-500/40 bg-rose-500/10 text-rose-400",
-    dot: "bg-rose-400",
+    className: "border-alert/40 bg-alert/10 text-alert",
+    dot: "bg-alert",
   },
   perf: {
     label: "性能",
-    className: "border-amber-500/40 bg-amber-500/10 text-amber-400",
-    dot: "bg-amber-400",
+    className: "border-warn/40 bg-warn/10 text-warn",
+    dot: "bg-warn",
   },
   docs: {
     label: "文档",
-    className: "border-sky-500/40 bg-sky-500/10 text-sky-400",
-    dot: "bg-sky-400",
+    className: "border-info/40 bg-info/10 text-info",
+    dot: "bg-info",
   },
   refactor: {
     label: "重构",
-    className: "border-violet-500/40 bg-violet-500/10 text-violet-400",
-    dot: "bg-violet-400",
+    className: "border-data/40 bg-data/10 text-data",
+    dot: "bg-data",
   },
   chore: {
     label: "工程",

@@ -291,7 +291,7 @@ export function runCommand(input: string, ctx: TerminalContext): TerminalResult 
 
     case "snippets":
       if (ctx.snippets.length === 0) {
-        return { lines: ["还没有代码片段（阶段 3 接入）。"] };
+        return { lines: ["还没有代码片段。"] };
       }
       return {
         lines: ctx.snippets.map(

@@ -122,8 +122,11 @@ export function useFocusTrap(
       document.removeEventListener("keydown", onKeyDown, true);
       document.removeEventListener("focusin", onFocusIn);
       const index = activeTraps.lastIndexOf(container);
+      // 只有被移除的是栈顶模态层时才归还焦点：下层在更上层还开着时
+      // 卸载，不该把焦点从上层抢走。
+      const wasTop = index !== -1 && index === activeTraps.length - 1;
       if (index !== -1) activeTraps.splice(index, 1);
-      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+      if (wasTop && previouslyFocused?.isConnected) previouslyFocused.focus();
     };
   }, [active, ref]);
 }

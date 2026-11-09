@@ -34,8 +34,8 @@ import { getWeather } from "@/lib/weather-server";
 export const instant = false;
 
 /**
- * 生活流窗口：最近 12 条的紧凑版。
- * Phase 3 会换成带筛选的版本，这里先复用同一个 Moment 与主脊线。
+ * 生活流窗口：最近 12 条的紧凑版，复用同一个 Moment 与主脊线。
+ * 这是交付版的窗口内容；标签筛选只在完整的 /life 页面提供。
  */
 function LifeWindowContent({ life }: { life: MomentsResult }) {
   if (!life.available) {

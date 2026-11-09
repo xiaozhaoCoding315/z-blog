@@ -79,7 +79,7 @@ function CopyButton() {
       onClick={handleCopy}
       className="absolute right-2.5 top-2.5 z-10 inline-flex size-7 items-center justify-center rounded-md border border-border/60 bg-background/70 text-muted-foreground opacity-0 backdrop-blur transition hover:text-foreground group-hover/code:opacity-100 focus-visible:opacity-100"
     >
-      {copied ? <Check className="size-3.5 text-emerald-500" /> : (
+      {copied ? <Check className="size-3.5 text-ok" /> : (
         <Copy className="size-3.5" />
       )}
     </button>

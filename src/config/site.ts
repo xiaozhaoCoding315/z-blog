@@ -22,12 +22,11 @@ export const siteConfig = {
    * 桌面主屏与 /life 都读 getStatusSentence()。
    */
   status: "在杭州，最近在学做饭",
-  // 站点建立日期：全站「运行天数」的唯一数据源（页脚 / 终端 neofetch 均读这里）
+  // 站点建立日期：全站「运行天数」的唯一数据源（终端 neofetch / 关于页均读这里）
   // 2026-07-02 起算，至今约 120 天
   startedAt: process.env.NEXT_PUBLIC_SITE_START_DATE ?? "2026-07-02",
   author: {
     name: "赵小元",
-    avatar: "/images/avatar.svg",
     bio: "全栈工程师，习惯从需求、架构、实现到上线完整走一遍。擅长把复杂系统拆成可验证的小步骤，并在代码、数据和反馈中持续修正。",
     // 邮箱留空 = 不显示「邮箱」入口。别填示例地址：点开是死链接，比没有更糟。
     email: process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "",

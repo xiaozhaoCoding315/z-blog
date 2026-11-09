@@ -9,14 +9,14 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 /**
- * 观测台暗色配色，直接取自 globals.css 里的设计令牌（satori 只认 rgb/hex）。
+ * 夜班配色，直接取自 globals.css 的暗色设计令牌（satori 只认 rgb/hex）。
  * 这些值必须与 globals.css 的暗色 token 一起改，改主题时两个地方要同步。
  */
-const PAPER = "#0d0f12";      // --background（暗）
-const INK = "#e8eaed";        // --foreground
-const INK_SOFT = "#8b9099";   // --muted-foreground
-const ACCENT = "#6f9bd1";     // --data
-const RULE = "#262b32";       // --rule
+const PAPER = "#0f0e0c";      // --desk（夜班底）
+const INK = "#ece6d8";        // --ink
+const INK_SOFT = "#a39a8a";   // --ink-dim
+const ACCENT = "#d9a05b";     // --phosphor
+const RULE = "#352f27";       // --rule
 
 /**
  * 字体从仓库内读，不打运行时网络请求。
