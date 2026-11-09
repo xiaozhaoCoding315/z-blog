@@ -29,10 +29,8 @@ export function Launcher({ apps }: { apps: AppDefinition[] }) {
       if (app.path) router.push(app.path);
       return;
     }
-    if (window.matchMedia("(max-width: 767px)").matches) {
-      if (app.path) router.push(app.path);
-      return;
-    }
+    // 移动端分流在 openApp：有路径的进全屏路由，终端/助理开全屏覆盖，
+    // 其余无路径窗口（更多）不响应。
     windows.openApp(app.id);
   };
 
@@ -79,6 +77,16 @@ export function Launcher({ apps }: { apps: AppDefinition[] }) {
         })}
       </div>
       <div className="os-launcher-foot">
+        <button
+          type="button"
+          onClick={() => {
+            closePanels();
+            openSettings();
+          }}
+        >
+          系统设置
+        </button>
+        <span aria-hidden>·</span>
         <Link href="/about" onClick={closePanels}>
           关于本机
         </Link>

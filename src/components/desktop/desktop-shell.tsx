@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -19,6 +20,7 @@ import type {
 } from "@/components/search/search-local";
 import { DesktopRuntimeContext } from "./desktop-runtime";
 import { GlobalWindows } from "./global-windows";
+import { MobileDock } from "./mobile-dock";
 import { Taskbar } from "./taskbar";
 import { useDesktopSettings } from "./use-desktop-settings";
 import { useWindowManager } from "./use-window-manager";
@@ -60,10 +62,13 @@ export function DesktopShell({
   uptimeDays: number | null;
   children: ReactNode;
 }) {
+  const pathname = usePathname();
   const windows = useWindowManager();
   const settings = useDesktopSettings();
   const { openApp } = windows;
   const [spotlightOpen, setSpotlightOpen] = useState(false);
+  // 移动端 dock 只在首页出现；应用页沿用 AppFrame 的返回栏。
+  const showDock = pathname === "/";
 
   const openTerminal = useCallback(() => openApp("terminal"), [openApp]);
   const openAssistant = useCallback(() => openApp("assistant"), [openApp]);
@@ -148,7 +153,7 @@ export function DesktopShell({
 
   return (
     <DesktopRuntimeContext.Provider value={runtime}>
-      <div className="os-shell">
+      <div className="os-shell" data-dock={showDock ? "true" : "false"}>
         <Wallpaper />
         <main className="os-main">{children}</main>
         <GlobalWindows
@@ -160,6 +165,7 @@ export function DesktopShell({
         {spotlightOpen && (
           <SearchPalette notes={searchNotes} snippets={searchSnippets} />
         )}
+        {showDock && <MobileDock />}
         <Taskbar accountMenu={accountMenu} hasFriends={hasFriends} />
         <noscript>
           <nav className="os-noscript" aria-label="站点导航">

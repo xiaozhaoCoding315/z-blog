@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  useEffect,
   useRef,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
@@ -13,6 +12,7 @@ import {
   type DesktopPreset,
 } from "./use-desktop-settings";
 import { useDesktopRuntime } from "./desktop-runtime";
+import { useFocusTrap } from "./focus-trap";
 import { useTaskbarPanels } from "./taskbar-panels";
 
 const PRESETS: { id: DesktopPreset; label: string }[] = [
@@ -21,6 +21,13 @@ const PRESETS: { id: DesktopPreset; label: string }[] = [
   { id: "blueprint", label: "蓝图" },
 ];
 
+/**
+ * 系统菜单 = 设置面板。
+ *
+ * 面板用 dialog + useFocusTrap：Tab 循环、Esc 关闭并归还焦点。
+ * 重置布局会清空窗口与 z-os:windows，然后广播 2 秒 toast；toast 宿主在
+ * Taskbar，因此菜单卸载不会吞掉提示。
+ */
 export function SystemMenu({
   accountMenu,
   hasFriends,
@@ -29,21 +36,11 @@ export function SystemMenu({
   hasFriends: boolean;
 }) {
   const closePanels = useTaskbarPanels();
-  const { preset, setPreset } = useDesktopSettings();
-  const { windows } = useDesktopRuntime();
+  const { preset, setPreset, objects, setObjects } = useDesktopSettings();
+  const { windows, openTerminal } = useDesktopRuntime();
   const panelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    panelRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closePanels();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [closePanels]);
+  useFocusTrap(panelRef, true, closePanels);
 
   // 账号区由服务端渲染，链接不带 onClick；在捕获阶段统一处理链接和提交按钮，
   // 让 Next 的客户端导航（不触发 popstate）与退出登录表单也能收起菜单。
@@ -55,11 +52,22 @@ export function SystemMenu({
     }
   };
 
+  const resetLayout = () => {
+    windows.resetLayout();
+    closePanels();
+    window.dispatchEvent(
+      new CustomEvent("z-os:toast", {
+        detail: { message: "已重置，窗口已关闭" },
+      })
+    );
+  };
+
   return (
     <div
       ref={panelRef}
       className="os-system-menu"
       role="dialog"
+      aria-modal="true"
       aria-label="系统菜单"
       tabIndex={-1}
       onClickCapture={handleClickCapture}
@@ -78,24 +86,36 @@ export function SystemMenu({
             </button>
           ))}
         </div>
-      </section>
-
-      <section>
-        <p className="os-menu-label">窗口</p>
         <button
           type="button"
-          className="os-menu-link"
-          onClick={() => {
-            windows.resetLayout();
-            closePanels();
-          }}
+          className="os-menu-link os-menu-switch"
+          aria-pressed={objects}
+          onClick={() => setObjects(!objects)}
         >
-          重置窗口布局
+          <span>桌面物件</span>
+          <span aria-hidden>{objects ? "开" : "关"}</span>
         </button>
       </section>
 
       <section>
         <p className="os-menu-label">系统</p>
+        <button
+          type="button"
+          className="os-menu-link"
+          onClick={() => {
+            closePanels();
+            openTerminal();
+          }}
+        >
+          打开终端
+        </button>
+        <button
+          type="button"
+          className="os-menu-link"
+          onClick={resetLayout}
+        >
+          重置窗口布局
+        </button>
         <Link href="/about">关于本机</Link>
         <Link href="/journal">开发日志</Link>
         {hasFriends && <Link href="/friends">友链</Link>}

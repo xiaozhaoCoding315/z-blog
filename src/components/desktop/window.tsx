@@ -34,6 +34,17 @@ interface PointerInteraction {
 const INTERACTIVE = "button, a, input, textarea, select, [contenteditable='true']";
 
 /**
+ * ≤767px 的终端/助理窗口是铺满视口的覆盖层：不拖拽、不缩放、不最大化。
+ * 与 desktop-home / use-window-manager 的断点保持一致。
+ */
+function isMobileViewport() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 767px)").matches
+  );
+}
+
+/**
  * 桌面窗口框。
  *
  * 状态和动作全部从 `useDesktopRuntime()` 读取：本组件不接收任何函数 props，
@@ -96,7 +107,7 @@ export function Window({ id, app, title, children }: WindowProps) {
   const onTitleBarPointerDown = (
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
-    if (event.button !== 0 || state.maximized) return;
+    if (event.button !== 0 || state.maximized || isMobileViewport()) return;
     if ((event.target as HTMLElement).closest(INTERACTIVE)) return;
     const root = rootRef.current;
     if (!root) return;
@@ -156,13 +167,14 @@ export function Window({ id, app, title, children }: WindowProps) {
 
   const onTitleBarDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest(INTERACTIVE)) return;
+    if (isMobileViewport()) return;
     windows.toggleMaximize(id);
   };
 
   const onResizePointerDown = (
     event: ReactPointerEvent<HTMLSpanElement>
   ) => {
-    if (event.button !== 0 || state.maximized) return;
+    if (event.button !== 0 || state.maximized || isMobileViewport()) return;
     const root = rootRef.current;
     if (!root) return;
     event.preventDefault();

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { findAppById, findAppByPath, launcherApps } from "@/config/apps";
 import { AppIcon } from "./icons";
 import { Clock } from "./clock";
@@ -30,6 +30,8 @@ export function Taskbar({
   const { windows } = useDesktopRuntime();
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
   const current = findAppByPath(pathname);
   const openWindows = Object.values(windows.store.windows);
   const launcherVisibleApps = launcherApps.filter(
@@ -77,6 +79,42 @@ export function Taskbar({
     window.addEventListener("z-os:open-settings", onOpenSettings);
     return () =>
       window.removeEventListener("z-os:open-settings", onOpenSettings);
+  }, []);
+
+  // 右键菜单里的「全部应用」：不把回调函数跨组件传，只广播事件。
+  useEffect(() => {
+    const onOpenLauncher = () => {
+      setLauncherOpen(true);
+      setMenuOpen(false);
+    };
+    window.addEventListener("z-os:open-launcher", onOpenLauncher);
+    return () =>
+      window.removeEventListener("z-os:open-launcher", onOpenLauncher);
+  }, []);
+
+  // 轻量 toast：由事件驱动，宿主常驻任务栏，因此系统菜单卸载后仍能显示。
+  useEffect(() => {
+    const onToast = (event: Event) => {
+      const message = (event as CustomEvent<{ message?: unknown }>).detail
+        ?.message;
+      if (typeof message !== "string" || !message) return;
+      setToast(message);
+      if (toastTimer.current !== null) {
+        window.clearTimeout(toastTimer.current);
+      }
+      toastTimer.current = window.setTimeout(() => {
+        setToast(null);
+        toastTimer.current = null;
+      }, 2000);
+    };
+    window.addEventListener("z-os:toast", onToast);
+    return () => {
+      window.removeEventListener("z-os:toast", onToast);
+      if (toastTimer.current !== null) {
+        window.clearTimeout(toastTimer.current);
+        toastTimer.current = null;
+      }
+    };
   }, []);
 
   const closePanels = () => {
@@ -180,6 +218,15 @@ export function Taskbar({
         {menuOpen && (
           <SystemMenu accountMenu={accountMenu} hasFriends={hasFriends} />
         )}
+
+        <div
+          className="os-toast"
+          role="status"
+          aria-live="polite"
+          data-visible={toast ? "true" : "false"}
+        >
+          {toast}
+        </div>
       </footer>
     </TaskbarPanelsContext.Provider>
   );

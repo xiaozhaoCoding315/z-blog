@@ -3,21 +3,18 @@ import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { AboutProfile } from "@/components/about/about-profile";
 import { DeskObjects } from "@/components/desktop/desk-objects";
-import {
-  DesktopHome,
-  OpenSettingsButton,
-} from "@/components/desktop/desktop-home";
+import { DesktopHome } from "@/components/desktop/desktop-home";
+import { MoreWindow } from "@/components/desktop/more-window";
 import { StatusWidget } from "@/components/desktop/status-widget";
 import { StickyNote } from "@/components/desktop/sticky-note";
 import { GalleryView } from "@/components/gallery/gallery-view";
 import { Moment, NODE_CLASS } from "@/components/life/moment";
 import { KanbanBoard } from "@/components/projects/kanban-board";
 import { SnippetBrowser } from "@/components/snippets/snippet-browser";
-import { getChangelogStats } from "@/config/changelog";
 import { now as portfolioNow, friends, projects } from "@/config/portfolio";
-import { siteConfig } from "@/config/site";
 import { snippets } from "@/config/snippets";
 import { collectGalleryImages, type GalleryImage } from "@/lib/gallery";
+import { formatDay, momentText } from "@/lib/life";
 import {
   getGithubActivity,
   type GithubActivity,
@@ -172,37 +169,56 @@ function AboutWindowContent({ activity }: { activity: GithubActivity }) {
   return <AboutProfile variant="window" activity={activity} />;
 }
 
-function MoreWindowContent({ hasFriends }: { hasFriends: boolean }) {
+/**
+ * 移动端「最近日志」卡：最近一条真实动态（文字/首图），或诚实的
+ * NOT AVAILABLE。桌面不渲染，避免与生活流窗口重复取数或复制其结构。
+ */
+function MobileLifeCard({ life }: { life: MomentsResult }) {
+  const latest = life.moments[0];
+  const photo = latest?.images?.[0];
+
   return (
-    <div className="os-window-pane">
-      <p className="os-pane-label">更多</p>
-      <Link href="/journal" className="os-pane-link">
-        <span>更新日志</span>
-        <span className="text-muted-foreground">
-          {getChangelogStats().entries} 次迭代
-        </span>
-      </Link>
-      {hasFriends && (
-        <Link href="/friends" className="os-pane-link">
-          <span>友链</span>
-          <span aria-hidden>→</span>
+    <section className="os-mobile-card" aria-label="最近日志">
+      <div className="os-mobile-card-head">
+        <p className="os-pane-label">最近日志</p>
+        <Link href="/life" className="os-mobile-card-link">
+          全部日志 →
+        </Link>
+      </div>
+
+      {!life.available ? (
+        <>
+          <p className="os-mobile-na">NOT AVAILABLE</p>
+          <p className="os-mobile-card-copy">
+            生活流存在数据库里，现在连不上。不拿空列表冒充「还没发过」。
+          </p>
+        </>
+      ) : !latest ? (
+        <p className="os-mobile-card-copy">
+          数据库是通的，只是这条时间线还空着。
+        </p>
+      ) : (
+        <Link href={`/life/${latest.id}`} className="os-mobile-moment">
+          <time
+            className="os-mobile-moment-date"
+            dateTime={latest.publishedAt}
+          >
+            {formatDay(latest.publishedAt)}
+          </time>
+          <p className="os-mobile-moment-text">{momentText(latest)}</p>
+          {photo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photo}
+              alt=""
+              className="os-mobile-moment-photo"
+              loading="lazy"
+              decoding="async"
+            />
+          )}
         </Link>
       )}
-      <a href="/feed.xml" className="os-pane-link">
-        <span>RSS</span>
-        <span aria-hidden>↗</span>
-      </a>
-      <a
-        href={siteConfig.links.github}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="os-pane-link"
-      >
-        <span>GitHub</span>
-        <span aria-hidden>↗</span>
-      </a>
-      <OpenSettingsButton />
-    </div>
+    </section>
   );
 }
 
@@ -237,13 +253,14 @@ export default async function HomePage() {
       <SnippetsWindowContent highlighted={highlightedSnippets} />
     ),
     about: <AboutWindowContent activity={activity} />,
-    more: <MoreWindowContent hasFriends={friends.length > 0} />,
+    more: <MoreWindow hasFriends={friends.length > 0} />,
   };
 
   return (
     <DesktopHome
       status={status}
       windowContent={windowContent}
+      mobileLife={<MobileLifeCard life={life} />}
       statusWidget={
         <StatusWidget
           weather={weather}

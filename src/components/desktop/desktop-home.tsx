@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -18,6 +17,7 @@ import {
   type AppDefinition,
 } from "@/config/apps";
 import { siteConfig } from "@/config/site";
+import { ContextMenu } from "./context-menu";
 import { useDesktopRuntime } from "./desktop-runtime";
 import { AppIcon } from "./icons";
 import { Window } from "./window";
@@ -31,6 +31,8 @@ interface DesktopHomeProps {
   statusWidget?: ReactNode;
   stickyNote?: ReactNode;
   deskObjects?: ReactNode;
+  /** 移动端「最近日志」卡片；桌面上隐藏，仍由窗口内容负责。 */
+  mobileLife?: ReactNode;
 }
 
 const HINT_KEY = "z-os:hint";
@@ -38,6 +40,11 @@ const MOBILE_QUERY = "(max-width: 767px)";
 
 function isMobileViewport() {
   return window.matchMedia(MOBILE_QUERY).matches;
+}
+
+/** 触屏不接管右键：手机上长按由系统处理，不弹桌面菜单。 */
+function isCoarsePointer() {
+  return window.matchMedia("(pointer: coarse)").matches;
 }
 
 /**
@@ -54,12 +61,15 @@ export function DesktopHome({
   statusWidget,
   stickyNote,
   deskObjects,
+  mobileLife,
 }: DesktopHomeProps) {
-  const { windows } = useDesktopRuntime();
-  const router = useRouter();
+  const { windows, openTerminal } = useDesktopRuntime();
   const { store, boundsRef, hydrated, openApp } = windows;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hintSeen, setHintSeen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(
+    null
+  );
   const iconRefs = useRef<(HTMLElement | null)[]>([]);
   const pointerTypeRef = useRef<string>("mouse");
 
@@ -86,8 +96,27 @@ export function DesktopHome({
     if (seen) queueMicrotask(() => setHintSeen(true));
   }, [openCount]);
 
+  // 页面刚加载、焦点还在 body 时，Shift+F10 / ContextMenu 也能打开桌面菜单。
+  // 焦点在输入框或图标上时不接管，避免抢走它们自己的键盘语义。
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const contextKey =
+        event.key === "ContextMenu" ||
+        (event.key === "F10" && event.shiftKey);
+      if (!contextKey || isCoarsePointer()) return;
+      const active = document.activeElement;
+      if (active !== document.body && active !== document.documentElement) {
+        return;
+      }
+      event.preventDefault();
+      setContextMenu({ x: 48, y: 48 });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // ?open=id：等 useWindowManager 先 hydrate 完 saved rect，再开窗并清掉参数。
-  // ≤767px 没有窗口层：与图标一致，带路径的应用直接去全屏路由，其余不响应。
+  // 移动端分流在 openApp 里：带路径的进全屏路由，终端/助理开全屏覆盖。
   useEffect(() => {
     if (!hydrated) return;
     const params = new URLSearchParams(window.location.search);
@@ -102,29 +131,17 @@ export function DesktopHome({
       "",
       `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
     );
-    if (isMobileViewport()) {
-      const app = findAppById(id);
-      if (app?.path) router.push(app.path);
-    } else {
-      openApp(id);
-    }
-  }, [hydrated, openApp, router]);
+    openApp(id);
+  }, [hydrated, openApp]);
 
   const openAppFromDesktop = useCallback(
     (app: AppDefinition) => {
       setSelectedId(null);
-      if (app.kind === "route") {
-        if (app.path) router.push(app.path);
-        return;
-      }
-      // 移动端没有窗口：有真实路由的窗口型应用跳到路由页，无路由的不响应。
-      if (isMobileViewport()) {
-        if (app.path) router.push(app.path);
-        return;
-      }
+      // 移动端分流（路由页 / 终端与助理全屏覆盖 / 无路由不响应）统一在
+      // useWindowManager.openApp 里处理，这里保持一个入口。
       openApp(app.id);
     },
-    [openApp, router]
+    [openApp]
   );
 
   const onWindowIconClick = (
@@ -183,6 +200,31 @@ export function DesktopHome({
       return;
     }
     setSelectedId(null);
+    // 桌面背景获得焦点后，Shift+F10 / ContextMenu 键才有落点。
+    if (event.target === event.currentTarget) {
+      event.currentTarget.focus({ preventScroll: true });
+    }
+  };
+
+  const onDesktopContextMenu = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const background =
+      event.target === event.currentTarget ||
+      target.hasAttribute("data-desktop-bg");
+    if (!background || isCoarsePointer()) return;
+    event.preventDefault();
+    setSelectedId(null);
+    setContextMenu({ x: event.clientX, y: event.clientY });
+  };
+
+  const onDesktopKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    // 只在桌面背景自身聚焦时响应；图标/链接上的 F10 留给它们自己。
+    if (event.target !== event.currentTarget || isCoarsePointer()) return;
+    const contextKey =
+      event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey);
+    if (!contextKey) return;
+    event.preventDefault();
+    setContextMenu({ x: 48, y: 48 });
   };
 
   const openWindows = Object.values(store.windows).filter(
@@ -192,7 +234,14 @@ export function DesktopHome({
   );
 
   return (
-    <div className="os-desktop" onClick={onDesktopClick}>
+    <div
+      className="os-desktop"
+      data-desktop-bg="true"
+      tabIndex={-1}
+      onClick={onDesktopClick}
+      onContextMenu={onDesktopContextMenu}
+      onKeyDown={onDesktopKeyDown}
+    >
       <header className="os-identity">
         <h1 className="os-identity-name">{siteConfig.name}</h1>
         <p className="os-identity-status">{status}</p>
@@ -300,8 +349,11 @@ export function DesktopHome({
         })}
       </nav>
 
-      {stickyNote && <div className="os-sticky-note">{stickyNote}</div>}
+      {/* 移动端 source order：最近日志 → 状态 → 便签；桌面上三者都是绝对定位，
+          排序不影响原位。 */}
+      {mobileLife && <div className="os-mobile-life">{mobileLife}</div>}
       {statusWidget && <div className="os-status-widget">{statusWidget}</div>}
+      {stickyNote && <div className="os-sticky-note">{stickyNote}</div>}
       {deskObjects && <div className="os-desk-objects">{deskObjects}</div>}
 
       <div ref={boundsRef} className="os-window-layer">
@@ -325,6 +377,18 @@ export function DesktopHome({
           <span>双击图标打开</span>
         </p>
       )}
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          onOpenTerminal={openTerminal}
+          onOpenApps={() =>
+            window.dispatchEvent(new Event("z-os:open-launcher"))
+          }
+        />
+      )}
     </div>
   );
 }
@@ -340,7 +404,7 @@ export function OpenSettingsButton() {
 
   return (
     <button type="button" className="os-pane-link" onClick={openSettings}>
-      <span>系统设置</span>
+      <span>打开设置</span>
       <span aria-hidden>≡</span>
     </button>
   );

@@ -99,8 +99,13 @@ export function useWindowManager() {
         return;
       }
       if (isMobileViewport()) {
-        if (app.path) router.push(app.path);
-        return;
+        if (app.path) {
+          router.push(app.path);
+          return;
+        }
+        // 终端/助理没有路由，但在移动端以全屏覆盖打开；其余无路由窗口
+        // （「更多」）在移动端不响应，入口由系统菜单承担。
+        if (id !== "terminal" && id !== "assistant") return;
       }
       if (pathname !== "/") {
         router.push(app.path ?? `/?open=${id}`);
