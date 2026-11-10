@@ -129,7 +129,8 @@ scripts/              # 同步 CLI 与 Docker entrypoint
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL 连接串 |
 | `AI_API_KEY` | Agnes API key（[注册地址](https://agnes-ai.cn)，体验价免费），留空则 AI 功能降级 |
-| `CHAT_MODEL` / `EMBEDDING_MODEL` | 默认 `agnes-3.0-flash` / `text-embedding-v3` |
+| `AI_BASE_URL` / `CHAT_MODEL` | 默认 `https://api.agnes-ai.cn/v1` / `agnes-3.0-flash` |
+| `EMBEDDING_MODEL` | 默认 `text-embedding-v3`（百炼） |
 | `NEXT_PUBLIC_SITE_URL` | 站点地址（部署后改为 `https://域名`；构建期内联，改完需重新构建） |
 
 ## 部署

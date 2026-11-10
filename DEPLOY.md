@@ -77,6 +77,8 @@ nano .env
 ```ini
 DB_PASSWORD=一个强密码
 AI_API_KEY=你的Agnes key              # 聊天/摘要（https://agnes-ai.cn）
+AI_BASE_URL=https://api.agnes-ai.cn/v1
+CHAT_MODEL=agnes-3.0-flash
 EMBEDDING_API_KEY=你的百炼key       # 向量化（https://bailian.console.aliyun.com）
 SYNC_SECRET=一串随机字符           # openssl rand -hex 16
 NEXT_PUBLIC_SITE_URL=https://你的域名   # 构建期内联；没有 HTTPS 时登录 cookie 不会带 Secure
