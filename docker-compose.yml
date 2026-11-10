@@ -61,6 +61,8 @@ services:
       NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
       NEXT_PUBLIC_SITE_START_DATE: ${NEXT_PUBLIC_SITE_START_DATE:-}
+      # 只有经过受信反代时才设为 1；默认 0，防止伪造 XFF 绕开限频
+      TRUST_PROXY: ${TRUST_PROXY:-0}
       NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
       # GitHub OAuth：历史遗留路由，站内没有 UI 入口；当前登录使用邮箱验证码
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}

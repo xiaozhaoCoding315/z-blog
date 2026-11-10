@@ -19,12 +19,39 @@ const g = globalThis as typeof globalThis & { __rateLimitState?: RateLimitState 
 const state: RateLimitState = (g.__rateLimitState ??= { buckets: new Map() });
 const buckets = state.buckets;
 
+/**
+ * 是否信任反向代理写入的转发头。
+ *
+ * 默认关闭：应用端口一旦被直接暴露，任何人都能自带 `X-Forwarded-For` 自报 IP，
+ * 按 IP 限频就形同虚设。只有确认流量经过我们自己的单层/受信代理时才打开。
+ */
+function trustsProxy(): boolean {
+  const value = process.env.TRUST_PROXY?.trim().toLowerCase();
+  return value === "1" || value === "true";
+}
+
+/**
+ * 取限频用的客户端标识。
+ *
+ * 不信任转发头时统一返回 `direct`：所有直连请求共用一个桶，宁可误伤也不让伪造头
+ * 绕开限额。启用 `TRUST_PROXY=1` 后取 XFF 的**最后一跳**：代理覆盖写入时它就是真实
+ * 客户端；用 `$proxy_add_x_forwarded_for` 追加时，访客伪造的条目在左侧，最后一跳
+ * 仍是代理看到的地址。
+ */
 export function getClientIp(request: Request): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "local"
-  );
+  if (!trustsProxy()) return "direct";
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const hops = forwarded
+      .split(",")
+      .map((hop) => hop.trim())
+      .filter(Boolean);
+    const client = hops[hops.length - 1];
+    if (client) return client;
+  }
+
+  return request.headers.get("x-real-ip")?.trim() || "proxy";
 }
 
 /**
