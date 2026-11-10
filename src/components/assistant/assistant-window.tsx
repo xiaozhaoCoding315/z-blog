@@ -1,85 +1,31 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import { DefaultChatTransport } from "ai";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
 } from "react";
 import { useDesktopRuntime } from "@/components/desktop/desktop-runtime";
+import {
+  messageSources,
+  messageText,
+  renderMessageText,
+  type ChatSource,
+} from "@/components/assistant/assistant-shared";
 
-interface ChatSource {
-  id: number;
-  slug: string;
-  title: string;
-  href?: string;
-}
-
-/** 站内助理的 3 个真实建议问题；不做示例占位。 */
+/** 小元同学的 3 个真实建议问题；不做示例占位。 */
 const SUGGESTIONS = [
   "你最近在做什么项目？",
   "推荐几条关于前端的日志",
   "解释一下 RAG",
 ];
 
-function messageText(message: UIMessage): string {
-  return message.parts
-    .filter(
-      (part): part is { type: "text"; text: string } => part.type === "text"
-    )
-    .map((part) => part.text)
-    .join("");
-}
-
 /**
- * 引用来源来自服务端随流下发的 `data-sources` 数据部件。
- * AI SDK v7 把它放在 message.parts 里；同时兼容旧版顶层的 message.data。
- */
-function messageSources(message: UIMessage): ChatSource[] {
-  for (const part of message.parts) {
-    if (part.type !== "data-sources") continue;
-    if (Array.isArray(part.data)) return part.data as ChatSource[];
-  }
-
-  const legacy = (message as UIMessage & { data?: unknown }).data;
-  if (!Array.isArray(legacy)) return [];
-  const dataPart = legacy.find(
-    (item) => (item as { type?: string })?.type === "data-sources"
-  ) as { data?: unknown } | undefined;
-  return Array.isArray(dataPart?.data) ? (dataPart.data as ChatSource[]) : [];
-}
-
-/** 把回答里的 `[1]` 片段变成可点击的琥珀链接；无对应来源时按原文显示。 */
-function renderMessageText(
-  text: string,
-  sources: ChatSource[],
-  onOpen: (source: ChatSource) => void
-): ReactNode {
-  return text.split(/(\[\d+\])/g).map((segment, index) => {
-    const match = /^\[(\d+)\]$/.exec(segment);
-    if (!match) return <span key={index}>{segment}</span>;
-    const source = sources.find((item) => item.id === Number(match[1]));
-    if (!source) return <span key={index}>{segment}</span>;
-    return (
-      <button
-        key={index}
-        type="button"
-        className="os-assistant-ref"
-        title={`引用：${source.title}`}
-        onClick={() => onOpen(source)}
-      >
-        {segment}
-      </button>
-    );
-  });
-}
-
-/**
- * 终端式助理窗口。
+ * 终端式小元同学窗口。
  *
  * 关闭通过 `runtime.windows.close("assistant")`（Window 自己也有标题栏按钮），
  * 不接收 onClose 函数 prop。`initialQuestion` 来自终端 `ask`：外壳暂存问题，
@@ -169,7 +115,7 @@ export function AssistantWindow({
         ref={outputRef}
         className="os-assistant-output"
         role="log"
-        aria-label="助理对话"
+        aria-label="小元同学的对话"
       >
         {!aiEnabled && (
           <p className="os-assistant-line os-assistant-offline">
@@ -181,7 +127,7 @@ export function AssistantWindow({
           messages.length === 0 &&
           initialQuestion === null && (
             <div className="os-assistant-suggestions">
-              <p className="os-assistant-suggestion-label">试试问：</p>
+              <p className="os-assistant-suggestion-label">问问小元同学：</p>
               {SUGGESTIONS.map((question) => (
                 <button
                   key={question}

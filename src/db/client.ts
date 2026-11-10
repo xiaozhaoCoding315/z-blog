@@ -99,6 +99,34 @@ export async function ensureSchema() {
   await db.execute(
     sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'visitor'`
   );
+  // 第二版公开资料：全部走 ALTER，老库启动时自动补齐
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name text`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio text NOT NULL DEFAULT ''`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS gender text`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS birthday date`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location text NOT NULL DEFAULT ''`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS website text`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS github_url text`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS show_birthday boolean NOT NULL DEFAULT false`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS show_gender boolean NOT NULL DEFAULT false`
+  );
   // 普通唯一索引允许多个 NULL：GitHub 老用户没有邮箱，不能因此互相冲突
   await db.execute(
     sql`CREATE UNIQUE INDEX IF NOT EXISTS users_email_key ON users (email)`
@@ -208,6 +236,33 @@ export async function ensureSchema() {
   );
 
   await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS playlists (
+      id bigserial PRIMARY KEY,
+      title text NOT NULL,
+      description text NOT NULL DEFAULT '',
+      cover_url text,
+      platform text NOT NULL DEFAULT 'other',
+      external_id text,
+      external_url text,
+      user_id integer REFERENCES users(id) ON DELETE SET NULL,
+      pinned boolean NOT NULL DEFAULT false,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  // 同一平台同一张歌单只留一行：重复导入走更新，不会在页面上叠出副本。
+  // 普通唯一索引允许多个 NULL，手动歌单不受影响。
+  await db.execute(
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS playlists_external_key ON playlists (platform, external_id)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS playlists_pinned_idx ON playlists (pinned, created_at DESC)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS playlists_user_idx ON playlists (user_id)`
+  );
+
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS songs (
       id bigserial PRIMARY KEY,
       title text NOT NULL,
@@ -227,6 +282,25 @@ export async function ensureSchema() {
   );
   await db.execute(
     sql`CREATE INDEX IF NOT EXISTS songs_user_idx ON songs (user_id)`
+  );
+  // 歌单曲目字段：老库的 songs 表没有这些列，启动时补齐
+  await db.execute(
+    sql`ALTER TABLE songs ADD COLUMN IF NOT EXISTS playlist_id integer REFERENCES playlists(id) ON DELETE CASCADE`
+  );
+  await db.execute(
+    sql`ALTER TABLE songs ADD COLUMN IF NOT EXISTS external_id text`
+  );
+  await db.execute(
+    sql`ALTER TABLE songs ADD COLUMN IF NOT EXISTS cover_url text`
+  );
+  await db.execute(
+    sql`ALTER TABLE songs ADD COLUMN IF NOT EXISTS duration integer`
+  );
+  await db.execute(
+    sql`ALTER TABLE songs ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS songs_playlist_idx ON songs (playlist_id, sort_order)`
   );
 
   await db.execute(sql`

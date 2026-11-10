@@ -69,6 +69,68 @@ test("users 补上 email 与 role，且 email 唯一索引允许多个 NULL", ()
   );
 });
 
+test("users 公开资料列全部走幂等 ALTER，老库启动自动补齐", () => {
+  const columns = [
+    ["display_name", "text"],
+    ["bio", "text NOT NULL DEFAULT ''"],
+    ["gender", "text"],
+    ["birthday", "date"],
+    ["location", "text NOT NULL DEFAULT ''"],
+    ["website", "text"],
+    ["github_url", "text"],
+    ["show_birthday", "boolean NOT NULL DEFAULT false"],
+    ["show_gender", "boolean NOT NULL DEFAULT false"],
+  ];
+  for (const [column, definition] of columns) {
+    assert.match(
+      ddl,
+      new RegExp(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ${column} ${definition}`),
+      `users.${column} 缺少幂等迁移`
+    );
+    assert.ok(schemaHasColumn("users", column), `schema.ts 缺少 users.${column}`);
+  }
+  // 隐私开关默认关闭：公开主页不能因为补列就把所有人的生日暴露出去
+  assert.match(ddl, /show_birthday boolean NOT NULL DEFAULT false/);
+  assert.match(ddl, /show_gender boolean NOT NULL DEFAULT false/);
+});
+
+test("playlists 入库并带平台唯一键，songs 补回歌单列", () => {
+  assert.match(ddl, /CREATE TABLE IF NOT EXISTS playlists/);
+  for (const column of [
+    "title",
+    "description",
+    "cover_url",
+    "platform",
+    "external_id",
+    "external_url",
+    "user_id",
+    "pinned",
+    "updated_at",
+  ]) {
+    assert.ok(
+      schemaHasColumn("playlists", column),
+      `schema.ts 缺少 playlists.${column}`
+    );
+  }
+  // 同一平台同一张歌单只留一行；唯一索引要允许多个 NULL（手动歌单无 external_id）
+  assert.match(
+    ddl,
+    /CREATE UNIQUE INDEX IF NOT EXISTS playlists_external_key ON playlists \(platform, external_id\)/
+  );
+  for (const column of ["playlist_id", "external_id", "cover_url", "duration", "sort_order"]) {
+    assert.match(
+      ddl,
+      new RegExp(`ALTER TABLE songs ADD COLUMN IF NOT EXISTS ${column} `),
+      `songs.${column} 缺少幂等迁移`
+    );
+    assert.ok(schemaHasColumn("songs", column), `schema.ts 缺少 songs.${column}`);
+  }
+  assert.match(
+    ddl,
+    /ALTER TABLE songs ADD COLUMN IF NOT EXISTS playlist_id integer REFERENCES playlists\(id\) ON DELETE CASCADE/
+  );
+});
+
 test("login_codes 只存哈希，不许出现明文 code 列", () => {
   assert.match(ddl, /CREATE TABLE IF NOT EXISTS login_codes/);
   assert.match(ddl, /code_hash text NOT NULL/);
@@ -101,7 +163,25 @@ test("drizzle schema 与 DDL 逐列对得上", () => {
   // 所以按列名逐个比对，而不是只查表名——只查表名的话，删掉 users.email
   // 也能被 login_codes.email 蒙混过关。
   const expected = {
-    users: ["id", "github_id", "email", "role", "login", "avatar_url", "created_at", "last_seen_at"],
+    users: [
+      "id",
+      "github_id",
+      "email",
+      "role",
+      "login",
+      "avatar_url",
+      "display_name",
+      "bio",
+      "gender",
+      "birthday",
+      "location",
+      "website",
+      "github_url",
+      "show_birthday",
+      "show_gender",
+      "created_at",
+      "last_seen_at",
+    ],
     login_codes: ["id", "email", "code_hash", "expires_at", "attempts", "created_at"],
     moments: ["id", "kind", "body", "images", "tags", "mood", "weather", "place", "card", "published_at", "created_at"],
   };

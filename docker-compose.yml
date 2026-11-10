@@ -3,6 +3,8 @@ name: blog
 services:
   # PostgreSQL + pgvector：文章向量与浏览量数据
   db:
+    # DB_IMAGE_DIGEST_REQUIRED：本地 Docker engine 不可用，无法核对 tag/digest；
+    # 发布前须在有 Docker 的构建机解析 pgvector/pgvector:pg17 的 digest 并固定。
     image: pgvector/pgvector:pg17
     restart: unless-stopped
     logging:
@@ -25,14 +27,15 @@ services:
     # ports:
     #   - "5432:5432"
 
-  # Next.js 应用（standalone 产物），首次部署：docker compose up -d --build
+  # Next.js 应用（standalone 产物）；发布脚本用 BLOG_IMAGE 注入不可变 tag。
   app:
+    image: ${BLOG_IMAGE:-blog-app:local}
     build:
       context: .
       dockerfile: Dockerfile
       args:
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?上线必须设置最终 https:// 域名}
         NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
     restart: unless-stopped
     logging:

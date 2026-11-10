@@ -14,6 +14,8 @@ const STATIC_PAGES: Array<{
   priority: number;
 }> = [
   { path: "", priority: 1 },
+  { path: "/terminal", priority: 0.6 },
+  { path: "/assistant", priority: 0.6 },
   { path: "/life", priority: 0.8 },
   { path: "/gallery", priority: 0.6 },
   { path: "/snippets", priority: 0.6 },

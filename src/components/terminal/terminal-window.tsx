@@ -7,7 +7,8 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { apps, desktopTileApps, findAppById } from "@/config/apps";
+import { isPrimaryAppId, primaryApps, findAppById } from "@/config/apps";
+import { siteConfig } from "@/config/site";
 import { useDesktopRuntime } from "../desktop/desktop-runtime";
 import {
   WELCOME_LINES,
@@ -26,6 +27,8 @@ export interface TerminalWindowProps {
   snippets: TerminalSnippet[];
   uptimeDays: number | null;
   aiEnabled: boolean;
+  /** 完整页面退出时返回首页；浮窗省略则沿用关闭窗口。 */
+  onExit?: () => void;
 }
 
 type LineKind = "input" | "output" | "error" | "hint";
@@ -58,9 +61,9 @@ export function TerminalWindow({
   snippets,
   uptimeDays,
   aiEnabled,
+  onExit,
 }: TerminalWindowProps) {
-  const { windows, settings, openAssistant, openSettings } =
-    useDesktopRuntime();
+  const { windows, settings, openSettings } = useDesktopRuntime();
   const router = useRouter();
   const [lines, setLines] = useState<Line[]>([]);
   const [value, setValue] = useState("");
@@ -79,13 +82,23 @@ export function TerminalWindow({
   const historyIndexRef = useRef(-1);
   const draftRef = useRef("");
 
+  // 第二轮只保留七个主入口；隐藏注册表仍可由旧路由直达，但终端不再
+  // 暴露它们，避免 `open` 成功却只剩一个没有窗体的任务栏幽灵状态。
+  const terminalApps = primaryApps.map(({ id, title, path, kind }) => ({
+    id,
+    title,
+    path,
+    kind,
+  }));
+
   const context: TerminalContext = {
-    apps: apps.map(({ id, title, path, kind }) => ({ id, title, path, kind })),
-    desktopAppCount: desktopTileApps.length,
+    apps: terminalApps,
+    desktopAppCount: primaryApps.length,
     notes,
     snippets,
     theme: settings.preset,
     uptimeDays,
+    city: siteConfig.weather.city,
     aiEnabled,
   };
 
@@ -137,6 +150,10 @@ export function TerminalWindow({
         setShowWelcome(false);
         return;
       case "close":
+        if (onExit) {
+          onExit();
+          return;
+        }
         windows.close("terminal");
         return;
       case "open": {
@@ -147,6 +164,12 @@ export function TerminalWindow({
         }
         // 与命令层一致：app id → 开窗/路由，笔记 slug → 笔记页，片段 id → 片段页。
         if (findAppById(effect.appId)) {
+          if (!isPrimaryAppId(effect.appId)) return;
+          const app = findAppById(effect.appId);
+          if (app?.path) {
+            router.push(app.path);
+            return;
+          }
           windows.openApp(effect.appId);
           return;
         }
@@ -160,10 +183,8 @@ export function TerminalWindow({
         return;
       }
       case "ask":
-        openAssistant();
-        window.dispatchEvent(
-          new CustomEvent("z-os:ask", { detail: { question: effect.question } })
-        );
+        // ask 统一交给完整助理页；全局窗口不再需要事件暂存与迟到消息竞态。
+        router.push(`/assistant?q=${encodeURIComponent(effect.question)}`);
         return;
       case "theme":
         settings.setPreset(effect.preset);

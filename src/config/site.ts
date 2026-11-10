@@ -21,7 +21,7 @@ export const siteConfig = {
    * 状态句的缺省值。数据库里有 site_settings.status_sentence 时以数据库为准；
    * 桌面主屏与 /life 都读 getStatusSentence()。
    */
-  status: "在杭州，最近在学做饭",
+  status: "在北京，最近在学做饭",
   // 站点建立日期：全站「运行天数」的唯一数据源（终端 neofetch / 关于页均读这里）
   // 2026-07-02 起算；运行天数在运行时由该日期计算，不在注释里写死。
   startedAt: process.env.NEXT_PUBLIC_SITE_START_DATE ?? "2026-07-02",
@@ -37,9 +37,9 @@ export const siteConfig = {
   },
   /** 观测条的天气读数：城市写死，坐标由城市决定；不采集访客位置 */
   weather: {
-    city: "杭州",
-    latitude: 30.2741,
-    longitude: 120.1551,
+    city: "北京",
+    latitude: 39.9042,
+    longitude: 116.4074,
   },
   footer: {
     icp: "", // 备案号（有域名备案后填写）

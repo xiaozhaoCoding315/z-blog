@@ -46,7 +46,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f0e0c",
+  themeColor: "#042421",
 };
 
 const PRESET_SCRIPT = `(() => {
@@ -85,7 +85,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       data-wallpaper="night"
       className={cn(
         // 夜班是默认：把 dark 写进服务端 HTML，关掉 JS 也还是夜班
-        "dark h-full antialiased",
+        "dark min-h-dvh antialiased",
         geistSans.variable,
         geistMono.variable
       )}
@@ -93,7 +93,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: PRESET_SCRIPT }} />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-dvh flex-col">
         <ThemeProvider>{children}</ThemeProvider>
         <script
           type="application/ld+json"

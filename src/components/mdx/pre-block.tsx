@@ -40,7 +40,7 @@ export function PreBlock(props: React.ComponentProps<"pre">) {
   return (
     <div className="group/code relative">
       {language && LANG_LABEL[language] && (
-        <span className="pointer-events-none absolute right-11 top-2.5 z-10 rounded border border-border/50 bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/80 backdrop-blur">
+        <span className="pointer-events-none absolute right-11 top-2.5 z-10 rounded border border-border/50 bg-background/60 px-1.5 py-0.5 font-mono text-[12px] leading-5 text-muted-foreground backdrop-blur">
           {LANG_LABEL[language]}
         </span>
       )}

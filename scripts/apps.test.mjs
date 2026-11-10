@@ -24,27 +24,14 @@ test("所有应用 id 唯一，且都有标题、描述、类型和关键词", (
   }
 });
 
-test("桌面图标正好 12 个，顺序是设计文档里的顺序", () => {
-  assert.deepEqual(
-    desktopTileApps.map((app) => app.id),
-    [
-      "terminal",
-      "life",
-      "gallery",
-      "projects",
-      "snippets",
-      "about",
-      "notes",
-      "shelf",
-      "playlist",
-      "letters",
-      "more",
-      "assistant",
-    ]
-  );
+test("旧左侧图标网格已退役，七个主入口仍保留窗口几何", () => {
+  assert.deepEqual(desktopTileApps, []);
+  for (const id of ["terminal", "projects", "about", "assistant"]) {
+    assert.ok(findAppById(id)?.window, `${id} 窗口几何应保留`);
+  }
 });
 
-test("窗口型应用带默认尺寸，终端/更多/助理没有路由", () => {
+test("窗口型应用带默认尺寸，仅更多没有路由", () => {
   const expected = {
     terminal: [{ x: 320, y: 120, w: 760, h: 440 }, 420, 280],
     life: [{ x: 24, y: 32, w: 520, h: 620 }, 420, 360],
@@ -65,9 +52,9 @@ test("窗口型应用带默认尺寸，终端/更多/助理没有路由", () => 
     assert.equal(app.window?.minHeight, minHeight, `${id} minHeight`);
   }
 
-  for (const id of ["terminal", "more", "assistant"]) {
-    assert.equal(findAppById(id)?.path, null, `${id} should have no route`);
-  }
+  assert.equal(findAppById("terminal")?.path, "/terminal");
+  assert.equal(findAppById("assistant")?.path, "/assistant");
+  assert.equal(findAppById("more")?.path, null, "more should have no route");
   for (const id of ["notes", "shelf", "playlist", "letters", "journal", "friends", "login", "write", "admin", "style"]) {
     assert.equal(findAppById(id)?.kind, "route", `${id} should be a route app`);
   }
@@ -84,35 +71,29 @@ test("路径唯一，子路径归到父应用，桌面根路径不匹配", () =>
   assert.equal(findAppByPath("/unknown"), undefined);
 });
 
-test("启动器允许无路由应用，公开列表仍只含有路由的应用", () => {
+test("启动器只列七个主入口与设置，公开列表只含主入口真实路由", () => {
   assert.deepEqual(
     launcherApps.map((app) => app.id),
     [
       "terminal",
-      "life",
-      "gallery",
       "projects",
-      "snippets",
       "about",
-      "notes",
-      "shelf",
       "playlist",
-      "letters",
-      "more",
+      "notes",
       "assistant",
-      "journal",
-      "friends",
+      "letters",
       "settings",
     ]
   );
   for (const app of launcherApps) {
     assert.equal(app.launcher, true);
   }
-  for (const id of ["terminal", "more", "assistant", "settings"]) {
+  for (const id of ["terminal", "assistant"]) {
     assert.ok(launcherApps.some((app) => app.id === id), `${id} should be in launcher`);
-    assert.equal(findAppById(id)?.path, null, `${id} should have no route`);
+    assert.match(findAppById(id)?.path ?? "", /^\/(terminal|assistant)$/);
   }
-  assert.equal(findAppById("friends")?.launcher, true);
+  assert.equal(findAppById("settings")?.path, null, "settings should have no route");
+  assert.equal(findAppById("friends")?.launcher, false);
 
   assert.ok(publicApps.length > 0);
   for (const app of publicApps) {

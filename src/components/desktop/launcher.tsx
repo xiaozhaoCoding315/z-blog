@@ -25,8 +25,8 @@ export function Launcher({ apps }: { apps: AppDefinition[] }) {
       openSettings();
       return;
     }
-    if (app.kind === "route") {
-      if (app.path) router.push(app.path);
+    if (app.path) {
+      router.push(app.path);
       return;
     }
     // 移动端分流在 openApp：有路径的进全屏路由，终端/助理开全屏覆盖，
@@ -49,7 +49,7 @@ export function Launcher({ apps }: { apps: AppDefinition[] }) {
             </>
           );
 
-          if (app.kind === "route" && app.path) {
+          if (app.path) {
             return (
               <Link
                 key={app.id}
@@ -89,10 +89,6 @@ export function Launcher({ apps }: { apps: AppDefinition[] }) {
         <span aria-hidden>·</span>
         <Link href="/about" onClick={closePanels}>
           关于本机
-        </Link>
-        <span aria-hidden>·</span>
-        <Link href="/journal" onClick={closePanels}>
-          开发日志
         </Link>
         <span aria-hidden>·</span>
         <a href="/feed.xml">RSS</a>

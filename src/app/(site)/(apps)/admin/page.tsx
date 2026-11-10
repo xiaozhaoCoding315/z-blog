@@ -7,6 +7,7 @@ import {
   comments as commentsTable,
   letters as lettersTable,
   moments as momentsTable,
+  playlists as playlistsTable,
   shelfItems as shelfTable,
   siteSettings,
   songs as songsTable,
@@ -31,6 +32,11 @@ import {
   setDesktopPin,
   updateStatus,
 } from "./actions";
+import {
+  deletePlaylist,
+  pinPlaylist,
+  unpinPlaylist,
+} from "../playlist/import-actions";
 
 export const metadata: Metadata = {
   title: "审核后台",
@@ -79,6 +85,15 @@ interface AdminComment {
   targetId: string;
   body: string;
   status: string;
+}
+
+interface AdminPlaylist {
+  id: number;
+  title: string;
+  platform: string;
+  description: string;
+  pinned: boolean;
+  songCount: number;
 }
 
 interface AdminMomentChoice {
@@ -273,6 +288,54 @@ async function loadSongList(db: Db): Promise<SectionData<AdminSongEntry[]>> {
   }
 }
 
+/** 导入歌单：按置顶与时间排序，曲目数单独聚合，不把整张曲目表拉进后台。 */
+async function loadPlaylists(db: Db): Promise<SectionData<AdminPlaylist[]>> {
+  try {
+    const [rows, counts] = await Promise.all([
+      db
+        .select({
+          id: playlistsTable.id,
+          title: playlistsTable.title,
+          platform: playlistsTable.platform,
+          description: playlistsTable.description,
+          pinned: playlistsTable.pinned,
+        })
+        .from(playlistsTable)
+        .orderBy(
+          desc(playlistsTable.pinned),
+          desc(playlistsTable.createdAt),
+          desc(playlistsTable.id)
+        ),
+      db
+        .select({
+          playlistId: songsTable.playlistId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(songsTable)
+        .where(sql`${songsTable.playlistId} IS NOT NULL`)
+        .groupBy(songsTable.playlistId),
+    ]);
+    const countMap = new Map(
+      counts
+        .filter(
+          (row): row is { playlistId: number; count: number } =>
+            typeof row.playlistId === "number"
+        )
+        .map((row) => [row.playlistId, row.count])
+    );
+    return {
+      available: true,
+      data: rows.map((row) => ({
+        ...row,
+        songCount: countMap.get(row.id) ?? 0,
+      })),
+    };
+  } catch (err) {
+    console.error("[admin] 歌单列表读取失败：", err);
+    return unavailable();
+  }
+}
+
 /** 最近 50 条评论（含 hidden）；userId NOT NULL，innerJoin users 拿作者。 */
 async function loadRecentComments(db: Db): Promise<SectionData<AdminComment[]>> {
   try {
@@ -335,7 +398,7 @@ export default async function AdminPage() {
       <header>
         <h1 className="font-heading text-3xl font-bold">审核后台</h1>
         <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-          状态句 · 桌面便签 · 待审留言 · 待审歌曲 · 评论 · 书架 · 歌单
+          状态句 · 桌面便签 · 待审留言 · 待审歌曲 · 评论 · 书架 · 导入歌单 · 单曲
         </p>
       </header>
 
@@ -379,6 +442,7 @@ async function AdminSections() {
   const comments = db ? await loadRecentComments(db) : unavailable<AdminComment[]>();
   const shelf = db ? await loadShelfItems(db) : unavailable<AdminShelfItem[]>();
   const songList = db ? await loadSongList(db) : unavailable<AdminSongEntry[]>();
+  const playlists = db ? await loadPlaylists(db) : unavailable<AdminPlaylist[]>();
 
   return (
     <>
@@ -789,7 +853,91 @@ async function AdminSections() {
         )}
       </Section>
 
-      <Section title="歌单">
+      <Section title="导入歌单">
+        {!playlists.available ? (
+          <NotAvailable what="歌单列表" />
+        ) : (
+          <>
+            <div className="mt-3 flex flex-wrap items-center gap-3 border-y border-rule py-4">
+              <Link
+                href="/playlist/import"
+                className="rounded-none border border-data px-3 py-1.5 font-mono text-[11px] text-data transition-colors hover:text-foreground"
+              >
+                导入网易云 / QQ 音乐歌单
+              </Link>
+              <p className="font-mono text-[10px] text-muted-foreground">
+                整张导入会覆盖同名平台歌单的曲目；推荐位同一时间只留一张
+              </p>
+            </div>
+
+            {playlists.data.length === 0 ? (
+              <Empty>还没有导入歌单</Empty>
+            ) : (
+              <ul className="mt-3 divide-y divide-rule border-y border-rule">
+                {playlists.data.map((playlist) => (
+                  <li
+                    key={playlist.id}
+                    className="flex flex-wrap items-start justify-between gap-3 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="break-words text-[15px]">{playlist.title}</p>
+                      <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                        {playlist.platform.toUpperCase()} · {playlist.songCount} 首
+                        {playlist.description ? ` · ${playlist.description}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {playlist.pinned && (
+                        <span className="font-mono text-[10px] text-data">
+                          推荐位
+                        </span>
+                      )}
+                      {playlist.pinned ? (
+                        <form action={unpinPlaylist}>
+                          <input type="hidden" name="id" value={playlist.id} />
+                          <button
+                            type="submit"
+                            className="rounded-none border border-rule px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            取消推荐
+                          </button>
+                        </form>
+                      ) : (
+                        <form action={pinPlaylist}>
+                          <input type="hidden" name="id" value={playlist.id} />
+                          <button
+                            type="submit"
+                            className="rounded-none border border-data px-3 py-1.5 font-mono text-[11px] text-data transition-colors hover:text-foreground"
+                          >
+                            设为推荐
+                          </button>
+                        </form>
+                      )}
+                      <Link
+                        href={`/playlist/${playlist.id}`}
+                        className="rounded-none border border-rule px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        查看
+                      </Link>
+                      <form action={deletePlaylist}>
+                        <input type="hidden" name="id" value={playlist.id} />
+                        <button
+                          type="submit"
+                          className="rounded-none border border-rule px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:border-alert hover:text-alert"
+                        >
+                          删除
+                        </button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </Section>
+
+      <Section title="单曲">
         {!songList.available ? (
           <NotAvailable what="歌单" />
         ) : (

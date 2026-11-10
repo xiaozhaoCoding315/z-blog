@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { findAppById } from "@/config/apps";
+import { findAppById, isPrimaryAppId } from "@/config/apps";
 import {
   DEFAULT_BOUNDS,
   WINDOW_STORAGE_KEY,
@@ -92,23 +92,19 @@ export function useWindowManager() {
 
   const openApp = useCallback(
     (id: string) => {
+      // 旧路由仍在注册表里，但第三轮首页只承载七入口与全局终端/助理。
+      // 挡住隐藏窗口 id，避免 ?open= 或旧链接制造无内容的任务栏状态。
+      if (!isPrimaryAppId(id)) return;
       const app = findAppById(id);
       if (!app) return;
-      if (app.kind === "route") {
-        if (app.path) router.push(app.path);
+      // 主入口统一走完整页面；旧的无路径窗口才回退到 ?open= 开窗。
+      if (app.path) {
+        router.push(app.path);
         return;
       }
-      if (isMobileViewport()) {
-        if (app.path) {
-          router.push(app.path);
-          return;
-        }
-        // 终端/助理没有路由，但在移动端以全屏覆盖打开；其余无路由窗口
-        // （「更多」）在移动端不响应，入口由系统菜单承担。
-        if (id !== "terminal" && id !== "assistant") return;
-      }
+      if (isMobileViewport() && id !== "terminal" && id !== "assistant") return;
       if (pathname !== "/") {
-        router.push(app.path ?? `/?open=${id}`);
+        router.push(`/?open=${id}`);
         return;
       }
       const config = app.window;

@@ -43,6 +43,8 @@ export interface AppDefinition {
   icon: IconKey;
   desktop: boolean;
   launcher: boolean;
+  /** 是否进入主导航；旧路由可保留但值为 false。 */
+  public: boolean;
   phase: 1 | 2 | 3 | 4;
   description: string;
   kind: AppKind;
@@ -55,17 +57,18 @@ export type LinkedApp = AppDefinition & { path: string };
 /**
  * 桌面和启动器的唯一数据源。
  *
- * 窗口型应用由窗口系统接管，路由型应用直接跳转；`path` 为空的窗口型
- * 应用只在桌面/启动器里出现（终端、更多、助理、设置）。
+ * 第二轮改版收束为七个主入口；隐藏项仍保留注册表、窗口几何与真实路由，
+ * 因此终端 `open`、旧永久链接、RSS/sitemap 与 308 重定向不会失效。
  */
 export const apps: AppDefinition[] = [
   {
     id: "terminal",
     title: "终端",
-    path: null,
+    path: "/terminal",
     icon: "terminal",
-    desktop: true,
+    desktop: false,
     launcher: true,
+    public: true,
     phase: 2,
     description: "在桌面里直接敲命令",
     kind: "window",
@@ -81,8 +84,9 @@ export const apps: AppDefinition[] = [
     title: "每日日志",
     path: "/life",
     icon: "life",
-    desktop: true,
-    launcher: true,
+    desktop: false,
+    launcher: false,
+    public: false,
     phase: 1,
     description: "一条按时间走的生活流",
     kind: "window",
@@ -98,8 +102,9 @@ export const apps: AppDefinition[] = [
     title: "生活胶囊",
     path: "/gallery",
     icon: "gallery",
-    desktop: true,
-    launcher: true,
+    desktop: false,
+    launcher: false,
+    public: false,
     phase: 3,
     description: "带照片的瞬间",
     kind: "window",
@@ -115,8 +120,9 @@ export const apps: AppDefinition[] = [
     title: "项目看板",
     path: "/projects",
     icon: "projects",
-    desktop: true,
+    desktop: false,
     launcher: true,
+    public: true,
     phase: 3,
     description: "正在做、维护中和已完成",
     kind: "window",
@@ -132,8 +138,9 @@ export const apps: AppDefinition[] = [
     title: "代码片段",
     path: "/snippets",
     icon: "snippets",
-    desktop: true,
-    launcher: true,
+    desktop: false,
+    launcher: false,
+    public: false,
     phase: 3,
     description: "这个站里真正用过的代码",
     kind: "window",
@@ -149,8 +156,9 @@ export const apps: AppDefinition[] = [
     title: "关于本机",
     path: "/about",
     icon: "about",
-    desktop: true,
+    desktop: false,
     launcher: true,
+    public: true,
     phase: 3,
     description: "站长、站点与运行时间",
     kind: "window",
@@ -166,8 +174,9 @@ export const apps: AppDefinition[] = [
     title: "笔记",
     path: "/notes",
     icon: "notes",
-    desktop: true,
+    desktop: false,
     launcher: true,
+    public: true,
     phase: 1,
     description: "长文与拆解",
     kind: "route",
@@ -178,8 +187,9 @@ export const apps: AppDefinition[] = [
     title: "书架",
     path: "/shelf",
     icon: "shelf",
-    desktop: true,
-    launcher: true,
+    desktop: false,
+    launcher: false,
+    public: false,
     phase: 1,
     description: "书、影、音",
     kind: "route",
@@ -190,8 +200,9 @@ export const apps: AppDefinition[] = [
     title: "歌单",
     path: "/playlist",
     icon: "playlist",
-    desktop: true,
+    desktop: false,
     launcher: true,
+    public: true,
     phase: 1,
     description: "此刻循环与访客推荐",
     kind: "route",
@@ -199,23 +210,25 @@ export const apps: AppDefinition[] = [
   },
   {
     id: "letters",
-    title: "信箱",
+    title: "留言板",
     path: "/letters",
     icon: "letters",
-    desktop: true,
+    desktop: false,
     launcher: true,
+    public: true,
     phase: 1,
     description: "公开留言与回信",
     kind: "route",
-    keywords: ["letters", "信箱", "留言", "回信", "message", "messages"],
+    keywords: ["letters", "留言板", "留言", "回信", "message", "messages"],
   },
   {
     id: "more",
     title: "更多",
     path: null,
     icon: "more",
-    desktop: true,
-    launcher: true,
+    desktop: false,
+    launcher: false,
+    public: false,
     phase: 4,
     description: "友链、更新日志与站点信息",
     kind: "window",
@@ -228,20 +241,21 @@ export const apps: AppDefinition[] = [
   },
   {
     id: "assistant",
-    title: "助理",
-    path: null,
+    title: "小元同学",
+    path: "/assistant",
     icon: "assistant",
-    desktop: true,
+    desktop: false,
     launcher: true,
+    public: true,
     phase: 2,
-    description: "站内问答，回答带引用",
+    description: "站内同学，回答带引用",
     kind: "window",
     window: {
       defaultRect: { x: 360, y: 120, w: 720, h: 520 },
       minWidth: 420,
       minHeight: 320,
     },
-    keywords: ["assistant", "助理", "问答", "提问", "ai", "chat"],
+    keywords: ["assistant", "小元同学", "小元", "助理", "问答", "提问", "ai", "chat"],
   },
   {
     id: "journal",
@@ -249,7 +263,8 @@ export const apps: AppDefinition[] = [
     path: "/journal",
     icon: "journal",
     desktop: false,
-    launcher: true,
+    launcher: false,
+    public: false,
     phase: 1,
     description: "这个站每次改了什么",
     kind: "route",
@@ -261,7 +276,8 @@ export const apps: AppDefinition[] = [
     path: "/friends",
     icon: "friends",
     desktop: false,
-    launcher: true,
+    launcher: false,
+    public: false,
     phase: 1,
     description: "互相认识的人",
     kind: "route",
@@ -274,6 +290,7 @@ export const apps: AppDefinition[] = [
     icon: "settings",
     desktop: false,
     launcher: false,
+    public: false,
     phase: 1,
     description: "开发环境的视觉样张",
     kind: "route",
@@ -286,6 +303,7 @@ export const apps: AppDefinition[] = [
     icon: "settings",
     desktop: false,
     launcher: true,
+    public: false,
     phase: 4,
     description: "预设、桌面物件与布局",
     kind: "route",
@@ -298,6 +316,7 @@ export const apps: AppDefinition[] = [
     icon: "write",
     desktop: false,
     launcher: false,
+    public: false,
     phase: 1,
     description: "发布一条生活动态",
     kind: "route",
@@ -310,6 +329,7 @@ export const apps: AppDefinition[] = [
     icon: "admin",
     desktop: false,
     launcher: false,
+    public: false,
     phase: 1,
     description: "状态句、留言与内容审核",
     kind: "route",
@@ -322,6 +342,7 @@ export const apps: AppDefinition[] = [
     icon: "login",
     desktop: false,
     launcher: false,
+    public: false,
     phase: 1,
     description: "邮箱验证码登录",
     kind: "route",
@@ -329,12 +350,65 @@ export const apps: AppDefinition[] = [
   },
 ];
 
+/** 七个主入口是首页卡片与公开导航的唯一数据源，顺序即展示顺序。 */
+export const PRIMARY_APP_IDS = [
+  "terminal",
+  "projects",
+  "about",
+  "playlist",
+  "notes",
+  "assistant",
+  "letters",
+] as const;
+
+export const primaryApps: AppDefinition[] = PRIMARY_APP_IDS.map((id) => {
+  const app = apps.find((candidate) => candidate.id === id);
+  if (!app) throw new Error(`Missing primary app: ${id}`);
+  return app;
+});
+
+/** 首页能承载的窗口 id：七个主入口，外加常驻全局窗口终端与助理。 */
+export function isPrimaryAppId(id: string): boolean {
+  return (
+    PRIMARY_APP_IDS.some((appId) => appId === id) ||
+    id === "terminal" ||
+    id === "assistant"
+  );
+}
+
+/** 账号页也走文档流外壳：登录/资料页不应被关在旧桌面窗框里。 */
+export function isAccountPagePath(pathname: string): boolean {
+  return (
+    pathname === "/login" ||
+    pathname === "/profile" ||
+    pathname.startsWith("/u/")
+  );
+}
+
+/** 七个主入口及其子页面使用新的文档流外壳；旧页面仍用桌面应用窗框。 */
+export function isFullPagePath(pathname: string): boolean {
+  return (
+    isAccountPagePath(pathname) ||
+    primaryApps.some(
+      (app) =>
+        app.path !== null &&
+        (pathname === app.path || pathname.startsWith(`${app.path}/`))
+    )
+  );
+}
+
+/** 旧图标网格已退役；保留空导出让既有引用仍能编译。 */
 export const desktopTileApps: AppDefinition[] = apps.filter((app) => app.desktop);
 
-export const launcherApps: AppDefinition[] = apps.filter((app) => app.launcher);
+const launcherExtras: AppDefinition[] = apps.filter(
+  (app) => app.launcher && !PRIMARY_APP_IDS.some((id) => id === app.id)
+);
 
-export const publicApps: LinkedApp[] = apps.filter(
-  (app): app is LinkedApp => app.path !== null && app.launcher
+/** 启动器按主入口顺序展示，系统设置是最后一个工具项。 */
+export const launcherApps: AppDefinition[] = [...primaryApps, ...launcherExtras];
+
+export const publicApps: LinkedApp[] = primaryApps.filter(
+  (app): app is LinkedApp => app.path !== null && app.public
 );
 
 export function findAppById(id: string): AppDefinition | undefined {

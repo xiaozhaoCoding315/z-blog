@@ -18,13 +18,7 @@ import { useDesktopRuntime } from "./desktop-runtime";
  * 窗口项点击后先回到桌面再恢复/聚焦——窗口状态保存在外壳里，
  * 路由切换不会丢掉已经打开的窗口。
  */
-export function Taskbar({
-  accountMenu,
-  hasFriends,
-}: {
-  accountMenu: ReactNode;
-  hasFriends: boolean;
-}) {
+export function Taskbar({ accountMenu }: { accountMenu: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { windows } = useDesktopRuntime();
@@ -34,9 +28,7 @@ export function Taskbar({
   const toastTimer = useRef<number | null>(null);
   const current = findAppByPath(pathname);
   const openWindows = Object.values(windows.store.windows);
-  const launcherVisibleApps = launcherApps.filter(
-    (app) => app.id !== "friends" || hasFriends
-  );
+  const launcherVisibleApps = launcherApps;
 
   // 回到桌面或切换应用时，外层滚动容器与移动端 window 都立即回到顶部
   useEffect(() => {
@@ -215,9 +207,7 @@ export function Taskbar({
         </div>
 
         {launcherOpen && <Launcher apps={launcherVisibleApps} />}
-        {menuOpen && (
-          <SystemMenu accountMenu={accountMenu} hasFriends={hasFriends} />
-        )}
+        {menuOpen && <SystemMenu accountMenu={accountMenu} />}
 
         <div
           className="os-toast"

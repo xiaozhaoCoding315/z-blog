@@ -1,3 +1,5 @@
+# 生产构建与源码包的通用排除基线；源码包另由 scripts/deploy.sh 生成受控清单。
+# 密钥、派生 .env、本地审计产物、构建缓存和上传数据不进入 Docker 上下文。
 node_modules
 .next
 .git
@@ -5,6 +7,7 @@ node_modules
 .env.*
 !.env.example
 npm-debug.log*
+*.log
 .DS_Store
 *.md
 !README.md
@@ -12,4 +15,21 @@ drizzle
 .zcode
 .vscode
 .idea
+.claude
+.playwright-mcp
+.superpowers
 uploads
+docs
+docs/design-research
+.github
+.vercel
+out
+build
+coverage
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+*.pem
+hosts.bak.*
+scripts/.difficulty-cache.json
+scripts/enable-dsh-lan.ps1
+docker-compose.dev.yml

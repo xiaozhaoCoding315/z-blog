@@ -18,7 +18,7 @@ export default function NotesPage() {
         <h1 className="font-heading text-3xl font-bold tracking-[-0.02em]">
           笔记
         </h1>
-        <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+        <p className="mt-2 font-mono text-[13px] leading-5 text-muted-foreground">
           共 {notes.length} 篇
         </p>
       </header>

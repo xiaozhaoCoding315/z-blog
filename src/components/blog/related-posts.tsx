@@ -48,7 +48,7 @@ export function RelatedPosts({
       <h2 className="mb-4 inline-flex items-center gap-2 font-heading text-lg font-bold tracking-tight">
         相关文章
         {upgraded && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-normal text-primary">
+          <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[12px] leading-5 font-normal text-primary">
             向量推荐
           </span>
         )}

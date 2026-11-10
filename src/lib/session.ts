@@ -7,6 +7,7 @@ import { SESSION_COOKIE, sessionSecret, verifySession } from "@/lib/auth";
 export interface SessionUser {
   id: number;
   login: string;
+  displayName: string | null;
   avatarUrl: string | null;
   role: "owner" | "visitor";
 }
@@ -34,6 +35,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       .select({
         id: users.id,
         login: users.login,
+        displayName: users.displayName,
         avatarUrl: users.avatarUrl,
         role: users.role,
       })
@@ -44,6 +46,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     return {
       id: row.id,
       login: row.login,
+      displayName: row.displayName,
       avatarUrl: row.avatarUrl,
       role: row.role === "owner" ? "owner" : "visitor",
     };

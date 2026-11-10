@@ -1,4 +1,7 @@
 # 多阶段构建：deps → builder → runner（standalone 产物，最终镜像不含源码与 node_modules）
+# NODE_IMAGE_DIGEST_REQUIRED：本地 Docker engine 不可用，无法解析并锁定官方 node 镜像 digest；
+# 发布前须在有 Docker 的构建机用 `docker buildx imagetools inspect node:20-alpine` 取得 digest，
+# 将三个 FROM 改为 `node@sha256:<已验证 digest>` 后再执行发布。
 
 FROM node:20-alpine AS deps
 WORKDIR /app
@@ -12,7 +15,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # NEXT_PUBLIC_* 在构建时内联进产物，必须在此注入正确的公网地址
-ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
+ARG NEXT_PUBLIC_SITE_URL
 # 「关于」页的联系邮箱同样是构建期内联，留空则不显示邮箱入口
 ARG NEXT_PUBLIC_CONTACT_EMAIL=
 ENV NEXT_TELEMETRY_DISABLED=1 \

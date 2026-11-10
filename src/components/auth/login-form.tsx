@@ -10,7 +10,15 @@ import { Input } from "@/components/ui/input";
  * 两步都自己发 fetch 而不是 Server Action：登录要在响应里写 cookie，
  * Route Handler 比 Action 直白。
  */
-export function LoginForm({ ownerConfigured }: { ownerConfigured: boolean }) {
+export function LoginForm({
+  ownerConfigured,
+  mode = "login",
+  next = "/",
+}: {
+  ownerConfigured: boolean;
+  mode?: "login" | "register";
+  next?: string;
+}) {
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -34,7 +42,11 @@ export function LoginForm({ ownerConfigured }: { ownerConfigured: boolean }) {
         return;
       }
       setStep("code");
-      setNotice("验证码已发出。收不到先翻一下垃圾箱。");
+      setNotice(
+        mode === "register"
+          ? "验证码已发出。第一次验证通过会自动创建账号。"
+          : "验证码已发出。收不到先翻一下垃圾箱。"
+      );
     } catch {
       setError("网络异常，稍后再试");
     } finally {
@@ -50,7 +62,7 @@ export function LoginForm({ ownerConfigured }: { ownerConfigured: boolean }) {
       const res = await fetch("/api/auth/email/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email, code, next }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -79,7 +91,7 @@ export function LoginForm({ ownerConfigured }: { ownerConfigured: boolean }) {
           htmlFor="email"
           className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground"
         >
-          Email
+          {mode === "register" ? "Email · 注册邮箱" : "Email"}
         </label>
         <Input
           id="email"
@@ -125,6 +137,7 @@ export function LoginForm({ ownerConfigured }: { ownerConfigured: boolean }) {
           {notice}
         </p>
       )}
+
       {error && (
         <p className="py-3 font-mono text-[11px] text-alert" role="alert">
           {error}
@@ -137,7 +150,13 @@ export function LoginForm({ ownerConfigured }: { ownerConfigured: boolean }) {
           disabled={pending}
           className="rounded-none border border-data bg-transparent px-4 font-mono text-[12px] text-data hover:border-foreground hover:bg-transparent hover:text-foreground"
         >
-          {pending ? "处理中…" : step === "email" ? "发验证码" : "登录"}
+          {pending
+            ? "处理中…"
+            : step === "email"
+              ? "发验证码"
+              : mode === "register"
+                ? "注册并登录"
+                : "登录"}
         </Button>
         {step === "code" && (
           <button

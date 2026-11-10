@@ -97,6 +97,18 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("visitor"),
   login: text("login").notNull(),
   avatarUrl: text("avatar_url"),
+  /** 公开昵称；空值回退 login，站内任何地方显示名字都走 profileDisplayName */
+  displayName: text("display_name"),
+  bio: text("bio").notNull().default(""),
+  /** male / female / other / secret；null = 没填 */
+  gender: text("gender"),
+  birthday: date("birthday"),
+  location: text("location").notNull().default(""),
+  website: text("website"),
+  githubUrl: text("github_url"),
+  /** 生日与性别默认不公开，由本人逐项打开 */
+  showBirthday: boolean("show_birthday").notNull().default(false),
+  showGender: boolean("show_gender").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -274,8 +286,45 @@ export const letters = pgTable(
 );
 
 /**
+ * playlists：站长导入的完整歌单（网易云 / QQ 音乐 / 手动）。
+ *
+ * 与 songs 的关系是「集合 ↔ 曲目」：访客推荐仍然是 playlistId 为空的
+ * 单曲，沿用原来的审核流；导入的曲目直接 approved，跟着歌单一起公开。
+ * external_id 只对真实平台歌单有值，手动歌单为空。
+ */
+export const playlists = pgTable(
+  "playlists",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    coverUrl: text("cover_url"),
+    platform: text("platform").notNull().default("other"),
+    externalId: text("external_id"),
+    externalUrl: text("external_url"),
+    userId: integer("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    pinned: boolean("pinned").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("playlists_pinned_idx").on(table.pinned, table.createdAt.desc()),
+    index("playlists_user_idx").on(table.userId),
+  ]
+);
+
+/**
  * songs：歌单条目。owner 添加的直接 approved；访客推荐默认 pending。
  * pinned 表示「此刻循环」，同一时间只应该有一首，由 Action 保证。
+ *
+ * playlistId 为空的是单曲（旧歌单与访客推荐）；
+ * 有值的是导入歌单里的曲目，externalId/coverUrl/duration 用于站内播放。
  */
 export const songs = pgTable(
   "songs",
@@ -292,6 +341,14 @@ export const songs = pgTable(
     }),
     status: text("status").notNull().default("pending"),
     pinned: boolean("pinned").notNull().default(false),
+    playlistId: integer("playlist_id").references(() => playlists.id, {
+      onDelete: "cascade",
+    }),
+    externalId: text("external_id"),
+    coverUrl: text("cover_url"),
+    /** 秒 */
+    duration: integer("duration"),
+    sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -299,6 +356,7 @@ export const songs = pgTable(
   (table) => [
     index("songs_status_idx").on(table.status, table.createdAt.desc()),
     index("songs_user_idx").on(table.userId),
+    index("songs_playlist_idx").on(table.playlistId, table.sortOrder),
   ]
 );
 
@@ -346,4 +404,5 @@ export type MomentDbRow = typeof moments.$inferSelect;
 export type CommentDbRow = typeof comments.$inferSelect;
 export type LetterDbRow = typeof letters.$inferSelect;
 export type SongDbRow = typeof songs.$inferSelect;
+export type PlaylistDbRow = typeof playlists.$inferSelect;
 export type ShelfItemDbRow = typeof shelfItems.$inferSelect;

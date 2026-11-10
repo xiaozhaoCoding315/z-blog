@@ -1,4 +1,7 @@
+import Link from "next/link";
 import type { SongView } from "@/lib/songs-server";
+import { profileHref } from "@/lib/profile-core";
+import { UserAvatar } from "@/components/site/user-avatar";
 
 export const PLATFORM_LABEL = {
   netease: "NETEASE",
@@ -7,40 +10,50 @@ export const PLATFORM_LABEL = {
 } as const;
 
 /**
- * 一行一首歌，整行是外链。
+ * 一行一首歌：标题与平台是外链，推荐人是独立的站内链接。
  *
- * 推荐人只在访客推荐上显示：读层对 owner 歌曲也会带出 users.login，
- * 但站长自己的歌不需要署一个「推荐人」。
+ * 不能把推荐人链接嵌进整行 <a> 里——那是嵌套交互元素，键盘和读屏都会乱。
+ * 推荐人只在访客推荐上显示：站长自己的歌不需要署名。
  */
 export function SongRow({ song }: { song: SongView }) {
+  const recommenderHref =
+    song.source === "visitor" ? profileHref(song.recommenderId) : null;
+
   return (
-    <a
-      href={song.url}
-      target="_blank"
-      rel="noreferrer noopener"
-      className="group flex items-baseline gap-3 border-b border-rule py-3 transition-colors hover:bg-panel"
-    >
-      <span className="w-20 shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+    <div className="song-row">
+      <span className="song-row-platform">
         {PLATFORM_LABEL[song.platform]}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] group-hover:text-data">
-          {song.title}
-        </span>
-        <span className="mt-0.5 block truncate font-mono text-[11px] text-muted-foreground">
+      <a
+        href={song.url}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="song-row-main"
+      >
+        <span className="song-row-title">{song.title}</span>
+        <span className="song-row-meta">
           {song.artist}
           {song.note ? ` · ${song.note}` : ""}
-          {song.source === "visitor" && song.recommender
-            ? ` · 推荐人 ${song.recommender}`
-            : ""}
         </span>
-      </span>
-      {song.pinned && (
-        <span className="shrink-0 font-mono text-[10px] text-ok">PINNED</span>
+      </a>
+      {song.source === "visitor" && song.recommender && (
+        <span className="song-row-recommender">
+          {recommenderHref ? (
+            <Link href={recommenderHref} className="song-row-recommender-link">
+              <UserAvatar
+                name={song.recommender}
+                avatarUrl={song.recommenderAvatarUrl}
+                size="sm"
+              />
+              {song.recommender}
+            </Link>
+          ) : (
+            song.recommender
+          )}
+        </span>
       )}
-      {song.pending && (
-        <span className="shrink-0 font-mono text-[10px] text-wait">PENDING</span>
-      )}
-    </a>
+      {song.pinned && <span className="song-row-state is-pin">PINNED</span>}
+      {song.pending && <span className="song-row-state is-wait">PENDING</span>}
+    </div>
   );
 }

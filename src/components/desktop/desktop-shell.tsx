@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { publicApps } from "@/config/apps";
+import { isFullPagePath, publicApps } from "@/config/apps";
 import type {
   TerminalNote,
   TerminalSnippet,
@@ -45,7 +45,7 @@ const SearchPalette = dynamic(
  */
 export function DesktopShell({
   accountMenu,
-  hasFriends,
+  mobileAccountEntry,
   aiEnabled,
   notes,
   snippets,
@@ -53,7 +53,7 @@ export function DesktopShell({
   children,
 }: {
   accountMenu: ReactNode;
-  hasFriends: boolean;
+  mobileAccountEntry?: ReactNode;
   aiEnabled: boolean;
   /** 终端 `apps`/`posts`/`open` 与 Spotlight 共用的笔记索引 */
   notes: TerminalNote[];
@@ -63,6 +63,7 @@ export function DesktopShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const fullPage = isFullPagePath(pathname);
   const windows = useWindowManager();
   const settings = useDesktopSettings();
   const { openApp } = windows;
@@ -98,11 +99,8 @@ export function DesktopShell({
       })),
     [snippets]
   );
-  // 友链为空时不给无 JS 导航留一个空页入口；其余真实路由保持完整。
-  const noScriptApps = useMemo(
-    () => publicApps.filter((app) => app.id !== "friends" || hasFriends),
-    [hasFriends]
-  );
+  // 无脚本导航只列七个主入口中的真实路由；隐藏页仍可由旧链接访问。
+  const noScriptApps = useMemo(() => publicApps, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -158,7 +156,12 @@ export function DesktopShell({
 
   return (
     <DesktopRuntimeContext.Provider value={runtime}>
-      <div className="os-shell" data-dock={showDock ? "true" : "false"}>
+      <div
+        className="os-shell"
+        data-dock={showDock ? "true" : "false"}
+        data-home={pathname === "/" ? "true" : "false"}
+        data-full={fullPage ? "true" : "false"}
+      >
         {/* 第一个可聚焦元素：Tab 先到跳过链接，再进桌面图标。 */}
         <a href="#os-main" className="os-skip-link">
           跳到主内容
@@ -174,14 +177,10 @@ export function DesktopShell({
           uptimeDays={uptimeDays}
         />
         {spotlightOpen && (
-          <SearchPalette
-            notes={searchNotes}
-            snippets={searchSnippets}
-            hasFriends={hasFriends}
-          />
+          <SearchPalette notes={searchNotes} snippets={searchSnippets} />
         )}
-        {showDock && <MobileDock />}
-        <Taskbar accountMenu={accountMenu} hasFriends={hasFriends} />
+        {showDock && <MobileDock accountEntry={mobileAccountEntry} />}
+        <Taskbar accountMenu={accountMenu} />
         <noscript>
           <nav className="os-noscript" aria-label="站点导航">
             <p>Personal Dev OS · 无脚本模式</p>

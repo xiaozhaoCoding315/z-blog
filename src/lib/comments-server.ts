@@ -1,12 +1,19 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { comments as commentsTable, users } from "@/db/schema";
+import {
+  comments as commentsTable,
+  posts as postsTable,
+  users,
+} from "@/db/schema";
 import { formatDay } from "@/lib/life";
+import { profileDisplayName } from "@/lib/profile-core";
 
 export interface CommentView {
   id: number;
   author: string;
+  authorId: number;
+  avatarUrl: string | null;
   body: string;
   date: string;
 }
@@ -40,7 +47,10 @@ async function getVisibleCommentsCached(
     const rows = await db
       .select({
         id: commentsTable.id,
-        author: users.login,
+        authorId: users.id,
+        login: users.login,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
         body: commentsTable.body,
         createdAt: commentsTable.createdAt,
       })
@@ -59,9 +69,82 @@ async function getVisibleCommentsCached(
       available: true,
       comments: rows.map((row) => ({
         id: row.id,
-        author: row.author,
+        author: profileDisplayName(row.displayName, row.login),
+        authorId: row.authorId,
+        avatarUrl: row.avatarUrl,
         body: row.body,
         date: formatDay(row.createdAt.toISOString()),
+      })),
+    };
+  } catch {
+    return { available: false, comments: [] };
+  }
+}
+
+export interface RecentCommentView extends CommentView {
+  targetType: string;
+  targetTitle: string;
+  href: string;
+}
+
+/**
+ * 全站最近评论：留言板首页用它把「评论区」这一面露出来。
+ * 只读 visible；目标笔记不存在时回退 slug，不编标题。
+ */
+export async function getRecentComments(limit = 8): Promise<{
+  available: boolean;
+  comments: RecentCommentView[];
+}> {
+  return getRecentCommentsCached(limit);
+}
+
+async function getRecentCommentsCached(limit: number): Promise<{
+  available: boolean;
+  comments: RecentCommentView[];
+}> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("comments");
+
+  const db = getDb();
+  if (!db) return { available: false, comments: [] };
+
+  try {
+    const rows = await db
+      .select({
+        id: commentsTable.id,
+        authorId: users.id,
+        login: users.login,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+        body: commentsTable.body,
+        targetType: commentsTable.targetType,
+        targetId: commentsTable.targetId,
+        title: postsTable.title,
+        createdAt: commentsTable.createdAt,
+      })
+      .from(commentsTable)
+      .innerJoin(users, eq(users.id, commentsTable.userId))
+      .leftJoin(postsTable, eq(postsTable.slug, commentsTable.targetId))
+      .where(eq(commentsTable.status, "visible"))
+      .orderBy(desc(commentsTable.createdAt), desc(commentsTable.id))
+      .limit(limit);
+
+    return {
+      available: true,
+      comments: rows.map((row) => ({
+        id: row.id,
+        author: profileDisplayName(row.displayName, row.login),
+        authorId: row.authorId,
+        avatarUrl: row.avatarUrl,
+        body: row.body,
+        date: formatDay(row.createdAt.toISOString()),
+        targetType: row.targetType,
+        targetTitle:
+          row.targetType === "note"
+            ? row.title ?? `笔记 / ${row.targetId}`
+            : `动态 / ${row.targetId}`,
+        href: row.targetType === "note" ? `/notes/${row.targetId}` : "/life",
       })),
     };
   } catch {

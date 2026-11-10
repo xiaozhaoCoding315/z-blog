@@ -5,8 +5,8 @@ import type {
   TerminalSnippet,
 } from "@/components/terminal/commands";
 import { AccountMenu } from "@/components/site/account-menu";
+import { AccountEntry } from "@/components/site/account-entry";
 import { DesktopShell } from "@/components/desktop/desktop-shell";
-import { friends } from "@/config/portfolio";
 import { snippets as snippetConfig } from "@/config/snippets";
 import { getAllNotes } from "@/content";
 import { chatEnabled } from "@/lib/ai";
@@ -27,6 +27,19 @@ export default async function SiteLayout({
       }
     >
       <AccountMenu />
+    </Suspense>
+  );
+  // 移动端 dock 的第五格：登录 / 我的。和顶栏共用同一个服务端入口，
+  // 用 dock 变体渲染成 56px 的单格链接。
+  const mobileAccountEntry = (
+    <Suspense
+      fallback={
+        <Link href="/login" className="os-mobile-dock-link">
+          登录
+        </Link>
+      }
+    >
+      <AccountEntry variant="dock" />
     </Suspense>
   );
 
@@ -50,7 +63,7 @@ export default async function SiteLayout({
   return (
     <DesktopShell
       accountMenu={accountMenu}
-      hasFriends={friends.length > 0}
+      mobileAccountEntry={mobileAccountEntry}
       aiEnabled={chatEnabled}
       notes={notes}
       snippets={snippets}

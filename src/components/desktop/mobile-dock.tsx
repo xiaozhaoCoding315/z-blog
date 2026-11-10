@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 import type { IconKey } from "@/config/apps";
 import { AppIcon } from "./icons";
 
 const DOCK_APPS: { href: string; label: string; icon: IconKey }[] = [
-  { href: "/life", label: "日志", icon: "life" },
-  { href: "/projects", label: "项目", icon: "projects" },
-  { href: "/gallery", label: "胶囊", icon: "gallery" },
-  { href: "/snippets", label: "片段", icon: "snippets" },
+  { href: "/terminal", label: "终端", icon: "terminal" },
+  { href: "/notes", label: "笔记", icon: "notes" },
+  { href: "/assistant", label: "小元", icon: "assistant" },
+  { href: "/letters", label: "社区", icon: "letters" },
 ];
 
 /**
@@ -18,7 +19,7 @@ const DOCK_APPS: { href: string; label: string; icon: IconKey }[] = [
  * 只在首页渲染（由 DesktopShell 判断 pathname）；应用页沿用 AppFrame 的
  * 顶部返回栏。因此 aria-current 在首页不会命中，保留作防御性标记。
  */
-export function MobileDock() {
+export function MobileDock({ accountEntry }: { accountEntry?: ReactNode }) {
   const pathname = usePathname();
 
   return (
@@ -34,6 +35,12 @@ export function MobileDock() {
           <span>{app.label}</span>
         </Link>
       ))}
+      {accountEntry ?? (
+        <Link href="/login" className="os-mobile-dock-link">
+          <AppIcon name="login" />
+          <span>登录</span>
+        </Link>
+      )}
     </nav>
   );
 }

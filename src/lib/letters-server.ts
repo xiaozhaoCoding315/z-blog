@@ -3,10 +3,13 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { letters as lettersTable, users } from "@/db/schema";
 import { formatDay } from "@/lib/life";
+import { profileDisplayName } from "@/lib/profile-core";
 
 export interface LetterView {
   id: number;
   name: string;
+  authorId: number | null;
+  avatarUrl: string | null;
   body: string;
   songTitle: string | null;
   songArtist: string | null;
@@ -40,8 +43,11 @@ async function getApprovedLettersCached(limit: number): Promise<LettersResult> {
     const rows = await db
       .select({
         id: lettersTable.id,
+        userId: lettersTable.userId,
         guestName: lettersTable.guestName,
         login: users.login,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
         body: lettersTable.body,
         songTitle: lettersTable.songTitle,
         songArtist: lettersTable.songArtist,
@@ -83,8 +89,11 @@ export async function getLettersForViewer(
     const own = await db
       .select({
         id: lettersTable.id,
+        userId: lettersTable.userId,
         guestName: lettersTable.guestName,
         login: users.login,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
         body: lettersTable.body,
         songTitle: lettersTable.songTitle,
         songArtist: lettersTable.songArtist,
@@ -120,8 +129,11 @@ export async function getLettersForViewer(
 function toLetterView(
   row: {
     id: number;
+    userId: number | null;
     guestName: string | null;
     login: string | null;
+    displayName: string | null;
+    avatarUrl: string | null;
     body: string;
     songTitle: string | null;
     songArtist: string | null;
@@ -132,7 +144,11 @@ function toLetterView(
 ): LetterView {
   return {
     id: row.id,
-    name: row.login ?? row.guestName ?? "匿名",
+    name: row.login
+      ? profileDisplayName(row.displayName, row.login)
+      : row.guestName ?? "匿名",
+    authorId: row.userId,
+    avatarUrl: row.avatarUrl,
     body: row.body,
     songTitle: row.songTitle,
     songArtist: row.songArtist,

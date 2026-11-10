@@ -1,10 +1,14 @@
+import Link from "next/link";
 import type { CommentView } from "@/lib/comments-server";
+import { profileHref } from "@/lib/profile-core";
+import { UserAvatar } from "@/components/site/user-avatar";
 
 /**
  * 评论列表：服务端组件。
  *
  * available === false 表示读层连不上库，显示 NOT AVAILABLE，
  * 不能拿「还没有评论」冒充——那会把故障说成常态。
+ * 每条评论带头像和可点击的作者，点进去是这个人的公开主页。
  */
 export function CommentList({
   comments,
@@ -36,19 +40,38 @@ export function CommentList({
 
   return (
     <ul className="divide-y divide-rule border-y border-rule">
-      {comments.map((comment) => (
-        <li key={comment.id} className="py-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <span className="font-mono text-[11px]">{comment.author}</span>
-            <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-              {comment.date}
-            </span>
-          </div>
-          <p className="mt-2 whitespace-pre-line text-[14px] leading-relaxed">
-            {comment.body}
-          </p>
-        </li>
-      ))}
+      {comments.map((comment) => {
+        const href = profileHref(comment.authorId);
+        const name = (
+          <>
+            <UserAvatar
+              name={comment.author}
+              avatarUrl={comment.avatarUrl}
+              size="sm"
+            />
+            <span>{comment.author}</span>
+          </>
+        );
+        return (
+          <li key={comment.id} className="py-4">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              {href ? (
+                <Link href={href} className="comment-author">
+                  {name}
+                </Link>
+              ) : (
+                <span className="comment-author">{name}</span>
+              )}
+              <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                {comment.date}
+              </span>
+            </div>
+            <p className="mt-2 whitespace-pre-line text-[14px] leading-relaxed">
+              {comment.body}
+            </p>
+          </li>
+        );
+      })}
     </ul>
   );
 }

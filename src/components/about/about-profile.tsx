@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ThemeValue } from "@/components/about/theme-value";
 import { GithubIcon } from "@/components/icons/github";
-import { desktopTileApps } from "@/config/apps";
+import { primaryApps } from "@/config/apps";
 import { siteConfig } from "@/config/site";
 import { now } from "@/config/portfolio";
 import { skillGroups } from "@/config/skills";
@@ -73,8 +73,8 @@ export async function AboutProfile({
     },
     { label: "Shell", value: "zsh (simulated)" },
     { label: "Stack", value: STACK },
-    // 注册表真实值；终端 neofetch 的 Apps 行用的是同一份数据。
-    { label: "Apps", value: String(desktopTileApps.length) },
+    // 主入口真实值；终端 neofetch 的 Apps 行用的是同一份数据。
+    { label: "Apps", value: String(primaryApps.length) },
     { label: "Notes", value: String(notesCount) },
     {
       label: "Commits·90D",
@@ -87,43 +87,36 @@ export async function AboutProfile({
     { label: "Theme", value: <ThemeValue /> },
   ];
 
-  const Heading = variant === "page" ? "h1" : "h2";
   const isPage = variant === "page";
 
   const profile = (
     <>
       <header>
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          关于本机
-        </p>
-        <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <Heading
-            className={
-              isPage
-                ? "font-heading text-3xl font-bold tracking-[-0.02em]"
-                : "font-heading text-[17px] font-bold"
-            }
-          >
-            {siteConfig.author.name}
-          </Heading>
-          <p className="font-mono text-[11px] text-muted-foreground">
-            全栈 · AI 应用
-          </p>
+        <p className="reading-label">关于本机</p>
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-2">
+          {isPage ? (
+            <h1 className="about-title">{siteConfig.author.name}</h1>
+          ) : (
+            <h2 className="font-heading text-[17px] font-bold">
+              {siteConfig.author.name}
+            </h2>
+          )}
+          <p className="reading-secondary">全栈 · AI 应用</p>
         </div>
-        <p className="mt-3 text-[14px] leading-6 text-ink">{status}</p>
+        <p className="mt-4 reading-body">{status}</p>
         {isPage && (
-          <p className="mt-3 max-w-[42rem] text-[15px] leading-7 text-muted-foreground">
+          <p className="mt-4 max-w-[64ch] reading-body text-ink-dim">
             {siteConfig.author.bio}
           </p>
         )}
-        <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-muted-foreground">
+        <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 reading-meta">
           <a
             href={siteConfig.links.github}
             target="_blank"
             rel="noreferrer noopener"
             className="link-underline inline-flex items-center gap-1.5"
           >
-            <GithubIcon className="size-3.5" /> GitHub
+            <GithubIcon className="size-4" /> GitHub
           </a>
           {siteConfig.author.email && (
             <>
@@ -176,22 +169,20 @@ export async function AboutProfile({
       {/* 现在：一段话，不是四宫格；「手动」说明这不是自动观测值 */}
       <section className="mt-12 border-t border-rule pt-8">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 className="font-heading text-lg font-bold tracking-tight">现在</h2>
-          <p className="font-mono text-[10px] text-muted-foreground">
-            手动 · 更新于 {now.updatedAt}
-          </p>
+          <h2>现在</h2>
+          <p className="reading-meta">手动 · 更新于 {now.updatedAt}</p>
         </div>
-        <div className="mt-3 space-y-2 text-[15px] leading-7">
+        <div className="mt-4 space-y-3 reading-body">
           <p>
-            <span className="text-muted-foreground">在做 </span>
+            <span className="text-ink-dim">在做 </span>
             {now.building.join("、")}
           </p>
           <p>
-            <span className="text-muted-foreground">在学 </span>
+            <span className="text-ink-dim">在学 </span>
             {now.learning.join("、")}
           </p>
           <p>
-            <span className="text-muted-foreground">在读 </span>
+            <span className="text-ink-dim">在读 </span>
             {now.reading.join("、")}
           </p>
         </div>
@@ -199,25 +190,21 @@ export async function AboutProfile({
 
       {/* 能力：从 /skills 合并进来，只留能力名，不留等级点阵 */}
       <section className="mt-12 border-t border-rule pt-8">
-        <h2 className="font-heading text-lg font-bold tracking-tight">能力</h2>
-        <div className="mt-4 space-y-6">
+        <h2>能力</h2>
+        <div className="mt-5 space-y-6">
           {skillGroups.map((group) => (
             <div key={group.title}>
-              <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                {group.title}
-              </h3>
-              <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-                {group.summary}
-              </p>
-              <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+              <h3 className="reading-label">{group.title}</h3>
+              <p className="mt-2 reading-secondary">{group.summary}</p>
+              <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 reading-body">
                 {group.skills.map((skill) => (
                   <li
                     key={skill.name}
-                    className="inline-flex items-baseline gap-1.5"
+                    className="inline-flex items-baseline gap-2"
                   >
-                    <span className="font-medium">{skill.name}</span>
+                    <span className="font-semibold">{skill.name}</span>
                     {skill.items && skill.items.length > 0 && (
-                      <span className="text-muted-foreground">
+                      <span className="text-ink-dim">
                         {skill.items.slice(0, 3).join(" · ")}
                       </span>
                     )}
@@ -231,10 +218,8 @@ export async function AboutProfile({
 
       {/* 关于本站：一段实话 */}
       <section className="mt-12 border-t border-rule pt-8">
-        <h2 className="font-heading text-lg font-bold tracking-tight">
-          关于本站
-        </h2>
-        <div className="mt-3 space-y-3 text-[15px] leading-7 text-muted-foreground">
+        <h2>关于本站</h2>
+        <div className="mt-4 space-y-4 reading-body text-ink-dim">
           <p>
             这个站是我从零手写的：笔记用 MDX + Git 管理，预渲染，评论按请求补齐；
             数据库承载浏览量与笔记向量索引。⌘K 搜索能理解意思相近的查询，
@@ -260,7 +245,7 @@ export async function AboutProfile({
         </div>
       </section>
 
-      <p className="mt-12 border-t border-rule pt-4 font-mono text-[11px] text-muted-foreground">
+      <p className="mt-12 border-t border-rule pt-4 reading-meta">
         <Link href="/journal" className="link-underline">
           开发日志
         </Link>
@@ -268,7 +253,7 @@ export async function AboutProfile({
           ·
         </span>
         <Link href="/letters" className="link-underline">
-          信箱
+          留言板
         </Link>
       </p>
     </>

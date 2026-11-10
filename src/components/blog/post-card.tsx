@@ -59,7 +59,7 @@ export function PostCard({
     >
       <time
         dateTime={post.date}
-        className="font-mono text-[11px] tabular-nums text-muted-foreground"
+        className="font-mono text-[12px] leading-5 tabular-nums text-muted-foreground"
       >
         {post.date.slice(5).replace("-", ".")}
       </time>
@@ -68,7 +68,7 @@ export function PostCard({
         <h3
           className={cn(
             "font-heading font-semibold leading-snug tracking-[-0.01em]",
-            variant === "featured" ? "text-xl" : "text-[17px]"
+            variant === "featured" ? "text-[22px]" : "text-[19px]"
           )}
         >
           <Link
@@ -82,7 +82,7 @@ export function PostCard({
         {post.description && (
           <p
             className={cn(
-              "mt-1 text-[13px] leading-6 text-muted-foreground",
+              "mt-1.5 text-[15px] leading-[1.65] text-muted-foreground",
               variant === "featured" ? "line-clamp-2" : "line-clamp-1"
             )}
           >
@@ -90,7 +90,7 @@ export function PostCard({
           </p>
         )}
 
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 font-mono text-[11px] text-muted-foreground">
+        <p className="mt-2 flex flex-wrap items-center gap-x-3 font-mono text-[12px] leading-5 text-muted-foreground">
           <span>{post.readingText}</span>
           {/* 标签只做展示：筛选由 BlogBrowser 在客户端完成 */}
           {post.tags.slice(0, 3).map((tag) => (

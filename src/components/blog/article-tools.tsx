@@ -110,7 +110,7 @@ export function ArticleTools() {
             className="stroke-primary transition-[stroke-dashoffset] duration-150"
           />
         </svg>
-        <span className="absolute font-mono text-[9px] tabular-nums text-muted-foreground">
+        <span className="absolute font-mono text-[12px] leading-5 tabular-nums text-muted-foreground">
           {Math.round(progress * 100)}
         </span>
       </div>

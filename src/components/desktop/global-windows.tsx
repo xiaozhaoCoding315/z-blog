@@ -110,7 +110,7 @@ export function GlobalWindows({
         <Window
           id="assistant"
           app={assistantApp}
-          title="助理 — 站内问答"
+          title="小元同学 — 站内问答"
         >
           <AssistantWindow
             aiEnabled={aiEnabled}

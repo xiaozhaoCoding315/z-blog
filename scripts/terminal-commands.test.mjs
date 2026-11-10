@@ -26,6 +26,7 @@ function makeContext(overrides = {}) {
     ],
     theme: "night",
     uptimeDays: 129,
+    city: "北京",
     aiEnabled: false,
     ...overrides,
   };
@@ -161,7 +162,7 @@ test("whoami / date / uptime 输出真实字段", () => {
 test("neofetch 只显示真实值与明示的模拟 Shell", () => {
   const output = text(runCommand("neofetch", makeContext()));
   assert.ok(output.includes("OS: Z·OS"));
-  assert.ok(output.includes("Host: 杭州"));
+  assert.ok(output.includes("Host: 北京"));
   assert.ok(output.includes("Uptime: 建站 129 天"));
   assert.ok(output.includes("Stack: Next.js 16 / React 19 / PostgreSQL"));
   assert.ok(output.includes("Apps: 12"));

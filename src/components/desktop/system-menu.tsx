@@ -28,13 +28,7 @@ const PRESETS: { id: DesktopPreset; label: string }[] = [
  * 重置布局会清空窗口与 z-os:windows，然后广播 2 秒 toast；toast 宿主在
  * Taskbar，因此菜单卸载不会吞掉提示。
  */
-export function SystemMenu({
-  accountMenu,
-  hasFriends,
-}: {
-  accountMenu: ReactNode;
-  hasFriends: boolean;
-}) {
+export function SystemMenu({ accountMenu }: { accountMenu: ReactNode }) {
   const closePanels = useTaskbarPanels();
   const { preset, setPreset, objects, setObjects } = useDesktopSettings();
   const { windows, openTerminal } = useDesktopRuntime();
@@ -117,8 +111,6 @@ export function SystemMenu({
           重置窗口布局
         </button>
         <Link href="/about">关于本机</Link>
-        <Link href="/journal">开发日志</Link>
-        {hasFriends && <Link href="/friends">友链</Link>}
         <a href="/feed.xml">RSS</a>
         <a
           href={siteConfig.links.github}

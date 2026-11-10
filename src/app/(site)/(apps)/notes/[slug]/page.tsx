@@ -102,7 +102,7 @@ export default async function NotePage({
             <header>
               <Link
                 href="/notes"
-                className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                className="font-mono text-[13px] leading-5 text-muted-foreground transition-colors hover:text-foreground"
               >
                 ← 笔记
               </Link>
@@ -111,7 +111,7 @@ export default async function NotePage({
               </h1>
 
               {/* 元信息栏：一行等宽小字，不画盒子 */}
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border pb-3 font-mono text-[11px] text-muted-foreground">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border pb-3 font-mono text-[13px] leading-5 text-muted-foreground">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <time dateTime={note.meta.date}>
                     {note.meta.date.replace(/-/g, ".")}
@@ -125,7 +125,7 @@ export default async function NotePage({
                   <span aria-hidden>·</span>
                   <ViewCounter slug={slug} />
                   {note.meta.tags.map((tag) => (
-                    <span key={tag} className="text-foreground/60">
+                    <span key={tag} className="text-muted-foreground">
                       {tag}
                     </span>
                   ))}
@@ -151,7 +151,7 @@ export default async function NotePage({
               <Separator />
             </div>
 
-            <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none">
+            <div className="prose prose-base sm:prose-lg max-w-none [&_p]:leading-[1.8]">
               <RenderMDX source={note.content} />
             </div>
 
@@ -159,7 +159,7 @@ export default async function NotePage({
             <nav className="mt-14 grid gap-x-6 border-t border-border pt-4 sm:grid-cols-2">
               {prev ? (
                 <Link href={`/notes/${prev.slug}`} className="group py-2">
-                  <span className="font-mono text-[11px] text-muted-foreground">
+                  <span className="font-mono text-[13px] leading-5 text-muted-foreground">
                     ← 上一篇
                   </span>
                   <p className="mt-1 font-heading text-sm font-semibold leading-snug transition-colors group-hover:text-primary">
@@ -174,7 +174,7 @@ export default async function NotePage({
                   href={`/notes/${next.slug}`}
                   className="group py-2 sm:text-right"
                 >
-                  <span className="font-mono text-[11px] text-muted-foreground">
+                  <span className="font-mono text-[13px] leading-5 text-muted-foreground">
                     下一篇 →
                   </span>
                   <p className="mt-1 font-heading text-sm font-semibold leading-snug transition-colors group-hover:text-primary">
@@ -191,7 +191,7 @@ export default async function NotePage({
               <h2 className="font-heading text-lg font-bold tracking-tight">
                 评论
               </h2>
-              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="mt-1 font-mono text-[13px] leading-5 text-muted-foreground">
                 {comments.available
                   ? `${comments.comments.length} 条`
                   : "Not Available"}
@@ -206,17 +206,17 @@ export default async function NotePage({
                 {user ? (
                   <CommentForm targetType="note" targetId={slug} />
                 ) : ready ? (
-                  <p className="text-[14px] leading-relaxed text-muted-foreground">
+                  <p className="reading-body text-ink-dim">
                     登录后可以评论。
                     <Link
                       href="/login"
-                      className="ml-1 border border-data px-2 py-0.5 font-mono text-[11px] text-data transition-colors hover:text-foreground"
+                      className="ml-1 border border-data px-2 py-0.5 font-mono text-[12px] leading-5 text-data transition-colors hover:text-foreground"
                     >
                       去登录
                     </Link>
                   </p>
                 ) : (
-                  <p className="text-[14px] leading-relaxed text-muted-foreground">
+                  <p className="reading-body text-ink-dim">
                     登录暂未开放（服务器还没配好发信），浏览不受影响。
                   </p>
                 )}

@@ -96,7 +96,7 @@ export function LetterForm() {
       )}
       {state.ok && !pending && (
         <p className="mt-4 font-mono text-[11px] text-ok" role="status">
-          已放进信箱，等站长看过
+          已放进留言板，等站长看过
         </p>
       )}
 
@@ -106,7 +106,7 @@ export function LetterForm() {
           disabled={pending}
           className="rounded-none border border-data bg-transparent px-4 font-mono text-[12px] text-data hover:border-foreground hover:bg-transparent hover:text-foreground"
         >
-          {pending ? "投递中…" : "投进信箱"}
+          {pending ? "投递中…" : "写进留言板"}
         </Button>
         <span className="font-mono text-[10px] text-muted-foreground">
           提交后待审，只有你和站长看得到

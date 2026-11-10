@@ -45,6 +45,7 @@ export interface TerminalContext {
   theme: DesktopPreset;
   /** 站点运行天数；起始日期非法时为 null，终端显示占位符 */
   uptimeDays: number | null;
+  city: string;
   aiEnabled: boolean;
 }
 
@@ -94,7 +95,7 @@ const HELP_LINES = [
   "桌面",
   "  theme night|paper|blueprint   切换桌面预设",
   "  wallpaper <preset>            同 theme",
-  "  ask <问题>                    打开助理并提问",
+  "  ask <问题>                    打开小元同学并提问",
   "  coffee                        一杯 ASCII 咖啡",
   "",
   "会话",
@@ -142,7 +143,7 @@ function neofetchLines(ctx: TerminalContext) {
     "guest@z-os",
     "----------",
     "OS: Z·OS",
-    "Host: 杭州",
+    `Host: ${ctx.city}`,
     `Uptime: ${formatUptime(ctx.uptimeDays)}`,
     "Stack: Next.js 16 / React 19 / PostgreSQL",
     `Apps: ${ctx.desktopAppCount}`,
@@ -306,7 +307,7 @@ export function runCommand(input: string, ctx: TerminalContext): TerminalResult 
     case "ask":
       if (!arg) return { lines: ["ask: 用法：ask <问题>"] };
       return {
-        lines: [`正在打开助理：${arg}`],
+        lines: [`正在打开小元同学：${arg}`],
         effect: { type: "ask", question: arg },
       };
 

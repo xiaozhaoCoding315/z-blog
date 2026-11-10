@@ -18,6 +18,7 @@ import {
   embeddingModel,
 } from "@/lib/ai";
 import { githubSlug } from "@/lib/slug";
+import { buildRetrievalQuery } from "@/lib/chat-retrieval";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 120;
@@ -38,10 +39,6 @@ const SIMILARITY_FLOOR = 0.28;
 const SIMILARITY_WINDOW = 0.12;
 /** 输出上限：公网接口不设上限，等于把 token 账单交给陌生人 */
 const MAX_OUTPUT_TOKENS = 800;
-
-/** 指代类开头：这类追问单独拿去向量化会失去指代对象 */
-const CONTINUATION_START =
-  /^(那|这|它|他|她|还有|以及|继续|再|那么|所以|然后|呢|为什么|怎么)/;
 
 /** GET /api/chat：查询能力状态（前端据此显示不同的引导文案） */
 export async function GET() {
@@ -117,7 +114,8 @@ export async function POST(request: Request) {
     })
     .join("\n\n");
 
-  const systemPrompt = `你是这个个人空间的 AI 助手。站长是一位 Java 后端 + Agent 方向的程序员。
+  const systemPrompt = `你是「小元同学」，赵小元个人站里的站内问答同学。站长是一位 Java 后端 + Agent 方向的程序员。
+被问到身份时，说自己是站内的小元同学，不要自称「AI 助理」或通用聊天机器人。
 
 规则：
 - 优先依据下方「参考资料」回答，并在对应句子末尾用 [1]、[2] 这样的编号标注引用来源。
@@ -182,24 +180,6 @@ function pickContext(candidates: RetrievedChunk[]): RetrievedChunk[] {
     if (picked.length >= MAX_CONTEXT_CHUNKS) break;
   }
   return picked;
-}
-
-/**
- * 检索用的查询串。
- *
- * 多轮对话里「那部署呢」「这个怎么做的」这类追问本身没有指代对象，
- * 直接拿去向量化会跑偏。所以在追问时把上一轮用户问题一起带上。
- */
-function buildRetrievalQuery(messages: UIMessage[]): string {
-  const userTexts = messages
-    .filter((m) => m.role === "user")
-    .map(messageText)
-    .filter(Boolean);
-  const question = userTexts.at(-1) ?? "";
-  const previous = userTexts.at(-2);
-  const needsContext =
-    question.length <= 15 || CONTINUATION_START.test(question.trim());
-  return needsContext && previous ? `${previous}\n${question}` : question;
 }
 
 function messageText(message: UIMessage): string {
