@@ -9,8 +9,18 @@ import { mimeOf, sniffImageType } from "@/lib/upload-core";
  * 运行期往里写既不会进镜像，也活不过下一次部署。所以挂在容器 volume 上，
  * 由 `/media/[...path]` 这个 Route Handler 读出来。
  */
-export function uploadRoot(): string {
-  return process.env.UPLOAD_DIR?.trim() || path.join(process.cwd(), "uploads");
+/**
+ * 拼接上传目录下的路径。
+ *
+ * 默认分支必须把字面量 `"uploads"` 直接写在 `path.join(process.cwd(), ...)` 里：
+ * 构建期的文件追踪据此把范围限定到 uploads/。如果先经 `uploadRoot()` 再拼
+ * 动态段，追踪器看不到静态前缀，会把整个项目（连同 .env）打进 standalone。
+ */
+function uploadPath(segments: string[]): string {
+  const configured = process.env.UPLOAD_DIR?.trim();
+  return configured
+    ? path.join(configured, ...segments)
+    : path.join(process.cwd(), "uploads", ...segments);
 }
 
 async function sizeOf(p: string): Promise<number | null> {
@@ -26,7 +36,7 @@ export async function writeUpload(
   relPath: string,
   bytes: Uint8Array
 ): Promise<void> {
-  const target = path.join(uploadRoot(), ...relPath.split("/"));
+  const target = uploadPath(relPath.split("/"));
   // 只有大小完全一致才跳过：上次写到一半断掉的文件大小必然对不上，必须重写，
   // 否则同名图会永远指向那个截断的坏文件（/media 还带 immutable 长缓存）。
   if ((await sizeOf(target)) === bytes.byteLength) return;
@@ -47,7 +57,7 @@ export async function writeUpload(
 export async function readUpload(
   segments: string[]
 ): Promise<{ bytes: Uint8Array; mime: string } | null> {
-  const target = path.join(uploadRoot(), ...segments);
+  const target = uploadPath(segments);
   try {
     const buf = await readFile(target);
     const type = sniffImageType(buf);

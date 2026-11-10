@@ -51,8 +51,8 @@ services:
       HOSTNAME: 0.0.0.0
       DATABASE_URL: postgres://blog:${DB_PASSWORD}@db:5432/blog
       AI_API_KEY: ${AI_API_KEY:-}
-      AI_BASE_URL: ${AI_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
-      CHAT_MODEL: ${CHAT_MODEL:-glm-4.6}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.agnes-ai.cn/v1}
+      CHAT_MODEL: ${CHAT_MODEL:-agnes-3.0-flash}
       EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
       EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-v3}
