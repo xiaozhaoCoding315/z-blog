@@ -3286,32 +3286,123 @@ html:has(.os-shell[data-full="true"]) body {
     opacity: 0.7;
   }
 
+  /*
+   * 缺口档案卡：纸卡底纹 + 右上折角 + 四角定位括号 + 底部读数条。
+   * 折角用 225° 渐变画出刀口线，不需要和列背景取同一个颜色，
+   * 深浅主题下都成立；四角括号是纯装饰层，不接收指针事件。
+   */
   .os-kanban-card {
+    position: relative;
     border: 1px solid var(--rule);
     border-radius: 3px;
-    background: var(--window);
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--rule) 13%, transparent) 0 1px,
+        transparent 1px 21px
+      ),
+      var(--window);
     transition:
       border-color 150ms ease,
       opacity 150ms ease,
-      transform 150ms ease;
+      transform 150ms ease,
+      box-shadow 150ms ease;
   }
 
   .os-kanban-card:hover {
-    border-color: color-mix(in srgb, var(--phosphor) 40%, var(--rule));
+    border-color: color-mix(in srgb, var(--phosphor) 45%, var(--rule));
+    box-shadow: 0 8px 18px -14px color-mix(in srgb, var(--phosphor) 55%, transparent);
+    transform: translateY(-1px);
   }
 
   .os-kanban-card[data-selected="true"] {
     border-color: var(--phosphor);
   }
 
+  .os-kanban-card[data-selected="true"] .os-kanban-card-frame {
+    opacity: 1;
+  }
+
   .os-kanban-card[data-dragging="true"] {
     opacity: 0.45;
+    transform: none;
+  }
+
+  /* 四角定位括号：8 段 1px 渐变，默认低透明度，悬停时提亮 */
+  .os-kanban-card-frame {
+    position: absolute;
+    inset: 1px;
+    z-index: 2;
+    border-radius: 2px;
+    background-image:
+      linear-gradient(var(--phosphor), var(--phosphor)),
+      linear-gradient(var(--phosphor), var(--phosphor)),
+      linear-gradient(var(--phosphor), var(--phosphor)),
+      linear-gradient(var(--phosphor), var(--phosphor)),
+      linear-gradient(var(--phosphor), var(--phosphor)),
+      linear-gradient(var(--phosphor), var(--phosphor)),
+      linear-gradient(var(--phosphor), var(--phosphor)),
+      linear-gradient(var(--phosphor), var(--phosphor));
+    background-repeat: no-repeat;
+    background-size:
+      9px 1px,
+      1px 9px,
+      9px 1px,
+      1px 9px,
+      9px 1px,
+      1px 9px,
+      9px 1px,
+      1px 9px;
+    background-position:
+      0 0,
+      0 0,
+      100% 0,
+      100% 0,
+      0 100%,
+      0 100%,
+      100% 100%,
+      100% 100%;
+    opacity: 0.32;
+    pointer-events: none;
+    transition: opacity 160ms ease;
+  }
+
+  .os-kanban-card:hover .os-kanban-card-frame {
+    opacity: 0.9;
+  }
+
+  /* 右上折角：上半三角是折过来的背面，斜线是刀口 */
+  .os-kanban-card-fold {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    z-index: 3;
+    width: 20px;
+    height: 20px;
+    background: linear-gradient(
+      225deg,
+      color-mix(in srgb, var(--window-2) 55%, var(--rule)) 0 calc(50% - 0.6px),
+      var(--rule) calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    );
+    pointer-events: none;
+  }
+
+  .os-kanban-card:hover .os-kanban-card-fold {
+    background: linear-gradient(
+      225deg,
+      color-mix(in srgb, var(--window-2) 35%, var(--phosphor)) 0
+        calc(50% - 0.6px),
+      color-mix(in srgb, var(--phosphor) 70%, var(--rule))
+        calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    );
   }
 
   .os-kanban-card-open {
     display: block;
     width: 100%;
-    padding: 9px 10px 7px;
+    padding: 8px 10px 6px;
     border: 0;
     background: transparent;
     color: inherit;
@@ -3319,10 +3410,40 @@ html:has(.os-shell[data-full="true"]) body {
     cursor: pointer;
   }
 
+  .os-kanban-card-fileline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    padding: 0 18px 4px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--rule) 60%, transparent);
+    font-family: var(--font-mono);
+  }
+
+  .os-kanban-card-index {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--ink-dim);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+  }
+
+  /* 缺口标记：半个方块，和右上折角用同一个语言 */
+  .os-kanban-card-index::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: var(--phosphor);
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+    opacity: 0.75;
+  }
+
   .os-kanban-card-name {
     font-family: var(--font-heading);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
+    letter-spacing: -0.01em;
   }
 
   .os-kanban-card-tagline {
@@ -3342,12 +3463,81 @@ html:has(.os-shell[data-full="true"]) body {
     white-space: nowrap;
   }
 
+  .os-kanban-card-stack::before {
+    content: "// ";
+    color: var(--phosphor);
+    opacity: 0.65;
+  }
+
+  /* 读数条：三格等宽，标签小、数值等宽数字 */
+  .os-kanban-card-readout {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+    border-top: 1px solid var(--rule);
+    background: color-mix(in srgb, var(--window-2) 80%, transparent);
+  }
+
+  .os-kanban-readout-cell {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px;
+    min-width: 0;
+    padding: 3px 7px;
+    border-right: 1px solid color-mix(in srgb, var(--rule) 55%, transparent);
+    font-family: var(--font-mono);
+  }
+
+  .os-kanban-readout-cell:last-child {
+    border-right: 0;
+  }
+
+  .os-kanban-readout-label {
+    color: var(--ink-dim);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    opacity: 0.9;
+  }
+
+  .os-kanban-readout-value {
+    color: var(--ink);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    transition: color 160ms ease;
+  }
+
+  .os-kanban-card:hover .os-kanban-readout-value {
+    color: var(--phosphor);
+  }
+
+  /* 读数条上的单向扫描光：只在悬停时扫一次 */
+  .os-kanban-card-readout::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--phosphor) 14%, transparent),
+      transparent
+    );
+    transform: translateX(-100%);
+    pointer-events: none;
+  }
+
+  .os-kanban-card:hover .os-kanban-card-readout::after {
+    transform: translateX(100%);
+    transition: transform 420ms ease;
+  }
+
   .os-kanban-card-meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px 8px;
-    padding: 0 10px 8px;
+    padding: 5px 8px 7px;
   }
 
   .os-kanban-status {
@@ -3548,8 +3738,18 @@ html:has(.os-shell[data-full="true"]) body {
   @media (prefers-reduced-motion: reduce) {
     .os-kanban-reset,
     .os-kanban-column,
-    .os-kanban-card {
+    .os-kanban-card,
+    .os-kanban-card-frame,
+    .os-kanban-readout-value {
       transition: none;
+    }
+
+    .os-kanban-card:hover {
+      transform: none;
+    }
+
+    .os-kanban-card-readout::after {
+      display: none;
     }
   }
 }

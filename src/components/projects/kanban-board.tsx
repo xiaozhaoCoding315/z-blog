@@ -191,6 +191,13 @@ export function KanbanBoard({
                   const previous =
                     KANBAN_COLUMNS[columnIndex(column.id) - 1]?.id;
                   const next = KANBAN_COLUMNS[columnIndex(column.id) + 1]?.id;
+                  // 档案编号跟随配置里的全局顺序，拖拽换列不会让编号跳来跳去
+                  const fileNo = String(
+                    projects.findIndex((item) => item.name === project.name) + 1
+                  ).padStart(2, "0");
+                  const linkCount =
+                    Number(Boolean(project.repo)) +
+                    Number(Boolean(project.link));
                   return (
                     <article
                       key={project.name}
@@ -215,12 +222,25 @@ export function KanbanBoard({
                         onDropCard(event, column.id, index, project.name)
                       }
                     >
+                      <span
+                        className="os-kanban-card-frame"
+                        aria-hidden="true"
+                      />
+                      <span
+                        className="os-kanban-card-fold"
+                        aria-hidden="true"
+                      />
                       <button
                         type="button"
                         className="os-kanban-card-open"
                         aria-label={`查看 ${project.name} 详情`}
                         onClick={() => setSelectedName(project.name)}
                       >
+                        <span className="os-kanban-card-fileline">
+                          <span className="os-kanban-card-index">
+                            P-{fileNo}
+                          </span>
+                        </span>
                         <h3 className="os-kanban-card-name">
                           {project.name}
                         </h3>
@@ -233,6 +253,39 @@ export function KanbanBoard({
                           {project.stack.slice(0, 3).join(" · ")}
                         </p>
                       </button>
+
+                      {/* 读数条：把栈、链接与要点的数量压成一行仪表值 */}
+                      <div
+                        className="os-kanban-card-readout"
+                        aria-hidden="true"
+                      >
+                        <span className="os-kanban-readout-cell">
+                          <span className="os-kanban-readout-label">
+                            STACK
+                          </span>
+                          <span className="os-kanban-readout-value">
+                            {String(project.stack.length).padStart(2, "0")}
+                          </span>
+                        </span>
+                        <span className="os-kanban-readout-cell">
+                          <span className="os-kanban-readout-label">
+                            LINK
+                          </span>
+                          <span className="os-kanban-readout-value">
+                            {String(linkCount).padStart(2, "0")}
+                          </span>
+                        </span>
+                        <span className="os-kanban-readout-cell">
+                          <span className="os-kanban-readout-label">
+                            NOTE
+                          </span>
+                          <span className="os-kanban-readout-value">
+                            {String(
+                              project.highlights?.length ?? 0
+                            ).padStart(2, "0")}
+                          </span>
+                        </span>
+                      </div>
 
                       <div className="os-kanban-card-meta">
                         <span
