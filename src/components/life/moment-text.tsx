@@ -15,7 +15,7 @@ export function MomentText({
   linked?: boolean;
 }) {
   return (
-    <article className="max-w-[34rem]">
+    <article className="max-w-[34rem]" data-reveal>
       <MomentMeta moment={moment} linked={linked} />
       <p className="mt-2 whitespace-pre-line font-heading text-[16px] leading-[1.7]">
         {moment.body}

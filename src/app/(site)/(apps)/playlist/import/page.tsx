@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { getSessionUser } from "@/lib/session";
+import { getLinkedNetease } from "@/lib/music-server";
 import { PlaylistImportForm } from "@/components/playlist/playlist-import-form";
+import { MusicLinkPanel } from "@/components/playlist/music-link-panel";
 
 export const metadata: Metadata = {
   title: "导入歌单",
@@ -14,14 +16,16 @@ export const instant = false;
 export default async function PlaylistImportPage() {
   await connection();
   const user = await getSessionUser();
+  const linked = user?.role === "owner" ? await getLinkedNetease(user.id) : null;
 
   return (
     <div className="playlist-import-page">
-      <header>
+      <header data-reveal>
         <p className="playlist-import-eyebrow">PLAYLIST IMPORT · 站长入口</p>
-        <h1>把一张歌单搬进来</h1>
+        <h1>把歌单搬进来，然后开听</h1>
         <p>
-          粘贴网易云或 QQ 音乐的公开歌单链接，服务端会读取标题、封面与曲目。
+          扫码绑定网易云账号，可以一键导入账号里的歌单；不绑定也能直接粘贴
+          网易云 / QQ 音乐的分享文案（整段文字，不用自己挑链接）。
           平台接口不可用时，仍可以用「歌名 - 歌手」手动建一张。
         </p>
       </header>
@@ -40,6 +44,19 @@ export default async function PlaylistImportPage() {
         </div>
       ) : (
         <>
+          <MusicLinkPanel
+            linked={
+              linked
+                ? {
+                    nickname: linked.account.nickname,
+                    avatarUrl: linked.account.avatarUrl,
+                    externalUserId: linked.account.externalUserId,
+                  }
+                : null
+            }
+            playlists={linked?.playlists ?? []}
+          />
+
           <div className="playlist-import-notes">
             <div>
               <span>01</span>
@@ -51,9 +68,13 @@ export default async function PlaylistImportPage() {
             </div>
             <div>
               <span>03</span>
-              <p>网易云用官方外链播放器站内播放；QQ 音乐受版权限制，跳到官方页面。</p>
+              <p>
+                网易云多数曲目可用站内播放器暂停、拖进度；版权受限时自动切到官方播放器。
+                QQ 音乐受版权限制，跳到官方页面。
+              </p>
             </div>
           </div>
+
           <PlaylistImportForm />
         </>
       )}

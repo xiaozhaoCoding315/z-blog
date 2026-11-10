@@ -6,13 +6,18 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   MAX_IMPORT_TRACKS,
+  extractUrlFromText,
   formatDuration,
   isDirectAudioUrl,
   neteaseEmbedUrl,
+  neteaseOuterAudioUrl,
+  filterUnplayableTracks,
   normalizeNeteasePlaylist,
   normalizeQqPlaylist,
   parseManualTracks,
+  playableNeteaseIds,
   parsePlaylistUrl,
+  parseSuggestionInput,
   trackSearchUrl,
 } from "../src/lib/playlist-core.ts";
 
@@ -220,6 +225,72 @@ test("归一化：超过 300 首只保留前 300", () => {
   assert.equal(result.value.tracks.length, MAX_IMPORT_TRACKS);
 });
 
+test("可播判定：匿名态 pl>0 才算免费可听，VIP/试听不算", () => {
+  const ids = playableNeteaseIds([
+    { id: 1, pl: 320000, code: 0 },
+    { id: 2, pl: 0, code: 0 },
+    { id: 3, pl: 128000, code: 0 },
+    { id: 4, pl: 320000, code: -110 },
+    { id: 0, pl: 320000, code: 0 },
+    { id: "5", pl: "999000", code: 0 },
+  ]);
+  assert.deepEqual(ids.sort(), ["1", "3", "5"]);
+});
+
+test("导入过滤：明确不可播的曲目剔除，未校验的保留", () => {
+  const tracks = [
+    { title: "免费", playable: true },
+    { title: "VIP", playable: false },
+    { title: "未知", playable: undefined },
+    { title: "也未校验" },
+  ];
+  const result = filterUnplayableTracks(tracks);
+  assert.equal(result.skipped, 1);
+  assert.deepEqual(
+    result.tracks.map((track) => track.title),
+    ["免费", "未知", "也未校验"]
+  );
+});
+
+test("网易云归一化：playableIds 写进曲目，源歌单标记已校验", () => {
+  const raw = {
+    result: {
+      id: 42,
+      name: "带权限",
+      playableIds: [111, "113"],
+      tracks: [
+        { id: 111, name: "能听", ar: [{ name: "A" }] },
+        { id: 112, name: "要 VIP", ar: [{ name: "B" }] },
+        { id: 113, name: "也能听", ar: [{ name: "C" }] },
+      ],
+    },
+  };
+  const result = normalizeNeteasePlaylist(raw, "42");
+  assert.equal(result.ok, true);
+  assert.equal(result.value.playableChecked, true);
+  assert.deepEqual(
+    result.value.tracks.map((track) => [track.title, track.playable]),
+    [
+      ["能听", true],
+      ["要 VIP", false],
+      ["也能听", true],
+    ]
+  );
+  const filtered = filterUnplayableTracks(result.value.tracks);
+  assert.equal(filtered.skipped, 1);
+  assert.equal(filtered.tracks.length, 2);
+});
+
+test("网易云归一化：没有权限信息时不误杀曲目", () => {
+  const result = normalizeNeteasePlaylist(neteaseRaw, "999");
+  assert.equal(result.ok, true);
+  assert.equal(result.value.playableChecked, undefined);
+  assert.equal(
+    result.value.tracks.every((track) => track.playable === undefined),
+    true
+  );
+});
+
 test("手动导入：短横线、竖线与制表符都能分列", () => {
   const tracks = parseManualTracks(
     "晴天 - 周杰伦\n夜曲 | 周杰伦\n稻香\t周杰伦\n\n  ",
@@ -290,4 +361,43 @@ test("手动曲目搜索地址按平台区分", () => {
   assert.match(trackSearchUrl("netease", "晴天", "周杰伦"), /music\.163\.com/);
   assert.match(trackSearchUrl("qq", "晴天", "周杰伦"), /y\.qq\.com/);
   assert.match(trackSearchUrl("other", "晴天", "周杰伦"), /bing\.com/);
+});
+
+test("分享文案：从一整段话里取出歌单链接，去掉中文标点", () => {
+  assert.equal(
+    extractUrlFromText("分享歌单《夜航西飞》https://music.163.com/playlist?id=24381616（来自网易云音乐）"),
+    "https://music.163.com/playlist?id=24381616"
+  );
+  assert.equal(
+    extractUrlFromText("甜度爆表 https://y.qq.com/n/ryqq/playlist/7707261125，@QQ音乐"),
+    "https://y.qq.com/n/ryqq/playlist/7707261125"
+  );
+  assert.equal(extractUrlFromText("只有歌名没有链接"), null);
+  assert.equal(extractUrlFromText(""), null);
+});
+
+test("推荐输入：分享文案走链接，纯文本走歌单名搜索", () => {
+  const fromText = parseSuggestionInput("分享歌单 https://music.163.com/playlist?id=1 来听");
+  assert.equal(fromText.ok, true);
+  assert.equal(fromText.value.kind, "url");
+  assert.equal(fromText.value.url, "https://music.163.com/playlist?id=1");
+
+  const fromName = parseSuggestionInput("  夜里开车听的歌单  ");
+  assert.equal(fromName.ok, true);
+  assert.equal(fromName.value.kind, "name");
+  assert.equal(fromName.value.query, "夜里开车听的歌单");
+
+  assert.equal(parseSuggestionInput("").ok, false);
+  assert.equal(parseSuggestionInput("   ").ok, false);
+  assert.equal(parseSuggestionInput("ftp://music.163.com/x").ok, false);
+});
+
+test("网易云歌曲直链：只有纯数字 id 才拼 outer 地址", () => {
+  assert.equal(
+    neteaseOuterAudioUrl("188392"),
+    "https://music.163.com/song/media/outer/url?id=188392.mp3"
+  );
+  assert.equal(neteaseOuterAudioUrl("002xTzGb2UBQRk"), null);
+  assert.equal(neteaseOuterAudioUrl("../etc/passwd"), null);
+  assert.equal(neteaseOuterAudioUrl(""), null);
 });

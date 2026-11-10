@@ -38,7 +38,12 @@ export default async function LoginPage({
 
   return (
     <div className="account-page">
-      <section className="account-hero" aria-labelledby="account-title">
+      <section
+        className="account-hero"
+        aria-labelledby="account-title"
+        data-reveal
+        data-spotlight
+      >
         <p className="account-eyebrow">
           {register ? "CREATE ACCOUNT · 第一次来" : "SIGN IN · 回到站内"}
         </p>
@@ -74,7 +79,7 @@ export default async function LoginPage({
         </ul>
       </section>
 
-      <section className="account-panel" aria-label="账号操作">
+      <section className="account-panel" aria-label="账号操作" data-reveal>
         {user ? (
           <div className="account-signed">
             <div className="account-signed-head">

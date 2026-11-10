@@ -180,7 +180,7 @@ export function ProfileForm({
       )}
 
       <div className="profile-form-actions">
-        <button type="submit" disabled={pending}>
+        <button type="submit" disabled={pending} className="tactile">
           {pending ? "保存中…" : "保存资料"}
         </button>
         <Link href={publicHref}>看我的主页 ↗</Link>

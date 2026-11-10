@@ -32,7 +32,7 @@ export default async function LettersPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
-      <header>
+      <header data-reveal>
         <p className="community-eyebrow">COMMUNITY · 公开可读</p>
         <h1 className="font-heading text-3xl font-bold">留言板</h1>
         <p className="mt-2 max-w-[42rem] text-[14px] leading-relaxed text-muted-foreground">
@@ -47,7 +47,11 @@ export default async function LettersPage() {
       </header>
 
       {members.available && members.members.length > 0 && (
-        <section className="community-members" aria-labelledby="community-members-title">
+        <section
+          className="community-members"
+          aria-labelledby="community-members-title"
+          data-reveal
+        >
           <header className="community-section-head">
             <h2 id="community-members-title">最近来过的人</h2>
             <span>{members.members.length} 位 · 点名字看主页</span>
@@ -58,7 +62,11 @@ export default async function LettersPage() {
               const name = profileDisplayName(member.displayName, member.login);
               return (
                 <li key={member.id}>
-                  <Link href={href ?? "/letters"} className="community-member">
+                  <Link
+                      href={href ?? "/letters"}
+                      className="community-member"
+                      data-spotlight
+                    >
                     <UserAvatar
                       name={name}
                       avatarUrl={member.avatarUrl}
@@ -97,14 +105,18 @@ export default async function LettersPage() {
           留言板还空着。第一条可以是你写的。
         </p>
       ) : (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-reveal>
           {letters.letters.map((letter) => (
             <LetterCard key={letter.id} letter={letter} />
           ))}
         </div>
       )}
 
-      <section className="community-recent-comments" aria-labelledby="community-comments-title">
+      <section
+        className="community-recent-comments"
+        aria-labelledby="community-comments-title"
+        data-reveal
+      >
         <header className="community-section-head">
           <h2 id="community-comments-title">最近的评论</h2>
           <Link href="/notes">去笔记里聊 ↗</Link>
@@ -154,7 +166,7 @@ export default async function LettersPage() {
         )}
       </section>
 
-      <section className="mt-12 border-t border-rule pt-8">
+      <section className="mt-12 border-t border-rule pt-8" data-reveal>
         <h2 className="font-heading text-[19px] font-bold">写一封</h2>
         <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
           写一句话，可以顺手推荐一首歌。登录后提交，站长看过了才会挂出来。

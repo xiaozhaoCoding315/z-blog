@@ -261,6 +261,50 @@ export async function ensureSchema() {
   await db.execute(
     sql`CREATE INDEX IF NOT EXISTS playlists_user_idx ON playlists (user_id)`
   );
+  // 社区推荐：谁建议的、建议语是什么；老库启动时补齐
+  await db.execute(
+    sql`ALTER TABLE playlists ADD COLUMN IF NOT EXISTS suggested_by integer REFERENCES users(id) ON DELETE SET NULL`
+  );
+  await db.execute(
+    sql`ALTER TABLE playlists ADD COLUMN IF NOT EXISTS suggestion_note text NOT NULL DEFAULT ''`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS playlist_suggestions (
+      id bigserial PRIMARY KEY,
+      user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      platform text NOT NULL DEFAULT 'netease',
+      external_id text NOT NULL,
+      title text NOT NULL,
+      cover_url text,
+      note text NOT NULL DEFAULT '',
+      status text NOT NULL DEFAULT 'pending',
+      playlist_id integer REFERENCES playlists(id) ON DELETE SET NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS playlist_suggestions_status_idx ON playlist_suggestions (status, created_at DESC)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS playlist_suggestions_user_idx ON playlist_suggestions (user_id)`
+  );
+  await db.execute(
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS playlist_suggestions_user_external_key ON playlist_suggestions (user_id, platform, external_id)`
+  );
+
+  // 第三方音乐账号：只存加密后的会话 cookie，绝不下发浏览器
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS music_accounts (
+      user_id integer PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      provider text NOT NULL DEFAULT 'netease',
+      external_user_id text NOT NULL,
+      nickname text NOT NULL DEFAULT '',
+      avatar_url text,
+      cookie_enc text NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS songs (

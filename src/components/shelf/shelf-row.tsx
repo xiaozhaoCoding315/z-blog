@@ -8,7 +8,11 @@ import type { ShelfItemView } from "@/lib/shelf-server";
  */
 export function ShelfRow({ item }: { item: ShelfItemView }) {
   return (
-    <article className="flex gap-4 border-b border-rule py-4">
+    <article
+      className="flex gap-4 border-b border-rule py-4"
+      data-reveal
+      data-spotlight
+    >
       {item.coverUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

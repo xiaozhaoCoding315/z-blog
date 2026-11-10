@@ -26,7 +26,11 @@ export function LetterCard({ letter }: { letter: LetterView }) {
   );
 
   return (
-    <article className="border border-rule bg-panel p-5">
+    <article
+      className="border border-rule bg-panel p-5"
+      data-reveal
+      data-spotlight
+    >
       <header className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
         <span className="tabular-nums">{letter.date}</span>
         <span aria-hidden>·</span>

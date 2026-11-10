@@ -11,6 +11,7 @@ import {
 } from "@/config/apps";
 import { siteConfig } from "@/config/site";
 import { formatClock, useClockSeconds } from "@/components/desktop/clock-store";
+import { ScrollProgress } from "@/components/motion/scroll-progress";
 import { AppFrame } from "./app-frame";
 
 /**
@@ -34,7 +35,14 @@ export function PageFrame({
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [fullPage, pathname]);
 
-  if (!fullPage) return <AppFrame>{children}</AppFrame>;
+  if (!fullPage) {
+    return (
+      <>
+        <ScrollProgress />
+        <AppFrame>{children}</AppFrame>
+      </>
+    );
+  }
 
   const app = findAppByPath(pathname);
   const accountPath = isAccountPagePath(pathname);
@@ -58,6 +66,7 @@ export function PageFrame({
       data-page-theme={pageTheme}
       data-readable-theme={pathname.startsWith("/notes/") ? "true" : "false"}
     >
+      <ScrollProgress />
       <header className="fullpage-topbar">
         <Link href="/" className="fullpage-brand">
           <span className="fullpage-brand-mark" aria-hidden="true">
@@ -99,8 +108,9 @@ export function PageFrame({
         <span>{tideLabel}</span>
       </div>
       <main
+        key={pathname}
         id="fullpage-main"
-        className="fullpage-main"
+        className="fullpage-main route-enter"
       >
         {children}
       </main>

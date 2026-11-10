@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="about-page mx-auto px-4 py-12 sm:px-6">
+    <div className="about-page mx-auto px-4 py-12 sm:px-6" data-reveal>
       <AboutProfile variant="page" />
     </div>
   );

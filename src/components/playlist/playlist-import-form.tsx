@@ -26,26 +26,41 @@ export function PlaylistImportForm() {
 
   useEffect(() => {
     if (state.ok && state.playlistId) {
-      router.push(`/playlist/${state.playlistId}`);
+      const params = new URLSearchParams();
+      if (state.importedCount !== undefined) {
+        params.set("imported", String(state.importedCount));
+      }
+      if (state.skippedCount) params.set("skipped", String(state.skippedCount));
+      if (state.playableChecked) params.set("checked", "1");
+      const query = params.toString();
+      router.push(`/playlist/${state.playlistId}${query ? `?${query}` : ""}`);
       router.refresh();
     }
-  }, [router, state.ok, state.playlistId]);
+  }, [
+    router,
+    state.ok,
+    state.playlistId,
+    state.importedCount,
+    state.skippedCount,
+    state.playableChecked,
+  ]);
 
   return (
-    <form className="playlist-import-form" action={formAction}>
+    <form className="playlist-import-form" action={formAction} data-reveal>
       <div className="playlist-import-block">
-        <p className="playlist-import-step">01 / 分享链接</p>
-        <label htmlFor="playlist-url">网易云或 QQ 音乐歌单链接</label>
+        <p className="playlist-import-step">01 / 分享文案</p>
+        <label htmlFor="playlist-url">网易云或 QQ 音乐分享文案 / 歌单链接</label>
         <input
           id="playlist-url"
           name="url"
           type="text"
           value={url}
           onChange={(event) => setUrl(event.target.value)}
-          placeholder="https://music.163.com/playlist?id=… 或 https://y.qq.com/n/ryqq/playlist/…"
+          placeholder="直接把 App 里「分享歌单」的整段文字粘进来…"
         />
         <p className="playlist-import-hint">
-          从歌单页复制地址即可。短链也认，服务端会跟随跳转再解析。
+          整段文案就行，服务端会自动取出里面的链接；短链也会跟随跳转再解析。
+          导入时会校验匿名可播性，VIP 与版权受限曲目会被跳过，并告诉你跳过了几首。
         </p>
       </div>
 
@@ -125,7 +140,7 @@ export function PlaylistImportForm() {
           {pending ? "导入中…（最长约 12 秒）" : "导入歌单"}
         </button>
         <Link href="/playlist">返回歌单页</Link>
-        <span>导入后曲目直接公开；网易云可在站内播放，QQ 音乐跳转官方页面。</span>
+        <span>导入后曲目直接公开；网易云会排除 VIP / 版权受限曲目，QQ 音乐跳转官方页面。</span>
       </div>
     </form>
   );

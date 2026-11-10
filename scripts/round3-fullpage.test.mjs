@@ -124,7 +124,7 @@ test("全页外壳按路径切换，七个入口有完整页面顶栏", () => {
   assert.match(appsLayout, /<PageFrame/);
   assert.match(pageFrame, /isFullPagePath\(pathname\)/);
   assert.match(pageFrame, /className="fullpage-topbar"/);
-  assert.match(pageFrame, /className="fullpage-main"/);
+  assert.match(pageFrame, /className="fullpage-main(?: route-enter)?"/);
   assert.match(pageFrame, /primaryApps\.map/);
   assert.match(pageFrame, /<AppFrame>/);
   assert.match(shell, /import \{ isFullPagePath, publicApps \}/);

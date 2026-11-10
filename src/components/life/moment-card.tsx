@@ -26,7 +26,7 @@ export function MomentCard({
   if (!card) return null;
 
   return (
-    <article className="max-w-[38rem]">
+    <article className="max-w-[38rem]" data-reveal>
       <MomentMeta moment={moment} linked={linked} />
       <div className="mt-3 border border-rule bg-panel p-5">
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">

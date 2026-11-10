@@ -38,6 +38,30 @@ export interface PlaylistView {
   pinned: boolean;
   songCount: number;
   date: string;
+  /** 非空 = 来自访客建议，站长采纳后导入 */
+  suggestedBy: {
+    id: number;
+    name: string;
+    avatarUrl: string | null;
+  } | null;
+  suggestionNote: string;
+}
+
+export interface PlaylistSuggestionView {
+  id: number;
+  platform: PlaylistPlatform;
+  externalId: string;
+  title: string;
+  coverUrl: string | null;
+  note: string;
+  status: "pending" | "approved" | "rejected";
+  playlistId: number | null;
+  date: string;
+  suggester: {
+    id: number;
+    name: string;
+    avatarUrl: string | null;
+  };
 }
 
 export interface TrackView {
@@ -62,6 +86,20 @@ function toPlatform(value: string): Platform {
 
 function toPlaylistPlatform(value: string): PlaylistPlatform {
   return value === "netease" || value === "qq" ? value : "other";
+}
+
+function toSuggester(
+  userId: number | null,
+  login: string | null,
+  displayName: string | null,
+  avatarUrl: string | null
+): PlaylistView["suggestedBy"] {
+  if (!userId || !login) return null;
+  return {
+    id: userId,
+    name: profileDisplayName(displayName, login),
+    avatarUrl,
+  };
 }
 
 /**
@@ -235,11 +273,19 @@ async function getApprovedPlaylistsCached(): Promise<{
           platform: playlistsTable.platform,
           externalUrl: playlistsTable.externalUrl,
           pinned: playlistsTable.pinned,
+          suggestedBy: playlistsTable.suggestedBy,
+          suggestionNote: playlistsTable.suggestionNote,
           createdAt: playlistsTable.createdAt,
+          suggesterLogin: users.login,
+          suggesterName: users.displayName,
+          suggesterAvatarUrl: users.avatarUrl,
         })
         .from(playlistsTable)
+        .leftJoin(users, eq(users.id, playlistsTable.suggestedBy))
+        // 站长自己导入的永远排在访客建议前面，推荐位仍然最前
         .orderBy(
           desc(playlistsTable.pinned),
+          desc(sql`${playlistsTable.suggestedBy} IS NULL`),
           desc(playlistsTable.createdAt),
           desc(playlistsTable.id)
         ),
@@ -278,6 +324,13 @@ async function getApprovedPlaylistsCached(): Promise<{
         pinned: row.pinned,
         songCount: countMap.get(row.id) ?? 0,
         date: formatDay(row.createdAt.toISOString()),
+        suggestedBy: toSuggester(
+          row.suggestedBy,
+          row.suggesterLogin,
+          row.suggesterName,
+          row.suggesterAvatarUrl
+        ),
+        suggestionNote: row.suggestionNote,
       })),
     };
   } catch {
@@ -314,9 +367,15 @@ async function getPlaylistDetailCached(id: number): Promise<{
         platform: playlistsTable.platform,
         externalUrl: playlistsTable.externalUrl,
         pinned: playlistsTable.pinned,
+        suggestedBy: playlistsTable.suggestedBy,
+        suggestionNote: playlistsTable.suggestionNote,
         createdAt: playlistsTable.createdAt,
+        suggesterLogin: users.login,
+        suggesterName: users.displayName,
+        suggesterAvatarUrl: users.avatarUrl,
       })
       .from(playlistsTable)
+      .leftJoin(users, eq(users.id, playlistsTable.suggestedBy))
       .where(eq(playlistsTable.id, id))
       .limit(1);
     if (!playlist) return { available: true, playlist: null };
@@ -354,6 +413,13 @@ async function getPlaylistDetailCached(id: number): Promise<{
         pinned: playlist.pinned,
         songCount: tracks.length,
         date: formatDay(playlist.createdAt.toISOString()),
+        suggestedBy: toSuggester(
+          playlist.suggestedBy,
+          playlist.suggesterLogin,
+          playlist.suggesterName,
+          playlist.suggesterAvatarUrl
+        ),
+        suggestionNote: playlist.suggestionNote,
         songs: tracks.map((track) => ({
           id: track.id,
           title: track.title,

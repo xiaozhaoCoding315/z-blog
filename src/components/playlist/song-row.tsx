@@ -20,7 +20,7 @@ export function SongRow({ song }: { song: SongView }) {
     song.source === "visitor" ? profileHref(song.recommenderId) : null;
 
   return (
-    <div className="song-row">
+    <div className="song-row" data-reveal data-spotlight>
       <span className="song-row-platform">
         {PLATFORM_LABEL[song.platform]}
       </span>

@@ -149,7 +149,7 @@ export function SnippetBrowser({
         : "复制";
 
   return (
-    <div className="os-snippets" data-variant={variant}>
+    <div className="os-snippets" data-variant={variant} data-reveal>
       <div
         className="os-snippets-list"
         role="tablist"

@@ -1,8 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./motion.css";
+import "./lyrics.css";
+import "./ambient.css";
+import "./assistant.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
+import { MotionRuntime } from "@/components/motion/motion-runtime";
 import { siteConfig } from "@/config/site";
 
 const geistSans = Geist({
@@ -61,6 +66,19 @@ const PRESET_SCRIPT = `(() => {
   } catch {}
 })();`;
 
+// 在首帧之前挂上动效开关，避免服务端先画出内容、水合后又闪一下再入场。
+// 4 秒兜底：万一客户端脚本没跑起来，也别把内容永久藏在透明里。
+const MOTION_BOOT_SCRIPT = `(() => {
+  try {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const root = document.documentElement;
+    root.classList.add("motion-ready");
+    window.setTimeout(() => {
+      if (!root.classList.contains("motion-booted")) root.classList.add("motion-fallback");
+    }, 4000);
+  } catch {}
+})();`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   // 站点级结构化数据：让搜索引擎知道这是一个人在持续维护的个人空间
   const jsonLd = {
@@ -92,9 +110,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: PRESET_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT_SCRIPT }} />
       </head>
       <body className="flex min-h-dvh flex-col">
         <ThemeProvider>{children}</ThemeProvider>
+        <MotionRuntime />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

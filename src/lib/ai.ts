@@ -8,7 +8,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
  */
 
 // ---- 聊天：智谱 GLM ----
-export const chatModelId = process.env.CHAT_MODEL ?? "glm-4.6";
+export const chatModelId = process.env.CHAT_MODEL ?? "glm-4.7-flash";
 const chatApiKey = process.env.AI_API_KEY ?? process.env.ZHIPU_API_KEY;
 export const chatEnabled = Boolean(chatApiKey);
 

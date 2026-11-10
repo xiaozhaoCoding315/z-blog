@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  APICallError,
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
@@ -148,13 +149,56 @@ ${
         system: systemPrompt,
         messages: modelMessages,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
+        // 智谱 429 是账号级并发限制，重试只会让用户多等一轮；留一次兜底即可。
+        maxRetries: 1,
+        // 免费模型偶发「连上但不出字」：首字 30s、字间 20s 无响应就收尾，
+        // 避免界面永远停在「流式生成中」。
+        timeout: { firstChunkMs: 30_000, chunkMs: 20_000 },
       });
       // result.toUIMessageStream() 已标记废弃，改用独立 helper
-      writer.merge(toUIMessageStream({ stream: result.stream }));
+      writer.merge(
+        toUIMessageStream({
+          stream: result.stream,
+          onError: (error) => chatErrorMessage(error),
+        })
+      );
     },
+    onError: (error) => chatErrorMessage(error),
   });
 
   return createUIMessageStreamResponse({ stream });
+}
+
+/**
+ * 模型错误 → 用户能看懂的一句话。
+ * 不透传供应商原文（可能包含内部错误码），只在服务端留下状态码。
+ */
+function chatErrorMessage(error: unknown): string {
+  // AI SDK 重试耗尽时会把真实错误包进 RetryError.lastError
+  let cause = error;
+  for (let depth = 0; depth < 3; depth += 1) {
+    const last = (cause as { lastError?: unknown } | null)?.lastError;
+    if (!last || last === cause) break;
+    cause = last;
+  }
+  const retried = (error as { reason?: string } | null)?.reason;
+
+  if (APICallError.isInstance(cause)) {
+    console.warn("[api/chat] 模型调用失败：", cause.statusCode ?? "unknown", retried ?? "");
+    if (cause.statusCode === 429) {
+      return "小元同学的模型这会儿排队较多，请等几秒再试一次。";
+    }
+    if (cause.statusCode === 401 || cause.statusCode === 403) {
+      return "模型访问凭证无效，请联系站长检查 AI_API_KEY。";
+    }
+    return "模型服务暂时不可用，请稍后再试。";
+  }
+  const name = cause instanceof Error ? cause.name : "unknown";
+  console.warn("[api/chat] 回答生成失败：", name, retried ?? "");
+  if (name === "AbortError" || name === "TimeoutError") {
+    return "模型迟迟没有响应，这次先停下了，请稍后再试。";
+  }
+  return "这次回答没有生成成功，请稍后再试。";
 }
 
 /**

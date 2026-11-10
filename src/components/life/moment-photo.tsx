@@ -17,7 +17,7 @@ export function MomentPhoto({
 }) {
   const images = moment.images ?? [];
   return (
-    <article className="max-w-[38rem]">
+    <article className="max-w-[38rem]" data-reveal>
       <MomentMeta moment={moment} linked={linked} />
 
       {images.length === 0 ? (

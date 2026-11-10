@@ -7,6 +7,7 @@ import {
   timestamp,
   vector,
   index,
+  uniqueIndex,
   primaryKey,
   boolean,
   date,
@@ -305,6 +306,11 @@ export const playlists = pgTable(
     userId: integer("user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    /** 非空表示这张歌单来自访客建议，由站长采纳后导入 */
+    suggestedBy: integer("suggested_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    suggestionNote: text("suggestion_note").notNull().default(""),
     pinned: boolean("pinned").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -318,6 +324,63 @@ export const playlists = pgTable(
     index("playlists_user_idx").on(table.userId),
   ]
 );
+
+/**
+ * playlist_suggestions：访客推荐歌单的待审队列。
+ *
+ * 访客可以先粘分享文案，也可以只写歌单名让站内搜索；
+ * 采纳之前只存元数据，不抓曲目——避免一次错误的建议占用一次完整导入。
+ */
+export const playlistSuggestions = pgTable(
+  "playlist_suggestions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull().default("netease"),
+    externalId: text("external_id").notNull(),
+    title: text("title").notNull(),
+    coverUrl: text("cover_url"),
+    note: text("note").notNull().default(""),
+    status: text("status").notNull().default("pending"),
+    playlistId: integer("playlist_id").references(() => playlists.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("playlist_suggestions_status_idx").on(table.status, table.createdAt.desc()),
+    index("playlist_suggestions_user_idx").on(table.userId),
+    uniqueIndex("playlist_suggestions_user_external_key").on(
+      table.userId,
+      table.platform,
+      table.externalId
+    ),
+  ]
+);
+
+/**
+ * music_accounts：站长绑定的第三方音乐账号（当前只有网易云）。
+ *
+ * cookie 用 AUTH_SECRET 派生密钥 AES-256-GCM 加密后存储；
+ * 这张表只存服务端会话，永远不把 cookie 下发到浏览器。
+ */
+export const musicAccounts = pgTable("music_accounts", {
+  userId: integer("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("netease"),
+  externalUserId: text("external_user_id").notNull(),
+  nickname: text("nickname").notNull().default(""),
+  avatarUrl: text("avatar_url"),
+  cookieEnc: text("cookie_enc").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 /**
  * songs：歌单条目。owner 添加的直接 approved；访客推荐默认 pending。
@@ -405,4 +468,6 @@ export type CommentDbRow = typeof comments.$inferSelect;
 export type LetterDbRow = typeof letters.$inferSelect;
 export type SongDbRow = typeof songs.$inferSelect;
 export type PlaylistDbRow = typeof playlists.$inferSelect;
+export type PlaylistSuggestionDbRow = typeof playlistSuggestions.$inferSelect;
+export type MusicAccountDbRow = typeof musicAccounts.$inferSelect;
 export type ShelfItemDbRow = typeof shelfItems.$inferSelect;

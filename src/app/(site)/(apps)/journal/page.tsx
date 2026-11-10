@@ -40,7 +40,7 @@ export default function JournalPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <header className="mb-10">
+      <header className="mb-10" data-reveal>
         <h1 className="font-heading text-3xl font-bold tracking-[-0.02em]">
           开发日志
         </h1>
@@ -50,7 +50,10 @@ export default function JournalPage() {
         </p>
       </header>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-y border-border py-4 sm:grid-cols-4">
+      <dl
+        className="grid grid-cols-2 gap-x-6 gap-y-3 border-y border-border py-4 sm:grid-cols-4"
+        data-reveal
+      >
         {overview.map((item) => (
           <div key={item.label}>
             <dd className="font-heading text-xl font-bold tabular-nums tracking-tight">
@@ -68,7 +71,7 @@ export default function JournalPage() {
         ))}
       </dl>
 
-      <div className="mt-8">
+      <div className="mt-8" data-reveal>
         <ActivityHeatmap days={buildActivityDays()} />
       </div>
 
@@ -76,7 +79,7 @@ export default function JournalPage() {
       <div className="mt-12">
         <div className="space-y-10">
           {[...groups.entries()].map(([month, list]) => (
-            <section key={month}>
+            <section key={month} data-reveal>
               <h2 className="mb-2 flex items-baseline gap-3 border-b border-border pb-2">
                 <span className="font-heading text-lg font-bold tracking-tight tabular-nums">
                   {month.replace("-", ".")}

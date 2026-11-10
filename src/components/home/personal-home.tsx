@@ -14,6 +14,7 @@ import { siteConfig } from "@/config/site";
 import { AppIcon } from "@/components/desktop/icons";
 import { Clock } from "@/components/desktop/clock";
 import { formatClock, useClockSeconds } from "@/components/desktop/clock-store";
+import { ScrollProgress } from "@/components/motion/scroll-progress";
 
 export interface HomeNote {
   slug: string;
@@ -140,6 +141,9 @@ export function PersonalHome({
       className="home-entry-line"
       data-home-index={index}
       data-current={section === "entries" ? "true" : "false"}
+      data-reveal
+      data-spotlight
+      style={{ "--reveal-delay": `${index * 45}ms` } as CSSProperties}
     >
       <span className="home-entry-icon" aria-hidden="true">
         <AppIcon name={app.icon as IconKey} />
@@ -154,6 +158,7 @@ export function PersonalHome({
 
   return (
     <div className="personal-home">
+      <ScrollProgress />
       <section className="home-hero" aria-labelledby="home-title">
         <div className="home-weather" aria-hidden="true">
           <div className="home-weather-glow" />
@@ -193,18 +198,20 @@ export function PersonalHome({
         </header>
 
         <div className="home-hero-inner">
-          <p className="home-eyebrow">个人开发者工作台</p>
-          <h1 id="home-title" className="home-title">
+          <p className="home-eyebrow" data-reveal>
+            个人开发者工作台
+          </p>
+          <h1 id="home-title" className="home-title" data-reveal>
             你好，我是{siteConfig.author.name}
           </h1>
-          <div className="home-intro-card">
+          <div className="home-intro-card" data-reveal data-spotlight>
             <p>{siteConfig.author.bio}</p>
             <p className="home-status">
               <span className="home-status-dot" aria-hidden="true" />
               {status}
             </p>
           </div>
-          <div className="home-hero-meta">
+          <div className="home-hero-meta" data-reveal>
             <span>{siteConfig.weather.city}</span>
             <span aria-hidden="true">·</span>
             <span>{primaryApps.length} 个主要入口</span>
@@ -214,11 +221,11 @@ export function PersonalHome({
         </div>
 
         <div className="home-stage">
-          <div className="home-stage-column">
+          <div className="home-stage-column" data-reveal data-spotlight>
             <span className="home-stage-label">正在做的事</span>
             <p>把需求、架构、实现到上线完整走一遍</p>
           </div>
-          <div className="home-stage-column">
+          <div className="home-stage-column" data-reveal data-spotlight>
             <span className="home-stage-label">最近一篇</span>
             {notes[0] ? (
               <Link href={`/notes/${notes[0].slug}`}>
@@ -229,7 +236,11 @@ export function PersonalHome({
               <p>内容库里还没有已发布笔记</p>
             )}
           </div>
-          <div className="home-stage-column home-stage-status" aria-label="站点读数">
+          <div
+            className="home-stage-column home-stage-status"
+            aria-label="站点读数"
+            data-reveal
+          >
             {statusWidget}
           </div>
         </div>
@@ -250,13 +261,35 @@ export function PersonalHome({
         <TideClock className="home-tide-clock" label="潮汐 · 首页" />
       </section>
 
+      <div className="home-ticker" aria-hidden="true">
+        <div className="home-ticker-track">
+          {Array.from({ length: 2 }, (_, copy) => (
+            <span key={copy}>
+              {[
+                "PERSONAL DEV OS",
+                "真实内容 · 不摆占位",
+                "小元同学在线",
+                "七个完整入口",
+                "笔记 / 留言 / 歌单",
+                "夜间模式默认",
+              ].map((label) => (
+                <span key={label}>
+                  <i />
+                  {label}
+                </span>
+              ))}
+            </span>
+          ))}
+        </div>
+      </div>
+
       <main className="home-body" id="home-apps">
         <section
           className="home-section home-entries"
           id="home-entries"
           aria-labelledby="home-apps-title"
         >
-          <header className="home-section-head">
+          <header className="home-section-head" data-reveal>
             <div>
               <p className="home-eyebrow dark-eyebrow">从这里开始</p>
               <h2 id="home-apps-title">七个完整页面</h2>
@@ -282,13 +315,13 @@ export function PersonalHome({
           aria-labelledby="home-about-title"
           onMouseEnter={() => chooseSection("about")}
         >
-          <header className="home-section-head">
+          <header className="home-section-head" data-reveal>
             <div>
               <p className="home-eyebrow dark-eyebrow">关于</p>
               <h2 id="home-about-title">写在代码与生活之间</h2>
             </div>
           </header>
-          <div className="home-about-note">
+          <div className="home-about-note" data-reveal data-spotlight>
             <p>
               我是{siteConfig.author.name}，现在在{siteConfig.weather.city}。
               平时把需求、架构、实现到上线完整走一遍，也把读过的东西、正在做的项目和偶尔想听的歌留在站里。
@@ -308,7 +341,7 @@ export function PersonalHome({
           aria-labelledby="home-writing-title"
           onMouseEnter={() => chooseSection("writing")}
         >
-          <header className="home-section-head">
+          <header className="home-section-head" data-reveal>
             <div>
               <p className="home-eyebrow dark-eyebrow">最近在写</p>
               <h2 id="home-writing-title">来自仓库的真实笔记</h2>
@@ -318,7 +351,9 @@ export function PersonalHome({
               全部笔记
             </Link>
           </header>
-          <div className="home-writing-frame">{recentNotes}</div>
+          <div className="home-writing-frame" data-reveal data-spotlight>
+            {recentNotes}
+          </div>
         </section>
 
         <section
@@ -327,7 +362,7 @@ export function PersonalHome({
           aria-labelledby="home-letter-title"
           onMouseEnter={() => chooseSection("letters")}
         >
-          <div className="home-letter-note">
+          <div className="home-letter-note" data-reveal data-spotlight>
             <div>
               <p className="home-eyebrow">留言板</p>
               <h2 id="home-letter-title">留一句话，或者推荐一首歌</h2>
@@ -339,7 +374,7 @@ export function PersonalHome({
           </div>
         </section>
 
-        <nav className="home-section-index" aria-label="首页章节">
+        <nav className="home-section-index" aria-label="首页章节" data-reveal>
           {SECTIONS.map((name) => (
             <a
               key={name}

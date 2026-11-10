@@ -28,6 +28,11 @@ export interface ImportedTrack {
   coverUrl: string | null;
   /** 秒；未知为 null */
   duration: number | null;
+  /**
+   * 匿名访客能否免费播放。undefined = 本次没有拿到权限数据，
+   * 不能据此判定为不可播；导入层只剔除明确 false 的曲目。
+   */
+  playable?: boolean;
 }
 
 export interface ImportedPlaylist {
@@ -38,6 +43,8 @@ export interface ImportedPlaylist {
   externalId: string;
   externalUrl: string;
   tracks: ImportedTrack[];
+  /** true = 本次导入确实向平台校验过匿名可播性 */
+  playableChecked?: boolean;
 }
 
 /** 一张歌单最多导入多少首：不是版权限制，是防止一次请求把页面拖垮 */
@@ -150,7 +157,10 @@ function qqCover(albumMid: string): string {
   return `https://y.qq.com/music/photo_new/T002R300x300M000${albumMid}.jpg`;
 }
 
-function neteaseTrack(raw: unknown): ImportedTrack | null {
+function neteaseTrack(
+  raw: unknown,
+  playable?: boolean
+): ImportedTrack | null {
   const track = objectValue(raw);
   if (!track) return null;
   const id = positiveInt(track.id);
@@ -171,7 +181,39 @@ function neteaseTrack(raw: unknown): ImportedTrack | null {
     externalId: String(id),
     coverUrl: httpsUrl(album?.picUrl),
     duration: durationMs ? Math.round(durationMs / 1000) : null,
+    ...(playable === undefined ? {} : { playable }),
   };
+}
+
+/**
+ * 从 `/api/v3/song/detail` 的 privileges 里挑出匿名态可播的曲目。
+ *
+ * `pl` 是匿名请求拿到的可播最大码率：0 表示无版权 / 仅 VIP / 仅试听。
+ * 不用登录 cookie 判断——那会把「站长能听」误当成「访客能听」。
+ */
+export function playableNeteaseIds(privileges: unknown[]): string[] {
+  const ids: string[] = [];
+  for (const raw of privileges) {
+    const privilege = objectValue(raw);
+    if (!privilege) continue;
+    const id = positiveInt(privilege.id);
+    if (!id) continue;
+    const playableRate = Number(privilege.pl);
+    if (!Number.isFinite(playableRate) || playableRate <= 0) continue;
+    // code 0 才是正常返回；负数是平台侧的版权/地区拒绝
+    if (privilege.code !== undefined && Number(privilege.code) !== 0) continue;
+    ids.push(String(id));
+  }
+  return ids;
+}
+
+/** 导入层只剔除明确不可播的；没校验过的曲目保持原样。 */
+export function filterUnplayableTracks(tracks: ImportedTrack[]): {
+  tracks: ImportedTrack[];
+  skipped: number;
+} {
+  const kept = tracks.filter((track) => track.playable !== false);
+  return { tracks: kept, skipped: tracks.length - kept.length };
 }
 
 function qqTrack(raw: unknown): ImportedTrack | null {
@@ -240,9 +282,24 @@ export function normalizeNeteasePlaylist(
   const playlist = objectValue(root?.result ?? root?.playlist);
   if (!playlist) return { ok: false, error: "网易云没有返回这张歌单" };
 
+  const rawPlayableIds = Array.isArray(playlist.playableIds)
+    ? new Set(
+        playlist.playableIds
+          .map((value) => positiveInt(value))
+          .filter((value): value is number => value !== null)
+          .map(String)
+      )
+    : null;
   const tracks = capTracks(
     arrayValue(playlist.tracks ?? playlist.songs)
-      .map(neteaseTrack)
+      .map((raw) =>
+        neteaseTrack(
+          raw,
+          rawPlayableIds
+            ? rawPlayableIds.has(String(objectValue(raw)?.id))
+            : undefined
+        )
+      )
       .filter((track): track is ImportedTrack => track !== null)
   );
   if (tracks.length === 0) {
@@ -263,6 +320,7 @@ export function normalizeNeteasePlaylist(
       externalId,
       externalUrl: `https://music.163.com/#/playlist?id=${externalId}`,
       tracks,
+      ...(rawPlayableIds ? { playableChecked: true } : {}),
     },
   };
 }
@@ -397,6 +455,65 @@ export function neteaseEmbedUrl(externalId: string, auto = true): string {
   return `https://music.163.com/outchain/player?type=2&id=${encodeURIComponent(
     externalId
   )}&auto=${auto ? 1 : 0}&height=66`;
+}
+
+/**
+ * 网易云歌曲的直链音频（官方 outer 接口）。
+ *
+ * 这是网页端自己的「外链播放」入口，不需要登录；能播的曲目会 302 到 CDN，
+ * 版权受限的曲目会落到 /404。前端拿到 <audio> 的 error 事件后回退到
+ * outchain iframe，不假装整张歌单都能站内放。
+ */
+export function neteaseOuterAudioUrl(externalId: string): string | null {
+  if (!/^\d{1,20}$/.test(externalId)) return null;
+  return `https://music.163.com/song/media/outer/url?id=${externalId}.mp3`;
+}
+
+/**
+ * 从整段分享文案里取出第一个 http(s) 链接。
+ * 网易云 / QQ 音乐的分享按钮给的是「说明文字 + 链接」的一整段，
+ * 让访客再手动挑出链接纯属为难人。
+ */
+export function extractUrlFromText(raw: string): string | null {
+  // 中文排版里括号/引号经常直接贴在链接后面，不能算进地址
+  const match = raw.match(
+    /https?:\/\/[^\s<>"'（），。！？、；：()【】「」《》一-鿿＀-￯]+/i
+  );
+  if (!match) return null;
+  // 中文标点经常紧跟链接，不属于地址本身
+  return match[0].replace(/[，。！？、；：,.!?;:]+$/u, "");
+}
+
+export type SuggestionInput =
+  | { kind: "url"; url: string }
+  | { kind: "name"; query: string };
+
+/**
+ * 访客推荐歌单的输入：可以直接粘分享文案，也可以只写歌单名。
+ * 歌单名交给站内搜索，搜到后由访客点选，不把「猜出来的 id」直接入库。
+ */
+export function parseSuggestionInput(raw: string): ParseResult<SuggestionInput> {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return { ok: false, error: "粘贴歌单分享文案，或输入歌单名" };
+  }
+  if (trimmed.length > 1000) {
+    return { ok: false, error: "输入太长了，只粘歌单分享文案或歌单名即可" };
+  }
+
+  const url = extractUrlFromText(trimmed);
+  if (url) return { ok: true, value: { kind: "url", url } };
+
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
+    // 看起来像链接却不是 http(s)：不拿它当歌单名偷偷搜索
+    return { ok: false, error: "只支持 http(s) 链接，请重新复制分享文案" };
+  }
+
+  const query = trimmed.replace(/\s+/g, " ").slice(0, 80);
+  if (!query) {
+    return { ok: false, error: "歌单名不能为空" };
+  }
+  return { ok: true, value: { kind: "name", query } };
 }
 
 /** 直接音频（mp3/m4a/ogg）才能用原生 <audio> 播放 */

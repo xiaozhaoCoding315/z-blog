@@ -234,3 +234,61 @@ test("songs.pinned 是 boolean，shelf_items 的 rating / finished_at 可空", (
   assert.ok(ddlColumns("shelf_items").includes("finished_at"));
   assert.match(ddl, /finished_at date/);
 });
+
+test("歌单推荐字段与音乐账号表都有幂等迁移", () => {
+  // 老库的 playlists 已经存在，新列只能靠 ALTER 补，不能只写进 CREATE TABLE
+  assert.match(
+    ddl,
+    /ALTER TABLE playlists ADD COLUMN IF NOT EXISTS suggested_by integer REFERENCES users\(id\) ON DELETE SET NULL/
+  );
+  assert.match(
+    ddl,
+    /ALTER TABLE playlists ADD COLUMN IF NOT EXISTS suggestion_note text NOT NULL DEFAULT ''/
+  );
+  assert.ok(schemaHasColumn("playlists", "suggested_by"));
+  assert.ok(schemaHasColumn("playlists", "suggestion_note"));
+
+  for (const column of [
+    "id",
+    "user_id",
+    "platform",
+    "external_id",
+    "title",
+    "cover_url",
+    "note",
+    "status",
+    "playlist_id",
+    "created_at",
+  ]) {
+    assert.match(
+      ddl,
+      new RegExp(`\\b${column} (bigserial|text|integer|timestamptz)\\b`),
+      `playlist_suggestions.${column} 缺少 DDL 列`
+    );
+    assert.ok(
+      schemaHasColumn("playlist_suggestions", column),
+      `schema.ts 缺少 playlist_suggestions.${column}`
+    );
+  }
+  // 同一个用户对同一张平台歌单只留一条建议，重复提交时覆盖而不是叠加
+  assert.match(
+    ddl,
+    /CREATE UNIQUE INDEX IF NOT EXISTS playlist_suggestions_user_external_key ON playlist_suggestions \(user_id, platform, external_id\)/
+  );
+
+  assert.match(ddl, /CREATE TABLE IF NOT EXISTS music_accounts/);
+  for (const column of [
+    "user_id",
+    "provider",
+    "external_user_id",
+    "nickname",
+    "avatar_url",
+    "cookie_enc",
+    "updated_at",
+  ]) {
+    assert.ok(
+      schemaHasColumn("music_accounts", column),
+      `schema.ts 缺少 music_accounts.${column}`
+    );
+  }
+});

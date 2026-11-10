@@ -140,7 +140,10 @@ export default async function LifePage({
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-      <header className="flex items-baseline justify-between gap-4 border-b border-rule py-5">
+      <header
+        className="flex items-baseline justify-between gap-4 border-b border-rule py-5"
+        data-reveal
+      >
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
           <h1 className="font-heading text-[15px] font-bold tracking-tight">
             {siteConfig.name}
@@ -218,7 +221,11 @@ export default async function LifePage({
             </div>
           ) : (
             groups.map((group) => (
-              <section key={group.key} className="mt-8 first:mt-0">
+              <section
+                key={group.key}
+                className="mt-8 first:mt-0"
+                data-reveal
+              >
                 <MonthTick label={group.label} count={group.moments.length} />
                 <ul className="mt-6 flex flex-col gap-10">
                   {group.moments.map((moment, index) => (
@@ -259,6 +266,7 @@ export default async function LifePage({
         <aside
           aria-label="此刻"
           className="hidden lg:sticky lg:top-6 lg:block lg:self-start"
+          data-reveal
         >
           {nowPanel}
         </aside>

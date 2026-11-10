@@ -56,6 +56,8 @@ export function PostCard({
         "group relative grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b border-border/60 py-4",
         variant === "featured" && "py-5"
       )}
+      data-reveal
+      data-spotlight
     >
       <time
         dateTime={post.date}

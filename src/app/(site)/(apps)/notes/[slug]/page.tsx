@@ -99,7 +99,7 @@ export default async function NotePage({
 
           <div className="mx-auto w-full max-w-3xl">
             {/* 笔记头部 */}
-            <header>
+            <header data-reveal>
               <Link
                 href="/notes"
                 className="font-mono text-[13px] leading-5 text-muted-foreground transition-colors hover:text-foreground"
@@ -151,12 +151,18 @@ export default async function NotePage({
               <Separator />
             </div>
 
-            <div className="prose prose-base sm:prose-lg max-w-none [&_p]:leading-[1.8]">
+            <div
+              className="prose prose-base sm:prose-lg max-w-none [&_p]:leading-[1.8]"
+              data-reveal
+            >
               <RenderMDX source={note.content} />
             </div>
 
             {/* 上一篇 / 下一篇 */}
-            <nav className="mt-14 grid gap-x-6 border-t border-border pt-4 sm:grid-cols-2">
+            <nav
+              className="mt-14 grid gap-x-6 border-t border-border pt-4 sm:grid-cols-2"
+              data-reveal
+            >
               {prev ? (
                 <Link href={`/notes/${prev.slug}`} className="group py-2">
                   <span className="font-mono text-[13px] leading-5 text-muted-foreground">
@@ -187,7 +193,7 @@ export default async function NotePage({
             <RelatedPosts slug={slug} fallback={relatedFallback} />
 
             {/* 评论：复用阶段 3 的站内评论系统，目标类型为 note */}
-            <section className="mt-14 border-t border-border pt-8">
+            <section className="mt-14 border-t border-border pt-8" data-reveal>
               <h2 className="font-heading text-lg font-bold tracking-tight">
                 评论
               </h2>

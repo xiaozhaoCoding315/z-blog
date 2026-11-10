@@ -1,7 +1,9 @@
 import {
+  filterUnplayableTracks,
   normalizeNeteasePlaylist,
   normalizeQqPlaylist,
   parsePlaylistUrl,
+  playableNeteaseIds,
   type ImportedPlaylist,
   type PlaylistRef,
 } from "@/lib/playlist-core";
@@ -11,7 +13,14 @@ const UA =
   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
 export type ImportResult =
-  | { ok: true; playlist: ImportedPlaylist }
+  | {
+      ok: true;
+      playlist: ImportedPlaylist;
+      /** 因 VIP / 版权受限被剔除的曲目数 */
+      skipped: number;
+      /** 是否真的向平台校验过匿名可播性 */
+      playableChecked: boolean;
+    }
   | { ok: false; error: string; ref: PlaylistRef | null };
 
 /**
@@ -21,7 +30,10 @@ export type ImportResult =
  * 因此所有失败都带明确原因返回，导入表单同时提供手动曲目作为退路；
  * 不在服务端伪造歌单，也不把解析失败说成「歌单为空」。
  */
-export async function fetchPlaylistImport(rawUrl: string): Promise<ImportResult> {
+export async function fetchPlaylistImport(
+  rawUrl: string,
+  options: { neteaseCookie?: string } = {}
+): Promise<ImportResult> {
   const parsed = parsePlaylistUrl(rawUrl);
   if (!parsed.ok) return { ok: false, error: parsed.error, ref: null };
 
@@ -54,8 +66,12 @@ export async function fetchPlaylistImport(rawUrl: string): Promise<ImportResult>
 
     const payload =
       ref.provider === "netease"
-        ? await fetchNetease(externalId)
+        ? await fetchNetease(externalId, options.neteaseCookie)
         : await fetchQq(externalId);
+
+    if (ref.provider === "netease") {
+      await attachNeteasePlayability(payload);
+    }
 
     const normalized =
       ref.provider === "netease"
@@ -63,7 +79,24 @@ export async function fetchPlaylistImport(rawUrl: string): Promise<ImportResult>
         : normalizeQqPlaylist(payload, externalId);
 
     if (!normalized.ok) return { ok: false, error: normalized.error, ref };
-    return { ok: true, playlist: normalized.value };
+
+    const playableChecked = normalized.value.playableChecked === true;
+    const filtered = filterUnplayableTracks(normalized.value.tracks);
+    if (playableChecked && filtered.tracks.length === 0) {
+      return {
+        ok: false,
+        error:
+          "这张歌单里的曲目都需要 VIP 或受版权限制，没有可免费播放的曲目。换一张公开歌单试试。",
+        ref,
+      };
+    }
+
+    return {
+      ok: true,
+      playlist: { ...normalized.value, tracks: filtered.tracks },
+      skipped: filtered.skipped,
+      playableChecked,
+    };
   } catch (err) {
     const reason = err instanceof Error && err.name === "TimeoutError"
       ? "平台响应超时"
@@ -88,21 +121,106 @@ async function resolveShortLink(url: string): Promise<string | null> {
   return res.url || null;
 }
 
-async function fetchNetease(id: string): Promise<unknown> {
-  const res = await fetch(
-    `https://music.163.com/api/playlist/detail?id=${encodeURIComponent(id)}`,
-    {
-      cache: "no-store",
-      headers: {
-        "User-Agent": UA,
-        Referer: "https://music.163.com/",
-        Accept: "application/json,text/plain,*/*",
-      },
-      signal: AbortSignal.timeout(12_000),
+/**
+ * 把 v6 歌单详情补全成「全量曲目 + 匿名可播 id」。
+ *
+ * v6 匿名响应只给 6 首预览曲目，完整顺序在 trackIds 里；再按 id 拉
+ * `/api/v3/song/detail`，拿回全部歌曲与 privileges。
+ *
+ * privileges 特意用**不带 cookie** 的匿名请求：站长绑了 VIP 账号时，
+ * 带 cookie 会把 VIP 曲目算成可播，但访客仍然听不了。这里以访客为准。
+ * 补全失败不阻断导入：宁可导入未校验的歌单，也不把一张好歌单判死。
+ */
+async function attachNeteasePlayability(payload: unknown): Promise<void> {
+  const root = objectValue(payload);
+  const playlist = objectValue(root?.result ?? root?.playlist);
+  if (!playlist) return;
+
+  const trackIds = (Array.isArray(playlist.trackIds) ? playlist.trackIds : [])
+    .map((item) => {
+      const id = objectValue(item)?.id;
+      const value = typeof id === "number" ? id : Number(id);
+      return Number.isSafeInteger(value) && value > 0 ? value : null;
+    })
+    .filter((value): value is number => value !== null);
+  if (trackIds.length === 0) return;
+
+  try {
+    const { songs, privileges } = await fetchNeteaseSongDetails(trackIds);
+    if (songs.length > 0) {
+      const byId = new Map(
+        songs.map((song) => [Number(objectValue(song)?.id), song] as const)
+      );
+      const ordered = trackIds
+        .map((id) => byId.get(id))
+        .filter((song): song is Record<string, unknown> => Boolean(song));
+      if (ordered.length > 0) playlist.tracks = ordered;
     }
+    if (Array.isArray(privileges) && privileges.length > 0) {
+      playlist.playableIds = playableNeteaseIds(privileges);
+    }
+  } catch (err) {
+    console.warn("[playlist-import] 可播校验失败，保留全部曲目：", err);
+  }
+}
+
+async function fetchNeteaseSongDetails(ids: number[]): Promise<{
+  songs: unknown[];
+  privileges: unknown[];
+}> {
+  const songs: unknown[] = [];
+  const privileges: unknown[] = [];
+  // 一次 100 首，避免 URL 过长；超过 300 首的部分本来也不会导入
+  for (let start = 0; start < ids.length; start += 100) {
+    const chunk = ids.slice(start, start + 100);
+    const payload = encodeURIComponent(JSON.stringify(chunk.map((id) => ({ id }))));
+    const res = await fetch(
+      `https://music.163.com/api/v3/song/detail?c=${payload}`,
+      {
+        cache: "no-store",
+        headers: {
+          "User-Agent": UA,
+          Referer: "https://music.163.com/",
+          Accept: "application/json,text/plain,*/*",
+        },
+        signal: AbortSignal.timeout(12_000),
+      }
+    );
+    if (!res.ok) throw new Error(`netease song detail ${res.status}`);
+    const body = objectValue(await res.json());
+    if (!body) continue;
+    if (Array.isArray(body.songs)) songs.push(...body.songs);
+    if (Array.isArray(body.privileges)) privileges.push(...body.privileges);
+  }
+  return { songs, privileges };
+}
+
+async function fetchNetease(id: string, cookie?: string): Promise<unknown> {
+  const headers = {
+    "User-Agent": UA,
+    Referer: "https://music.163.com/",
+    Accept: "application/json,text/plain,*/*",
+    ...(cookie ? { Cookie: cookie } : {}),
+  };
+  // 旧 /api/playlist/detail 对部分歌单只回 20001；新版 v6 接口稳定给全量曲目
+  const res = await fetch(
+    `https://music.163.com/api/v6/playlist/detail?id=${encodeURIComponent(
+      id
+    )}&n=1000&s=0`,
+    { cache: "no-store", headers, signal: AbortSignal.timeout(12_000) }
   );
-  if (!res.ok) throw new Error(`netease ${res.status}`);
-  return res.json();
+  if (res.ok) {
+    const body = await res.json();
+    if (normalizeNeteasePlaylist(body, id).ok) return body;
+  }
+
+  // 新版解析不出曲目时再退回旧接口，别把一次平台抖动当成歌单为空
+  const legacy = await fetch(
+    `https://music.163.com/api/playlist/detail?id=${encodeURIComponent(id)}`,
+    { cache: "no-store", headers, signal: AbortSignal.timeout(12_000) }
+  );
+  if (!legacy.ok) throw new Error(`netease ${legacy.status}`);
+  return legacy.json();
 }
 
 /**

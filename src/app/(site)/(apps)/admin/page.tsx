@@ -395,7 +395,7 @@ export default async function AdminPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
-      <header>
+      <header data-reveal>
         <h1 className="font-heading text-3xl font-bold">审核后台</h1>
         <p className="mt-2 font-mono text-[11px] text-muted-foreground">
           状态句 · 桌面便签 · 待审留言 · 待审歌曲 · 评论 · 书架 · 导入歌单 · 单曲
@@ -1080,7 +1080,7 @@ async function AdminSections() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-10">
+    <section className="mt-10" data-reveal>
       <h2 className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
         {title}
       </h2>
@@ -1120,7 +1120,7 @@ function AccessPanel({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="mt-8 border border-rule bg-panel p-6">
+    <div className="mt-8 border border-rule bg-panel p-6" data-reveal>
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
         Admin
       </p>

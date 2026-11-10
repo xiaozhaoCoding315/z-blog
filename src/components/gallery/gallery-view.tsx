@@ -194,6 +194,8 @@ export function GalleryView({
             className="os-gallery-tile mb-3 block w-full break-inside-avoid border border-rule bg-panel-2 transition-colors hover:border-data focus-visible:border-data focus-visible:outline-none"
             aria-label={`查看 ${image.alt}`}
             aria-haspopup="dialog"
+            data-reveal
+            data-spotlight
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

@@ -20,7 +20,7 @@ export default async function ProfilePage() {
   if (!user) {
     return (
       <div className="profile-page">
-        <div className="profile-gate">
+        <div className="profile-gate" data-reveal>
           <p className="profile-eyebrow">PROFILE · 需要登录</p>
           <h1>先登录，再写自己的那一页</h1>
           <p>
@@ -44,7 +44,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="profile-page">
-      <header className="profile-page-head">
+      <header className="profile-page-head" data-reveal>
         <div>
           <p className="profile-eyebrow">PROFILE · 公开资料</p>
           <h1>你好，{name}</h1>
@@ -71,7 +71,9 @@ export default async function ProfilePage() {
           <p>会话还在，但数据库里没有对应记录。重新登录一次试试。</p>
         </div>
       ) : (
-        <ProfileForm profile={own.profile} login={user.login} publicHref={href} />
+        <div data-reveal>
+          <ProfileForm profile={own.profile} login={user.login} publicHref={href} />
+        </div>
       )}
     </div>
   );

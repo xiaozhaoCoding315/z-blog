@@ -14,7 +14,7 @@ export default async function SnippetsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <header className="mb-6">
+      <header className="mb-6" data-reveal>
         <h1 className="font-heading text-3xl font-bold tracking-[-0.02em]">
           代码片段
         </h1>
@@ -26,7 +26,7 @@ export default async function SnippetsPage() {
       {/* useSearchParams 只影响选中态；Suspense 让页面其余部分仍可预渲染。 */}
       <Suspense
         fallback={
-          <p className="os-snippets-empty" aria-live="polite">
+          <p className="os-snippets-empty skeleton-shimmer" aria-live="polite">
             正在加载代码片段…
           </p>
         }

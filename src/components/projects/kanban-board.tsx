@@ -195,6 +195,8 @@ export function KanbanBoard({
                     <article
                       key={project.name}
                       className="os-kanban-card"
+                      data-reveal
+                      data-spotlight
                       data-dragging={
                         draggingName === project.name ? "true" : undefined
                       }

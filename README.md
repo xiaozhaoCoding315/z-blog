@@ -129,7 +129,7 @@ scripts/              # 同步 CLI 与 Docker entrypoint
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL 连接串 |
 | `AI_API_KEY` | 智谱 API key（[免费注册](https://open.bigmodel.cn)），留空则 AI 功能降级 |
-| `CHAT_MODEL` / `EMBEDDING_MODEL` | 默认 `glm-4.6` / `embedding-3` |
+| `CHAT_MODEL` / `EMBEDDING_MODEL` | 默认 `glm-4.7-flash` / `embedding-3` |
 | `NEXT_PUBLIC_SITE_URL` | 站点地址（部署后改为 `https://域名`；构建期内联，改完需重新构建） |
 
 ## 部署

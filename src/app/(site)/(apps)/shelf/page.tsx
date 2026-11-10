@@ -29,7 +29,7 @@ export default async function ShelfPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
-      <header>
+      <header data-reveal>
         <h1 className="font-heading text-3xl font-bold">书架</h1>
         {shelf.available && (
           <p className="mt-2 font-mono text-[11px] tabular-nums text-muted-foreground">
@@ -38,7 +38,11 @@ export default async function ShelfPage({
         )}
       </header>
 
-      <nav aria-label="书架分类" className="mt-8 flex border-b border-rule">
+      <nav
+        aria-label="书架分类"
+        className="mt-8 flex border-b border-rule"
+        data-reveal
+      >
         {TABS.map((tab) => {
           const current = tab.type === active;
           return (
@@ -75,7 +79,7 @@ export default async function ShelfPage({
           这一类还空着。
         </p>
       ) : (
-        <div className="mt-6 border-t border-rule">
+        <div className="mt-6 border-t border-rule" data-reveal>
           {items.map((item) => (
             <ShelfRow key={item.id} item={item} />
           ))}

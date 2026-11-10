@@ -69,7 +69,7 @@ export default async function UserProfilePage({
     <div className="profile-page profile-public">
       <ProfileHero profile={profile} isSelf={isSelf} activity={activity} />
 
-      <div className="profile-public-body">
+      <div className="profile-public-body" data-reveal>
         <section aria-labelledby="profile-comments-title">
           <header className="profile-section-head">
             <h2 id="profile-comments-title">评论</h2>
@@ -179,7 +179,7 @@ function ProfileHero({
   ].filter(Boolean);
 
   return (
-    <section className="profile-public-hero">
+    <section className="profile-public-hero" data-reveal data-spotlight>
       <div className="profile-public-identity">
         <UserAvatar
           name={profile.displayName}

@@ -92,7 +92,7 @@ export default async function MomentPage({
         ← 生活
       </Link>
 
-      <article className="mt-6">
+      <article className="mt-6" data-reveal>
         <div className="flex items-baseline gap-3 border-b border-rule pb-4">
           <span
             aria-hidden
@@ -123,7 +123,7 @@ export default async function MomentPage({
         </div>
       </article>
 
-      <section className="mt-12 border-t border-rule pt-8">
+      <section className="mt-12 border-t border-rule pt-8" data-reveal>
         <h2 className="font-heading text-lg font-bold">评论</h2>
         <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           {comments.available ? `${comments.comments.length} 条` : "Not Available"}

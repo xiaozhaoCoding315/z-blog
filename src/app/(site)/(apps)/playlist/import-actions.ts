@@ -3,22 +3,30 @@
 import { refresh, updateTag } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { playlists as playlistsTable, songs as songsTable } from "@/db/schema";
+import { playlists as playlistsTable } from "@/db/schema";
 import { getSessionUser } from "@/lib/session";
 import { fetchPlaylistImport } from "@/lib/playlist-import";
 import {
   MAX_IMPORT_TRACKS,
+  extractUrlFromText,
   parseManualTracks,
   parsePlaylistUrl,
   type ImportedPlaylist,
   type ImportedTrack,
   type PlaylistPlatform,
 } from "@/lib/playlist-core";
+import { saveImportedPlaylist } from "@/lib/playlist-save";
 
 export interface PlaylistImportState {
   error?: string;
   ok?: boolean;
   playlistId?: number;
+  /** 实际导入的曲目数；手动导入也计入 */
+  importedCount?: number;
+  /** 因 VIP / 版权受限被排除的曲目数 */
+  skippedCount?: number;
+  /** 本次是否向平台校验过匿名可播性 */
+  playableChecked?: boolean;
 }
 
 function ownerOnly(user: Awaited<ReturnType<typeof getSessionUser>>) {
@@ -55,7 +63,9 @@ export async function importPlaylist(
   const user = ownerOnly(await getSessionUser());
   if (!user) return { error: "只有站长能导入歌单，请先登录站长账号" };
 
-  const url = limited(formData.get("url"), 1000);
+  const rawLinkInput = limited(formData.get("url"), 1000);
+  // 分享按钮给的是「说明文字 + 链接」一整段，直接从里面取链接
+  const url = rawLinkInput ? extractUrlFromText(rawLinkInput) ?? "" : "";
   const manualText = limited(formData.get("manualTracks"), 200_000);
   const manualPlatform = playlistPlatform(formData.get("platform"));
   const rawTitle = limited(formData.get("title"), 120);
@@ -69,6 +79,8 @@ export async function importPlaylist(
   let imported: ImportedPlaylist | null = null;
   let fetchError: string | null = null;
   let refProvider: PlaylistPlatform = manualPlatform;
+  let skippedCount = 0;
+  let playableChecked = false;
 
   if (url) {
     const parsed = parsePlaylistUrl(url);
@@ -76,6 +88,8 @@ export async function importPlaylist(
     const result = await fetchPlaylistImport(url);
     if (result.ok) {
       imported = result.playlist;
+      skippedCount = result.skipped;
+      playableChecked = result.playableChecked;
     } else {
       fetchError = result.error;
       if (result.ref) refProvider = result.ref.provider;
@@ -106,91 +120,34 @@ export async function importPlaylist(
     rawTitle || imported?.title || (manualText ? "手动导入的歌单" : "");
   if (!title) return { error: "歌单需要一个标题" };
 
-  const db = getDb();
-  if (!db) return { error: "数据库暂时不可用，稍后再试" };
+  const manualPlaylist: ImportedPlaylist = {
+    title,
+    description: rawDescription,
+    coverUrl: cover ?? null,
+    platform: refProvider,
+    externalId: "",
+    externalUrl: "",
+    tracks,
+  };
 
-  const externalId = imported?.externalId ?? null;
-  const platform: PlaylistPlatform = imported?.platform ?? refProvider;
+  const saved = await saveImportedPlaylist({
+    userId: user.id,
+    imported: imported ?? manualPlaylist,
+    title,
+    description: rawDescription || imported?.description || "",
+    coverUrl: cover ?? imported?.coverUrl ?? null,
+  });
+  if (!saved.ok) return { error: saved.error };
 
-  try {
-    const playlistId = await db.transaction(async (tx) => {
-      let id: number;
-
-      if (externalId) {
-        const [row] = await tx
-          .insert(playlistsTable)
-          .values({
-            title,
-            description: rawDescription || imported?.description || "",
-            coverUrl: cover ?? imported?.coverUrl ?? null,
-            platform,
-            externalId,
-            externalUrl: imported?.externalUrl ?? null,
-            userId: user.id,
-            updatedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [playlistsTable.platform, playlistsTable.externalId],
-            set: {
-              title,
-              description: rawDescription || imported?.description || "",
-              coverUrl: cover ?? imported?.coverUrl ?? null,
-              externalUrl: imported?.externalUrl ?? null,
-              userId: user.id,
-              updatedAt: new Date(),
-            },
-          })
-          .returning({ id: playlistsTable.id });
-        if (!row) throw new Error("playlist insert returned no row");
-        id = row.id;
-        // 重新导入等于整张替换曲目：平台上的排序可能已经变了
-        await tx.delete(songsTable).where(eq(songsTable.playlistId, id));
-      } else {
-        // 手动歌单没有平台 id；同名同平台的手动歌单仍然可重复，交给站长删除
-        const [row] = await tx
-          .insert(playlistsTable)
-          .values({
-            title,
-            description: rawDescription,
-            coverUrl: cover ?? null,
-            platform,
-            userId: user.id,
-            updatedAt: new Date(),
-          })
-          .returning({ id: playlistsTable.id });
-        if (!row) throw new Error("playlist insert returned no row");
-        id = row.id;
-      }
-
-      await tx.insert(songsTable).values(
-        tracks.map((track, index) => ({
-          title: track.title,
-          artist: track.artist,
-          url: track.url,
-          platform: track.platform,
-          note: "",
-          source: "owner",
-          userId: user.id,
-          status: "approved",
-          pinned: false,
-          playlistId: id,
-          externalId: track.externalId,
-          coverUrl: track.coverUrl,
-          duration: track.duration,
-          sortOrder: index,
-        }))
-      );
-
-      return id;
-    });
-
-    updateTag("songs");
-    refresh();
-    return { ok: true, playlistId };
-  } catch (err) {
-    console.error("[playlist-import] 保存失败：", err);
-    return { error: "保存失败，稍后再试" };
-  }
+  updateTag("songs");
+  refresh();
+  return {
+    ok: true,
+    playlistId: saved.playlistId,
+    importedCount: tracks.length,
+    skippedCount,
+    playableChecked,
+  };
 }
 
 /** 删除一张歌单；曲目由外键级联删除。 */
