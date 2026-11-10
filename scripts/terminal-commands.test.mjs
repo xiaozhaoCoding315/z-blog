@@ -1,9 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   completeCommand,
   runCommand,
 } from "../src/components/terminal/commands.ts";
+
+function read(relativePath) {
+  return readFileSync(new URL(relativePath, import.meta.url), "utf8");
+}
 
 function makeContext(overrides = {}) {
   return {
@@ -202,6 +207,44 @@ test("coffee 打印 ASCII 咖啡并产生热气事件", () => {
   const result = runCommand("coffee", makeContext());
   assert.deepEqual(result.effect, { type: "coffee" });
   assert.ok(result.lines.length >= 5);
+});
+
+test("rain 是未列进帮助的字雨彩蛋，触发独立事件", () => {
+  const result = runCommand("rain", makeContext());
+  assert.deepEqual(result.effect, { type: "rain" });
+  assert.ok(text(result).includes("字雨"));
+  // 彩蛋不该被 help 或 Tab 补全剧透
+  assert.ok(!text(runCommand("help", makeContext())).includes("rain"));
+  assert.ok(!completeCommand("ra", makeContext()).includes("rain"));
+});
+
+test("完整终端页有自己的磷光层，不复用页面氛围或琴弦", () => {
+  const atmosphere = read("../src/components/terminal/terminal-atmosphere.tsx");
+  const standalone = read("../src/components/terminal/standalone-terminal.tsx");
+  const windowSource = read("../src/components/terminal/terminal-window.tsx");
+  const css = read("../src/app/globals.css");
+  assert.match(standalone, /<TerminalAtmosphere \/>/);
+  assert.match(windowSource, /case "rain":[\s\S]*z-os:terminal-rain/);
+  assert.match(windowSource, /z-os:terminal-pulse/);
+  assert.match(atmosphere, /z-os:terminal-rain/);
+  assert.match(atmosphere, /z-os:terminal-pulse/);
+  assert.match(atmosphere, /prefers-reduced-motion/);
+  assert.match(atmosphere, /Math\.min\(window\.devicePixelRatio \|\| 1, 2\)/);
+  assert.doesNotMatch(atmosphere, /<LyricsStage|page-ambient|assistant-music-field/);
+  assert.match(css, /\.terminal-atmosphere\s*\{/);
+  assert.match(
+    css,
+    /\.standalone-terminal-body \.os-terminal\s*\{\s*background:\s*transparent/
+  );
+  // 终端页是整屏深色桌面，纸张底色不能在终端上方露出一条白带
+  assert.match(
+    css,
+    /\.fullpage-main:has\(\.standalone-terminal-shell\)\s*\{\s*background:\s*transparent/
+  );
+  assert.doesNotMatch(
+    css,
+    /\.fullpage-main > :is\([^)]*standalone-terminal-shell/
+  );
 });
 
 test("sudo / rm -rf / / vim 是无害彩蛋", () => {

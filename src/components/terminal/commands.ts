@@ -12,7 +12,8 @@ export type TerminalEffect =
   | { type: "open"; appId: string }
   | { type: "ask"; question: string }
   | { type: "theme"; preset: DesktopPreset }
-  | { type: "coffee" };
+  | { type: "coffee" }
+  | { type: "rain" };
 
 export interface TerminalApp {
   id: string;
@@ -102,6 +103,8 @@ const HELP_LINES = [
   "  whoami / date / uptime / neofetch",
   "  clear                      清屏",
   "  exit / :q                  关闭终端",
+  "",
+  "（有些命令没有写进帮助，凭直觉试试。）",
 ];
 
 const COFFEE_LINES = [
@@ -346,6 +349,17 @@ export function runCommand(input: string, ctx: TerminalContext): TerminalResult 
     case "vim":
       return {
         lines: ["vim: 没有安装。这里是模拟 shell，输入 :q 可以退出。"],
+      };
+
+    // 隐藏彩蛋：不在 help / 补全里出现，只留给愿意乱敲命令的人。
+    case "rain":
+      return {
+        lines: [
+          "       ·    ·",
+          "[天气] 站内局部有字雨，持续六秒。",
+          "[提示] 雨停之前，先别关窗。",
+        ],
+        effect: { type: "rain" },
       };
 
     case "clear":

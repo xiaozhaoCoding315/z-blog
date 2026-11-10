@@ -82,6 +82,28 @@ test("律动直接读音频时钟，按段落加强，且尊重减少动效", ()
   assert.match(stage, /audioRef,\s*lyrics,\s*playing,\s*variant/);
 });
 
+test("放歌时琴弦全站复用；VIP / 失效音源自动跳下一首且不会整队死循环", () => {
+  // 只有小元同学控制台让位，其余页面共用同一套琴弦（音频元素始终在布局层）
+  assert.match(
+    provider,
+    /ambientAllowed = !pathname\.startsWith\("\/assistant"\)/
+  );
+  assert.match(provider, /const handleAudioError = useCallback/);
+  assert.match(provider, /audioFailuresRef\.current < queueLength/);
+  assert.match(provider, /音源不可用，已自动播放下一首/);
+  assert.match(provider, /onError=\{handleAudioError\}/);
+  // 真正开始播放才清零失败计数，否则「跳过 → 失败 → 跳过」会无限循环
+  assert.match(
+    provider,
+    /onPlay=\{\(\) => \{\s*audioFailuresRef\.current = 0;/
+  );
+  assert.match(provider, /队列里的音源都不可用/);
+  assert.match(provider, /playlist-dock-skip/);
+  // 单曲循环时 audioSrc 不变，必须靠 playToken 重新 load/起播
+  assert.match(provider, /setPlayToken\(\(value\) => value \+ 1\)/);
+  assert.match(provider, /\[audioSrc, playToken\]/);
+});
+
 test("歌词服务端只认网易云数字 id，并带超时和缓存", () => {
   assert.match(server, /\/\^\\d\{1,20\}\$\//);
   assert.match(server, /AbortSignal\.timeout/);

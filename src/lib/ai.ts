@@ -2,19 +2,19 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 /**
  * AI 服务封装（双供应商，均走 OpenAI 兼容协议）：
- * - 聊天/摘要：智谱 GLM（AI_API_KEY）
+ * - 聊天/摘要：Agnes agnes-3.0-flash（AI_API_KEY，512K 上下文，体验价免费）
  * - 向量化：阿里云百炼 text-embedding-v3（EMBEDDING_API_KEY，默认 1024 维）
  * RAG 问答需要两路同时可用；任一缺失时对应功能自动降级。
  */
 
-// ---- 聊天：智谱 GLM ----
-export const chatModelId = process.env.CHAT_MODEL ?? "glm-4.7-flash";
+// ---- 聊天：Agnes ----
+export const chatModelId = process.env.CHAT_MODEL ?? "agnes-3.0-flash";
 const chatApiKey = process.env.AI_API_KEY ?? process.env.ZHIPU_API_KEY;
 export const chatEnabled = Boolean(chatApiKey);
 
 const chatProvider = createOpenAICompatible({
-  name: "zhipu",
-  baseURL: process.env.AI_BASE_URL ?? "https://open.bigmodel.cn/api/paas/v4",
+  name: "agnes",
+  baseURL: process.env.AI_BASE_URL ?? "https://api.agnes-ai.cn/v1",
   apiKey: chatApiKey ?? "",
 });
 export const chatModel = chatProvider.chatModel(chatModelId);

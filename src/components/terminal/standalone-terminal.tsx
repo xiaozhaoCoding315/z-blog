@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { TerminalAtmosphere } from "@/components/terminal/terminal-atmosphere";
 import type {
   TerminalNote,
   TerminalSnippet,
@@ -36,6 +37,7 @@ export function StandaloneTerminal({
 
   return (
     <div className="standalone-terminal-shell">
+      <TerminalAtmosphere />
       <div className="standalone-terminal-head">
         <span>Z·OS / TERMINAL</span>
         <span>输入 help 查看命令 · exit 返回首页</span>

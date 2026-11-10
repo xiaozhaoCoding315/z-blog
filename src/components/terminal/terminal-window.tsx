@@ -192,6 +192,9 @@ export function TerminalWindow({
       case "coffee":
         window.dispatchEvent(new Event("z-os:coffee"));
         return;
+      case "rain":
+        window.dispatchEvent(new Event("z-os:terminal-rain"));
+        return;
       default:
         return;
     }
@@ -217,6 +220,8 @@ export function TerminalWindow({
         : [...previous, command]
     );
 
+    // 每次执行都让完整终端页的磷光层扫一道，普通浮窗里没有监听者，无副作用。
+    window.dispatchEvent(new Event("z-os:terminal-pulse"));
     const result = runCommand(raw, context);
     if (result.effect?.type !== "clear") {
       const next: Line[] = [

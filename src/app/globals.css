@@ -5695,7 +5695,7 @@ html:has(.os-shell[data-full="true"]) body {
     box-shadow: 0 24px 70px rgb(2 24 23 / 0.24);
   }
 
-  .fullpage-main > :is(.about-page, .prose, .home-notes, .os-kanban, .standalone-terminal-shell, .assistant-workspace, .card-surface, section, article) {
+  .fullpage-main > :is(.about-page, .prose, .home-notes, .os-kanban, .assistant-workspace, .card-surface, section, article) {
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -5728,30 +5728,57 @@ html:has(.os-shell[data-full="true"]) body {
   }
 
   /* ---------- 第三轮：完整终端页 ---------- */
+  /* 终端页整屏是深色桌面；纸张底色只留给其他页面，避免终端上方露出白条 */
+  .fullpage-main:has(.standalone-terminal-shell) {
+    background: transparent;
+  }
+
   .standalone-terminal-shell {
+    position: relative;
+    isolation: isolate;
     min-height: calc(100dvh - 120px);
     overflow: hidden;
     border: 1px solid #28534d;
     border-radius: 4px;
-    background: #0c2c29;
+    background:
+      radial-gradient(circle at 50% -10%, rgb(169 220 204 / 0.07), transparent 46%),
+      #0c2c29;
     box-shadow: 0 24px 70px rgb(2 29 28 / 0.28);
     color: #f4fffb;
   }
 
+  .terminal-atmosphere {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
   .standalone-terminal-head {
+    position: relative;
+    z-index: 1;
     display: flex;
     justify-content: space-between;
     gap: 16px;
     padding: 12px 18px;
     border-bottom: 1px solid #28534d;
-    background: #103733;
+    background: rgb(16 55 51 / 0.86);
     color: #bad6cf;
     font-family: var(--font-mono);
     font-size: 11px;
   }
 
   .standalone-terminal-body {
+    position: relative;
+    z-index: 1;
     height: min(70dvh, 680px);
+  }
+
+  /* 完整终端页让磷光层从深色桌面里透出来；浮窗里的终端仍是实心窗口底色。 */
+  .standalone-terminal-body .os-terminal {
+    background: transparent;
   }
 
   /* ---------- 第三轮：完整 AI 助理页 ---------- */
@@ -7340,6 +7367,81 @@ img.user-avatar {
   line-height: 1.6;
 }
 
+.profile-form-avatar-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2f504d;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.profile-avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-avatar-upload,
+.profile-avatar-remove {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid #15564c;
+  border-radius: 999px;
+  background: #15564c;
+  color: #f7fffc;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    opacity 150ms ease;
+}
+
+.profile-avatar-remove {
+  border-color: #b7d3ce;
+  background: transparent;
+  color: #2f504d;
+}
+
+.profile-avatar-upload:hover,
+.profile-avatar-upload:focus-visible {
+  background: #103733;
+  outline: none;
+}
+
+.profile-avatar-remove:hover,
+.profile-avatar-remove:focus-visible {
+  border-color: #8d3f36;
+  color: #8d3f36;
+  outline: none;
+}
+
+.profile-avatar-upload:disabled,
+.profile-avatar-remove:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.profile-avatar-note {
+  margin-top: 6px;
+  color: #9a6a1f;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.profile-avatar-error {
+  margin-top: 6px;
+  color: #8d3f36;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .profile-form-privacy {
   margin-top: 26px;
   padding-top: 20px;
@@ -8634,6 +8736,14 @@ button.playlist-track-main {
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.playlist-dock-skip {
+  margin-top: 5px;
+  color: #ffd37a;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.45;
 }
 
 .playlist-dock-stage iframe {

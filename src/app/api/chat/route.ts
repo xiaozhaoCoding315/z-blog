@@ -149,7 +149,7 @@ ${
         system: systemPrompt,
         messages: modelMessages,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
-        // 智谱 429 是账号级并发限制，重试只会让用户多等一轮；留一次兜底即可。
+        // 供应商的 429 是账号级并发限制，重试只会让用户多等一轮；留一次兜底即可。
         maxRetries: 1,
         // 免费模型偶发「连上但不出字」：首字 30s、字间 20s 无响应就收尾，
         // 避免界面永远停在「流式生成中」。

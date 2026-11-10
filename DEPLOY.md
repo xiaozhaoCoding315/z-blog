@@ -76,7 +76,7 @@ nano .env
 
 ```ini
 DB_PASSWORD=一个强密码
-AI_API_KEY=你的智谱key             # 聊天/摘要（https://open.bigmodel.cn）
+AI_API_KEY=你的Agnes key              # 聊天/摘要（https://agnes-ai.cn）
 EMBEDDING_API_KEY=你的百炼key       # 向量化（https://bailian.console.aliyun.com）
 SYNC_SECRET=一串随机字符           # openssl rand -hex 16
 NEXT_PUBLIC_SITE_URL=https://你的域名   # 构建期内联；没有 HTTPS 时登录 cookie 不会带 Secure
@@ -215,7 +215,7 @@ gunzip -c ~/backup_2026-10-25.sql.gz | docker compose exec -T db psql -U blog bl
 
 **Q：改了 `.env` 不生效？** 环境变量在构建期（NEXT_PUBLIC_*）和运行期都会用到：本地重新构建并用 `scripts/deploy.sh` 发布；2C2G 服务器只执行 `docker compose up -d --no-build`（禁止在服务器构建）；内存 ≥ 4G 且选择服务器直接构建的，按 §2/§3 方式 A 重新构建。
 
-**Q：AI 问答报「AI 功能未启用」？** 检查 `.env` 的 `AI_API_KEY`（智谱）和 `EMBEDDING_API_KEY`（百炼），然后 `docker compose restart app`。
+**Q：AI 问答报「AI 功能未启用」？** 检查 `.env` 的 `AI_API_KEY`（Agnes）和 `EMBEDDING_API_KEY`（百炼），然后 `docker compose restart app`。
 
 **Q：想全量重建向量？** `curl -X POST -H "x-sync-secret: 你的密钥" http://服务器IP/api/sync?force=1`。
 

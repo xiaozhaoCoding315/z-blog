@@ -15,8 +15,8 @@ import { usePathname } from "next/navigation";
  *   生活             —— 叶片与风
  *   其余阅读页        —— 极轻的尘埃与弧线
  *
- * 音乐页(/playlist)有自己的琴弦，助手页(/assistant)有自己的控制台，
- * 终端也有独立界面，这里主动让位，不叠加第二套动效。
+ * 放歌时全站共用歌单的两侧琴弦（MusicProvider 统一挂载），
+ * 助手页(/assistant)有自己的控制台与音乐粒子场，这里主动让位，不叠加第二套动效。
  */
 
 export type AmbientVariant =

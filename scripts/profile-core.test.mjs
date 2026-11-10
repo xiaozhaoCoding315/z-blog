@@ -63,7 +63,7 @@ test("资料：生日必须是真实、已过去且不早于 1900 的日期", ()
   assert.equal(parseProfileInput(fd({ birthday: "1998/03/12" })).ok, false);
 });
 
-test("资料：链接必须 http(s)，头像额外允许站内 /media/", () => {
+test("资料：链接必须 http(s)，头像只允许本站 /media/ 图片", () => {
   assert.equal(
     parseProfileInput(fd({ website: "https://example.com" })).ok,
     true
@@ -74,10 +74,21 @@ test("资料：链接必须 http(s)，头像额外允许站内 /media/", () => {
     parseProfileInput(fd({ avatarUrl: "/media/avatar.png" })).ok,
     true
   );
+  assert.equal(
+    parseProfileInput(
+      fd({ avatarUrl: `/media/2026/11/${"a".repeat(32)}.webp` })
+    ).ok,
+    true
+  );
   assert.equal(parseProfileInput(fd({ avatarUrl: "/etc/passwd" })).ok, false);
   assert.equal(
+    parseProfileInput(fd({ avatarUrl: "/media/../private/avatar.png" })).ok,
+    false
+  );
+  // 外链头像已经下线：只接受本站上传后的 /media/ 路径
+  assert.equal(
     parseProfileInput(fd({ avatarUrl: "https://cdn.example.com/a.png" })).ok,
-    true
+    false
   );
 });
 

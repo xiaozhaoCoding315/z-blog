@@ -133,7 +133,11 @@ test("播放器控制是命令式的，播放状态不被异步事件来回翻�
   assert.match(musicProvider, /const startPlayback = useCallback/);
   assert.match(musicProvider, /const pausePlayback = useCallback/);
   assert.match(musicProvider, /const syncPlaying = useCallback/);
-  assert.match(musicProvider, /onPlay=\{syncPlaying\}/);
+  // onPlay 先清失败计数再同步真实状态；仍然以元素事件为准，不自造 playing
+  assert.match(
+    musicProvider,
+    /onPlay=\{\(\) => \{[\s\S]{0,120}?syncPlaying\(\);/
+  );
   assert.match(musicProvider, /onPause=\{syncPlaying\}/);
   // 只允许换曲 effect 依赖 audioSrc；任何把 playing 也放进依赖的 effect 都会重启回环
   assert.doesNotMatch(musicProvider, /\}, \[audioSrc, playing/);

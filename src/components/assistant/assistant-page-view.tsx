@@ -16,6 +16,7 @@ import {
   renderMessageText,
   type ChatSource,
 } from "@/components/assistant/assistant-shared";
+import { AssistantMusicField } from "@/components/assistant/assistant-music-field";
 
 export interface AssistantPrompt {
   text: string;
@@ -46,12 +47,13 @@ function needsContext(question: string) {
   return question.length <= RETRIEVAL_QUERY_LENGTH || CONTINUATION_START.test(question);
 }
 
-/** 环境变量里是 API 用的 slug（glm-4.7-flash），界面显示产品名 GLM-4.7-Flash。 */
+/** 环境变量里是 API 用的 slug（agnes-3.0-flash），界面显示产品名 Agnes-3.0-Flash。 */
 function formatModelLabel(id: string) {
   return id
     .split(/[_-]/)
     .map((part) => {
       if (part.toLowerCase() === "glm") return "GLM";
+      if (part.toLowerCase() === "agnes") return "Agnes";
       if (/^\d+(\.\d+)?$/.test(part)) return part;
       return part.charAt(0).toUpperCase() + part.slice(1);
     })
@@ -161,6 +163,7 @@ export function AssistantPageView({
   return (
     <div className="assistant-page" data-status={status} data-busy={busy ? "true" : "false"}>
       <section className="assistant-hero" aria-labelledby="assistant-title" data-reveal>
+        <AssistantMusicField />
         <div className="assistant-flow" aria-hidden="true">
           <span className="assistant-flow-line" />
           <span className="assistant-flow-line" />

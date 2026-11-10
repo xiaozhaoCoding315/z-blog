@@ -13,7 +13,7 @@
 - RSS / Sitemap / 动态 OG 分享卡片 / JSON-LD 结构化数据
 - 站内评论（登录后发言）、自建浏览量统计
 
-**AI 能力**（智谱 GLM，OpenAI 兼容协议，可一键换供应商）
+**AI 能力**（Agnes `agnes-3.0-flash`，OpenAI 兼容协议，可一键换供应商）
 - **RAG 问答助手**：右下角悬浮窗，基于全站笔记流式回答，回答带 `[1][2]` 引用溯源，点击直达原文锚点
 - **语义搜索**：`⌘K / Ctrl K` 唤起，向量检索命中「意思相近」的内容（搜「上线」找到「部署」）
 - **AI 自动摘要**：frontmatter 缺 description 的笔记，同步时自动生成摘要
@@ -128,8 +128,8 @@ scripts/              # 同步 CLI 与 Docker entrypoint
 | 变量 | 说明 |
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL 连接串 |
-| `AI_API_KEY` | 智谱 API key（[免费注册](https://open.bigmodel.cn)），留空则 AI 功能降级 |
-| `CHAT_MODEL` / `EMBEDDING_MODEL` | 默认 `glm-4.7-flash` / `embedding-3` |
+| `AI_API_KEY` | Agnes API key（[注册地址](https://agnes-ai.cn)，体验价免费），留空则 AI 功能降级 |
+| `CHAT_MODEL` / `EMBEDDING_MODEL` | 默认 `agnes-3.0-flash` / `text-embedding-v3` |
 | `NEXT_PUBLIC_SITE_URL` | 站点地址（部署后改为 `https://域名`；构建期内联，改完需重新构建） |
 
 ## 部署

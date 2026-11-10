@@ -51,6 +51,8 @@ interface MusicContextValue {
   step: (delta: number) => void;
   seek: (value: number) => void;
   stop: () => void;
+  /** 给 canvas 动效读的实时播放头；不要用它驱动 React 渲染 */
+  getAudioTime: () => number;
 }
 
 const MusicContext = createContext<MusicContextValue | null>(null);
@@ -73,7 +75,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [framePlaying, setFramePlaying] = useState(true);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  /** 每次主动选曲都 +1：单曲循环时 audioSrc 不变，靠它重新 load/起播 */
+  const [playToken, setPlayToken] = useState(0);
   const [audioFailed, setAudioFailed] = useState(false);
+  const [skipNotice, setSkipNotice] = useState<{ id: number; text: string } | null>(
+    null
+  );
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [lyricsReload, setLyricsReload] = useState(0);
   const [lyricsResult, setLyricsResult] = useState<{
@@ -85,6 +92,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const coverButtonRef = useRef<HTMLButtonElement | null>(null);
   const autoplayRef = useRef(false);
+  /** 连续音源失败计数：一首坏歌跳过即可，整队都坏时停下来，避免死循环切歌 */
+  const audioFailuresRef = useRef(0);
+  const noticeIdRef = useRef(0);
 
   const current =
     queue && currentIndex !== null ? queue.tracks[currentIndex] ?? null : null;
@@ -96,7 +106,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const trackExternalId = current?.externalId ?? null;
   const lyricsRequestKey =
     trackId === null ? null : `${trackPlatform}:${trackExternalId ?? trackId}#${lyricsReload}`;
-  const ambientAllowed = pathname.startsWith("/playlist");
+  // 除小元同学控制台外，其余页面共用歌单的两侧琴弦；助手页用自己的粒子场。
+  const ambientAllowed = !pathname.startsWith("/assistant");
 
   const select = useCallback((index: number) => {
     autoplayRef.current = true;
@@ -106,11 +117,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     setAudioFailed(false);
     setTime(0);
     setDuration(0);
+    setPlayToken((value) => value + 1);
   }, []);
 
   const playQueue = useCallback(
     (tracks: TrackView[], index: number, meta: MusicQueueMeta) => {
       if (!tracks[index]) return;
+      audioFailuresRef.current = 0;
+      setSkipNotice(null);
       setQueue({ tracks, title: meta.title, cover: meta.cover });
       select(index);
     },
@@ -119,6 +133,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const startPlayback = useCallback(() => {
     autoplayRef.current = true;
+    audioFailuresRef.current = 0;
     const audio = audioRef.current;
     if (!audio) return;
     setPlaying(true);
@@ -145,12 +160,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const stop = useCallback(() => {
     autoplayRef.current = false;
+    audioFailuresRef.current = 0;
     setLyricsOpen(false);
     setQueue(null);
     setCurrentIndex(null);
     setPlaying(false);
     setFramePlaying(true);
     setAudioFailed(false);
+    setSkipNotice(null);
     setTime(0);
     setDuration(0);
     audioRef.current?.pause();
@@ -183,12 +200,53 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     [currentIndex, queue, select]
   );
 
+  const announceSkip = useCallback((text: string) => {
+    setSkipNotice({ id: ++noticeIdRef.current, text });
+  }, []);
+
+  /**
+   * VIP / 失效音源：不要在坏歌上停住，直接切下一首。
+   * 失败计数不在这里清零——只有真正开始播放、用户重新起播或换队列才清零，
+   * 否则整队都坏时会无限循环。计数达到队列长度就停在官方播放器兜底。
+   */
+  const handleAudioError = useCallback(() => {
+    if (!audioSrc) return;
+    audioFailuresRef.current += 1;
+    const queueLength = queue?.tracks.length ?? 0;
+
+    if (
+      queue &&
+      currentIndex !== null &&
+      queueLength > 1 &&
+      audioFailuresRef.current < queueLength
+    ) {
+      announceSkip(`《${current?.title ?? "当前曲目"}》音源不可用，已自动播放下一首`);
+      step(1);
+      return;
+    }
+
+    autoplayRef.current = false;
+    setAudioFailed(true);
+    setPlaying(false);
+    setFramePlaying(true);
+    announceSkip(
+      queueLength > 1
+        ? "队列里的音源都不可用，先停在这里。"
+        : "这首曲目的音源不可用，已切换到官方播放器。"
+    );
+  }, [audioSrc, queue, currentIndex, current, step, announceSkip]);
+
   const seek = useCallback((value: number) => {
     const audio = audioRef.current;
     if (!audio) return;
     audio.currentTime = value;
     setTime(value);
   }, []);
+
+  const getAudioTime = useCallback(
+    () => audioRef.current?.currentTime ?? 0,
+    []
+  );
 
   const openLyrics = useCallback(() => setLyricsOpen(true), []);
   const closeLyrics = useCallback(() => {
@@ -214,7 +272,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [audioSrc]);
+  }, [audioSrc, playToken]);
 
   // 当前曲目的歌词只读一次：歌词页和两侧琴弦共用同一份，避免重复请求。
   useEffect(() => {
@@ -249,6 +307,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [lyricsRequestKey, trackPlatform, trackExternalId]);
+
+  // 跳过提示只停留几秒，不占住播放器；同一秒内连续跳歌只显示最新一条。
+  useEffect(() => {
+    if (!skipNotice) return;
+    const timer = window.setTimeout(() => {
+      setSkipNotice((value) => (value?.id === skipNotice.id ? null : value));
+    }, 6000);
+    return () => window.clearTimeout(timer);
+  }, [skipNotice]);
 
   const lyricsState: LyricsLoadState = useMemo(() => {
     if (trackId === null) return { status: "idle", lyrics: null };
@@ -296,6 +363,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       step,
       seek,
       stop,
+      getAudioTime,
     }),
     [
       current,
@@ -309,6 +377,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       step,
       seek,
       stop,
+      getAudioTime,
     ]
   );
 
@@ -320,7 +389,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         ref={audioRef}
         src={audioFailed ? undefined : audioSrc ?? undefined}
         preload="metadata"
-        onPlay={syncPlaying}
+        onPlay={() => {
+          audioFailuresRef.current = 0;
+          setSkipNotice(null);
+          syncPlaying();
+        }}
         onPause={syncPlaying}
         onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
         onLoadedMetadata={(event) => {
@@ -328,13 +401,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           if (Number.isFinite(next) && next > 0) setDuration(next);
         }}
         onEnded={() => step(1)}
-        onError={() => {
-          if (!audioSrc) return;
-          autoplayRef.current = false;
-          setAudioFailed(true);
-          setPlaying(false);
-          setFramePlaying(true);
-        }}
+        onError={handleAudioError}
       />
 
       <AnimatePresence>
@@ -439,6 +506,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
               {audioFailed && frameMode && (
                 <p className="playlist-dock-fallback">
                   这首曲目受版权限制，已切换到网易云官方播放器。
+                </p>
+              )}
+
+              {skipNotice && (
+                <p className="playlist-dock-skip" role="status">
+                  {skipNotice.text}
                 </p>
               )}
             </div>

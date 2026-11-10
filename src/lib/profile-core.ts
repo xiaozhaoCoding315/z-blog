@@ -44,13 +44,15 @@ const httpUrl = z
     }
   }, "链接必须是 http(s) 地址");
 
+// 头像只认本站上传：外链既不经过尺寸/格式检查，也会把访客的 IP 送给第三方。
 const avatarUrl = z
   .string()
   .trim()
   .max(500, "头像地址太长")
   .refine(
-    (value) => value.startsWith("/media/") || /^https?:\/\//i.test(value),
-    "头像必须是 http(s) 地址或站内 /media/ 路径"
+    (value) =>
+      /^\/media\/(?!.*\.\.)[A-Za-z0-9/_-]+\.(webp|jpe?g|png)$/.test(value),
+    "头像必须先用「上传本地图片」传到本站"
   );
 
 const birthdaySchema = z
@@ -117,7 +119,7 @@ export function parseProfileInput(fd: FormData): ParseResult<ProfileInput> {
 
   const rawAvatar = optional(fd, "avatarUrl");
   if (rawAvatar && !avatarUrl.safeParse(rawAvatar).success) {
-    return { ok: false, error: "头像必须是 http(s) 地址或站内 /media/ 路径" };
+    return { ok: false, error: "头像必须先用「上传本地图片」传到本站" };
   }
 
   return {

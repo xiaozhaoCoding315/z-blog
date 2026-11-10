@@ -4,6 +4,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   contentHash,
   isSafeMediaPath,
@@ -11,6 +12,10 @@ import {
   mediaFileName,
   sniffImageType,
 } from "../src/lib/upload-core.ts";
+
+function read(relativePath) {
+  return readFileSync(new URL(relativePath, import.meta.url), "utf8");
+}
 
 const bytes = (...xs) => new Uint8Array(xs);
 
@@ -60,6 +65,32 @@ test("文件名用哈希前 32 位加扩展名", () => {
     mediaFileName(hash, "png"),
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png"
   );
+});
+
+test("头像上传只对登录用户开放，并且有更小上限与频率限制", () => {
+  const route = read("../src/app/api/profile/avatar/route.ts");
+  assert.match(route, /getSessionUser/);
+  assert.match(route, /MAX_AVATAR_BYTES/);
+  assert.match(route, /rateLimit\(`avatar:m:\$\{user\.id\}`, 6/);
+  assert.match(route, /rateLimit\(`avatar:d:\$\{user\.id\}`, 20/);
+  assert.match(route, /sniffImageType/);
+  assert.match(route, /writeUpload/);
+  // 与站长专用上传不同：这里不能再要求 owner，但仍要求登录
+  assert.doesNotMatch(route, /role !== "owner"/);
+  assert.match(route, /status: 401/);
+});
+
+test("资料表单改为本地选图，不再提供外链输入", () => {
+  const form = read("../src/components/profile/profile-form.tsx");
+  const field = read("../src/components/profile/avatar-upload-field.tsx");
+  assert.match(form, /<AvatarUploadField/);
+  assert.doesNotMatch(form, /name="avatarUrl"\s+type="text"/);
+  assert.match(field, /type="file"/);
+  assert.match(field, /accept="image\/webp,image\/jpeg,image\/png"/);
+  assert.match(field, /createImageBitmap/);
+  assert.match(field, /\/api\/profile\/avatar/);
+  assert.match(field, /type="hidden" name="avatarUrl"/);
+  assert.match(field, /取消外链|不再接受外链/);
 });
 
 test("路径穿越一律拒绝", () => {

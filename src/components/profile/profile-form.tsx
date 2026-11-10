@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { UserAvatar } from "@/components/site/user-avatar";
+import { AvatarUploadField } from "@/components/profile/avatar-upload-field";
 import { GENDER_LABEL, GENDERS, profileDisplayName } from "@/lib/profile-core";
 import type { OwnProfile } from "@/lib/profile-server";
 import {
@@ -22,7 +22,11 @@ export function ProfileForm({
   publicHref: string;
 }) {
   const [displayName, setDisplayName] = useState(profile.displayName ?? "");
-  const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl ?? "");
+  // 只把站内 /media/ 路径带进表单；旧外链只预览，保存时清掉。
+  const [avatarUrl, setAvatarUrl] = useState(
+    profile.avatarUrl?.startsWith("/media/") ? profile.avatarUrl : ""
+  );
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [showGender, setShowGender] = useState(profile.showGender);
   const [showBirthday, setShowBirthday] = useState(profile.showBirthday);
   const [state, formAction, pending] = useActionState(
@@ -34,21 +38,17 @@ export function ProfileForm({
 
   return (
     <form action={formAction} onReset={(event) => event.preventDefault()}>
-      <div className="profile-form-avatar">
-        <UserAvatar name={previewName} avatarUrl={avatarUrl} size="lg" />
-        <div className="profile-form-avatar-fields">
-          <label htmlFor="avatarUrl">头像地址</label>
-          <input
-            id="avatarUrl"
-            name="avatarUrl"
-            type="text"
-            maxLength={500}
-            value={avatarUrl}
-            onChange={(event) => setAvatarUrl(event.target.value)}
-            placeholder="https://… 不填就用昵称首字生成"
-          />
-        </div>
-      </div>
+      <AvatarUploadField
+        previewName={previewName}
+        value={avatarUrl}
+        legacySrc={
+          profile.avatarUrl && !profile.avatarUrl.startsWith("/media/")
+            ? profile.avatarUrl
+            : null
+        }
+        onChange={setAvatarUrl}
+        onBusyChange={setAvatarBusy}
+      />
 
       <div className="profile-form-grid">
         <div>
@@ -180,8 +180,12 @@ export function ProfileForm({
       )}
 
       <div className="profile-form-actions">
-        <button type="submit" disabled={pending} className="tactile">
-          {pending ? "保存中…" : "保存资料"}
+        <button
+          type="submit"
+          disabled={pending || avatarBusy}
+          className="tactile"
+        >
+          {pending ? "保存中…" : avatarBusy ? "头像上传中…" : "保存资料"}
         </button>
         <Link href={publicHref}>看我的主页 ↗</Link>
       </div>

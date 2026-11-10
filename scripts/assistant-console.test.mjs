@@ -66,14 +66,15 @@ test("界面明确是深色 HUD，与站内纸面页区分", () => {
   assert.match(view, /className="assistant-flow-scan"/);
 });
 
-test("模型配置默认 GLM-4.7-Flash，界面显示产品名而不是 API slug", () => {
-  assert.match(ai, /CHAT_MODEL \?\? "glm-4\.7-flash"/);
-  assert.match(envExample, /CHAT_MODEL=glm-4\.7-flash/);
-  assert.match(readme, /默认 `glm-4\.7-flash`/);
+test("模型配置默认 Agnes-3.0-Flash，界面显示产品名而不是 API slug", () => {
+  assert.match(ai, /CHAT_MODEL \?\? "agnes-3\.0-flash"/);
+  assert.match(ai, /https:\/\/api\.agnes-ai\.cn\/v1/);
+  assert.match(envExample, /CHAT_MODEL=agnes-3\.0-flash/);
+  assert.match(readme, /默认 `agnes-3\.0-flash`/);
   assert.match(view, /formatModelLabel\(modelId\)/);
   assert.match(view, /MODEL \{modelLabel\}/);
   assert.match(view, /READY \/ \{modelLabel\}/);
-  assert.match(view, /part\.toLowerCase\(\) === "glm"\) return "GLM"/);
+  assert.match(view, /part\.toLowerCase\(\) === "agnes"\) return "Agnes"/);
 });
 
 test("流式输出有可见证据：尾部光标、状态条、字符数与停止按钮", () => {
@@ -93,7 +94,7 @@ test("流式输出有可见证据：尾部光标、状态条、字符数与停�
 });
 
 test("模型繁忙时快速失败，并把供应商错误翻译成用户能看懂的话", () => {
-  // 智谱 429 是账号级限流，默认两次重试会把一次失败拖到一两分钟
+  // 供应商 429 是账号级限流，默认两次重试会把一次失败拖到一两分钟
   assert.match(route, /maxRetries:\s*1/);
   assert.match(route, /timeout:\s*\{ firstChunkMs: 30_000, chunkMs: 20_000 \}/);
   assert.match(route, /APICallError\.isInstance\(cause\)/);
@@ -104,6 +105,18 @@ test("模型繁忙时快速失败，并把供应商错误翻译成用户能看�
   // 错误文案不透传供应商原文；服务端日志只记状态码，不碰响应体
   assert.doesNotMatch(route, /responseBody/);
   assert.match(route, /\[api\/chat\] 模型调用失败/);
+});
+
+test("放歌时助手页用独立粒子场，不叠加歌单琴弦", () => {
+  const field = read("../src/components/assistant/assistant-music-field.tsx");
+  assert.match(view, /<AssistantMusicField \/>/);
+  assert.match(field, /current && playing && !frameMode/);
+  assert.match(field, /getAudioTime\(\)/);
+  assert.match(field, /Math\.min\(window\.devicePixelRatio \|\| 1, 2\)/);
+  assert.match(field, /prefers-reduced-motion/);
+  assert.match(field, /document\.hidden/);
+  assert.match(css, /\.assistant-music-field\s*\{/);
+  assert.match(css, /pointer-events:\s*none/);
 });
 
 test("持续动画只在组合动效门里，减少动效时读数静态可见", () => {

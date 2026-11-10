@@ -43,8 +43,8 @@ function loadEnv() {
 
 async function classifyBatch(items) {
   const apiKey = process.env.AI_API_KEY ?? process.env.ZHIPU_API_KEY;
-  const baseUrl = process.env.AI_BASE_URL ?? "https://open.bigmodel.cn/api/paas/v4";
-  const model = process.env.CHAT_MODEL ?? "glm-4.6";
+  const baseUrl = process.env.AI_BASE_URL ?? "https://api.agnes-ai.cn/v1";
+  const model = process.env.CHAT_MODEL ?? "agnes-3.0-flash";
 
   const payload = items.map((it, i) => ({
     no: i + 1,
