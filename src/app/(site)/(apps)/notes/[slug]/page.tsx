@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
+import { Suspense } from "react";
 import { getAllNotes, getNoteBySlug, getAdjacentNotes } from "@/content";
 import { extractHeadings } from "@/lib/content-core";
 import { RenderMDX } from "@/lib/mdx";
@@ -26,7 +26,11 @@ export function generateStaticParams() {
     .map((note) => ({ slug: note.slug }));
 }
 
-// 笔记正文与评论都依赖 params 生成，禁用 instant shell 以换取完整首屏
+/*
+ * 正文依赖 slug，客户端进站时允许服务端阻塞：换来每次直接访问都命中
+ * 按 slug 预渲染的完整正文。评论依赖会话，单独放到 Suspense 里流式补齐，
+ * 不再让 `connection()` 把整页拖成动态渲染。
+ */
 export const instant = false;
 
 export async function generateMetadata({
@@ -59,17 +63,9 @@ export default async function NotePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  // connection() 必须在任何 cookies 读取或时间计算之前
-  await connection();
   const { slug } = await params;
   const note = getNoteBySlug(slug);
   if (!note || note.meta.draft) notFound();
-
-  const [comments, user] = await Promise.all([
-    getVisibleComments("note", slug),
-    getSessionUser(),
-  ]);
-  const ready = loginReady();
 
   const headings = extractHeadings(note.content);
   const { prev, next } = getAdjacentNotes(slug);
@@ -192,41 +188,23 @@ export default async function NotePage({
 
             <RelatedPosts slug={slug} fallback={relatedFallback} />
 
-            {/* 评论：复用阶段 3 的站内评论系统，目标类型为 note */}
+            {/*
+              评论读会话与数据库，放进 Suspense 让正文先静态输出；
+              评论区在请求到达后单独流式补齐，不拖慢首屏。
+            */}
             <section className="mt-14 border-t border-border pt-8" data-reveal>
               <h2 className="font-heading text-lg font-bold tracking-tight">
                 评论
               </h2>
-              <p className="mt-1 font-mono text-[13px] leading-5 text-muted-foreground">
-                {comments.available
-                  ? `${comments.comments.length} 条`
-                  : "Not Available"}
-              </p>
-              <div className="mt-4">
-                <CommentList
-                  comments={comments.comments}
-                  available={comments.available}
-                />
-              </div>
-              <div className="mt-8">
-                {user ? (
-                  <CommentForm targetType="note" targetId={slug} />
-                ) : ready ? (
-                  <p className="reading-body text-ink-dim">
-                    登录后可以评论。
-                    <Link
-                      href="/login"
-                      className="ml-1 border border-data px-2 py-0.5 font-mono text-[12px] leading-5 text-data transition-colors hover:text-foreground"
-                    >
-                      去登录
-                    </Link>
+              <Suspense
+                fallback={
+                  <p className="mt-1 font-mono text-[13px] leading-5 text-muted-foreground">
+                    读取评论…
                   </p>
-                ) : (
-                  <p className="reading-body text-ink-dim">
-                    登录暂未开放（服务器还没配好发信），浏览不受影响。
-                  </p>
-                )}
-              </div>
+                }
+              >
+                <NoteComments slug={slug} />
+              </Suspense>
             </section>
           </div>
         </div>
@@ -245,6 +223,53 @@ export default async function NotePage({
           }),
         }}
       />
+    </>
+  );
+}
+
+/**
+ * 评论区：评论与当前会话都按请求读取，由外层 Suspense 单独流式补齐。
+ * 正文与目录不依赖它，可以整页预渲染。
+ */
+async function NoteComments({ slug }: { slug: string }) {
+  const [comments, user] = await Promise.all([
+    getVisibleComments("note", slug),
+    getSessionUser(),
+  ]);
+  const ready = loginReady();
+
+  return (
+    <>
+      <p className="mt-1 font-mono text-[13px] leading-5 text-muted-foreground">
+        {comments.available
+          ? `${comments.comments.length} 条`
+          : "Not Available"}
+      </p>
+      <div className="mt-4">
+        <CommentList
+          comments={comments.comments}
+          available={comments.available}
+        />
+      </div>
+      <div className="mt-8">
+        {user ? (
+          <CommentForm targetType="note" targetId={slug} />
+        ) : ready ? (
+          <p className="reading-body text-ink-dim">
+            登录后可以评论。
+            <Link
+              href="/login"
+              className="ml-1 border border-data px-2 py-0.5 font-mono text-[12px] leading-5 text-data transition-colors hover:text-foreground"
+            >
+              去登录
+            </Link>
+          </p>
+        ) : (
+          <p className="reading-body text-ink-dim">
+            登录暂未开放（服务器还没配好发信），浏览不受影响。
+          </p>
+        )}
+      </div>
     </>
   );
 }

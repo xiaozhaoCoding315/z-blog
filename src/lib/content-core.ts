@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import matter from "gray-matter";
+import GithubSlugger from "github-slugger";
 import { z } from "zod";
 
 export const NOTES_DIR = path.join(process.cwd(), "content", "notes");
@@ -146,6 +147,9 @@ export function extractHeadings(markdown: string): {
   id: string;
 }[] {
   const headings: { level: 2 | 3; text: string; id: string }[] = [];
+  // 同一个 slugger 实例让重复标题得到 -1 / -2 后缀，
+  // 与 rehype-slug 编译正文时的去重行为保持一致。
+  const slugger = new GithubSlugger();
   const lines = markdown.split("\n");
   let inCode = false;
   for (const line of lines) {
@@ -157,13 +161,11 @@ export function extractHeadings(markdown: string): {
         .replace(/`([^`]*)`/g, "$1")
         .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
         .trim();
-      // 与 rehype-slug 相同的 GitHub slugify 规则
-      const id = text
-        .toLowerCase()
-        .trim()
-        .replace(/[^\p{L}\p{N}\s-]/gu, "")
-        .replace(/\s+/g, "-");
-      headings.push({ level: m[1].length as 2 | 3, text, id });
+      headings.push({
+        level: m[1].length as 2 | 3,
+        text,
+        id: slugger.slug(text),
+      });
     }
   }
   return headings;

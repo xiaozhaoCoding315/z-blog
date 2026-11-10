@@ -1,8 +1,9 @@
-/** GitHub 风格标题 slug（与 rehype-slug 一致），用于生成标题锚点 */
+import { slug } from "github-slugger";
+
+/**
+ * GitHub 风格标题 slug，与正文 rehype-slug 使用同一实现。
+ * 不要自己写正则替换：下划线、加号和重复标题的处理都会和正文对不上。
+ */
 export function githubSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\p{L}\p{N}\s-]/gu, "")
-    .replace(/\s+/g, "-");
+  return slug(text);
 }
