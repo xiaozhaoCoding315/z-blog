@@ -35,6 +35,27 @@ export function callbackUrl(siteUrl: string) {
 /** 登录会话 cookie 名 */
 export const SESSION_COOKIE = "dsh_blog_session";
 
+/** GitHub OAuth 的 state 绑定：一次性 nonce 与回跳地址，十分钟内有效 */
+export const OAUTH_STATE_COOKIE = "dsh_github_oauth_state";
+export const OAUTH_NEXT_COOKIE = "dsh_github_oauth_next";
+export const OAUTH_COOKIE_PATH = "/api/auth/github";
+export const OAUTH_STATE_MAX_AGE = 600;
+
+/** 回跳地址存 cookie 时转成 ASCII，避免非 ASCII 路径被中间层丢弃 */
+export function encodeOauthNext(next: string): string {
+  return Buffer.from(next, "utf8").toString("base64url");
+}
+
+/** 解不出或不安全时一律回首页，绝不把原始字符串直接当跳转目标 */
+export function decodeOauthNext(raw: string | undefined): string {
+  if (!raw) return "/";
+  try {
+    return sanitizeNext(Buffer.from(raw, "base64url").toString("utf8"));
+  } catch {
+    return "/";
+  }
+}
+
 /** 会话有效期：30 天 */
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 
