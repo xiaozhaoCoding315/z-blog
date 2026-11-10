@@ -41,12 +41,17 @@ export async function ensureSchema() {
       slug text PRIMARY KEY,
       title text NOT NULL,
       content_hash text NOT NULL,
+      embedding_hash text,
       summary text,
       suggested_tags jsonb DEFAULT '[]'::jsonb,
       summary_embedding vector(1024),
       synced_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  // 老库没有 embedding_hash：补列后第一次同步会自动回填缺失的向量
+  await db.execute(
+    sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS embedding_hash text`
+  );
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS chunks (
       id bigserial PRIMARY KEY,

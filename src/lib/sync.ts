@@ -1,9 +1,10 @@
-import { inArray, notInArray, sql } from "drizzle-orm";
+import { eq, inArray, notInArray, sql } from "drizzle-orm";
 import { embedMany, generateText } from "ai";
 import { getDb, ensureSchema } from "@/db/client";
 import { chunks, posts as postsTable } from "@/db/schema";
 import { listRawNotes } from "@/lib/content-core";
 import { chunkMarkdown } from "@/lib/chunk";
+import { needsSync } from "@/lib/sync-plan";
 import {
   chatEnabled,
   chatModel,
@@ -53,7 +54,7 @@ export async function syncPosts(options?: {
   for (const post of fsPosts) {
     processedSlugs.push(post.slug);
     const prev = existingBySlug.get(post.slug);
-    if (!options?.force && prev?.contentHash === post.hash) {
+    if (!needsSync(prev, post.hash, embeddingEnabled, options?.force)) {
       continue;
     }
 
@@ -133,6 +134,12 @@ export async function syncPosts(options?: {
       if (rows.length > 0) {
         await db.insert(chunks).values(rows);
       }
+      // 分块全部落库后才追平 embeddingHash；中途失败时它保持旧值，
+      // 下一次同步会重新处理这篇，而不是被 contentHash 骗过去。
+      await db
+        .update(postsTable)
+        .set({ embeddingHash: post.hash })
+        .where(eq(postsTable.slug, post.slug));
       console.log(`[sync]   ${pieces.length} 个分块已向量化`);
     }
 

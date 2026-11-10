@@ -20,6 +20,8 @@ export const posts = pgTable("posts", {
   slug: text("slug").primaryKey(),
   title: text("title").notNull(),
   contentHash: text("content_hash").notNull(),
+  /** 最后一次成功写入分块向量的内容哈希；失败或未启用向量时保持旧值 */
+  embeddingHash: text("embedding_hash"),
   summary: text("summary"),
   suggestedTags: jsonb("suggested_tags").$type<string[]>().default([]),
   summaryEmbedding: vector("summary_embedding", { dimensions: 1024 }),
