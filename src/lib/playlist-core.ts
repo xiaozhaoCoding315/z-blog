@@ -516,10 +516,21 @@ export function parseSuggestionInput(raw: string): ParseResult<SuggestionInput> 
   return { ok: true, value: { kind: "name", query } };
 }
 
-/** 直接音频（mp3/m4a/ogg）才能用原生 <audio> 播放 */
+/**
+ * 直接音频（mp3/m4a/ogg）才能用原生 <audio> 播放。
+ *
+ * 站内音源存的是 `/media/...` 相对路径，不能拿 `new URL()` 直接判死；
+ * 用占位 origin 解析，同时只放行 http(s) 和单斜杠站内路径。
+ */
 export function isDirectAudioUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  const isAbsolute = /^https?:\/\//i.test(trimmed);
+  const isSiteRelative = /^\/(?!\/)/.test(trimmed);
+  if (!isAbsolute && !isSiteRelative) return false;
+
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(trimmed, "https://site.invalid");
     return /\.(mp3|m4a|aac|ogg|oga|wav|flac)$/i.test(parsed.pathname);
   } catch {
     return false;

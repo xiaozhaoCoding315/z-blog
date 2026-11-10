@@ -347,6 +347,14 @@ test("播放地址：官方外链播放器与直接音频判断", () => {
   assert.equal(isDirectAudioUrl("https://cdn.example.com/a.M4A?x=1"), true);
   assert.equal(isDirectAudioUrl("https://music.163.com/song?id=1"), false);
   assert.equal(isDirectAudioUrl("不是链接"), false);
+  // 站内 /media 相对音源必须能被原生播放器识别
+  assert.equal(isDirectAudioUrl("/media/2026/11/test-tone.wav"), true);
+  assert.equal(isDirectAudioUrl("/media/2026/11/test-tone.wav?dl=1"), true);
+  assert.equal(isDirectAudioUrl("/media/2026/11/cover.webp"), false);
+  // 协议相对与危险协议不算站内路径
+  assert.equal(isDirectAudioUrl("//cdn.example.com/a.mp3"), false);
+  assert.equal(isDirectAudioUrl("javascript:alert(1)//a.mp3"), false);
+  assert.equal(isDirectAudioUrl("ftp://cdn.example.com/a.mp3"), false);
 });
 
 test("时长格式化", () => {
