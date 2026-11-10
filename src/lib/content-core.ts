@@ -114,6 +114,12 @@ export function isValidNoteSlug(slug: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
 }
 
+/** 只有已发布笔记才允许浏览量/点赞计数：草稿与不存在的 slug 都不写库 */
+export function isPublishedNoteSlug(slug: string): boolean {
+  const note = getRawNote(slug);
+  return Boolean(note && !note.meta.draft);
+}
+
 export function getRawNote(slug: string): Note | null {
   if (!isValidNoteSlug(slug)) return null;
   const filepath = path.resolve(NOTES_DIR, `${slug}.mdx`);

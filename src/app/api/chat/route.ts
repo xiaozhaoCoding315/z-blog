@@ -8,7 +8,6 @@ import {
   toUIMessageStream,
   embed,
 } from "ai";
-import type { UIMessage } from "ai";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
@@ -20,6 +19,7 @@ import {
 } from "@/lib/ai";
 import { githubSlug } from "@/lib/slug";
 import { buildRetrievalQuery } from "@/lib/chat-retrieval";
+import { parseChatPayload } from "@/lib/chat-input";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 120;
@@ -81,9 +81,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json()) as { messages: UIMessage[] };
-  const messages = body.messages ?? [];
-  const question = getLastUserText(messages);
+  const rawBody = await request.text().catch(() => null);
+  if (rawBody === null) {
+    return NextResponse.json({ error: "读取请求失败" }, { status: 400 });
+  }
+  const payload = parseChatPayload(rawBody);
+  if (!payload.ok) {
+    return NextResponse.json(
+      { error: payload.error },
+      { status: payload.status }
+    );
+  }
+  const { messages, question } = payload;
 
   // ---- 检索 ----
   let retrieved: RetrievedChunk[] = [];
@@ -226,22 +235,3 @@ function pickContext(candidates: RetrievedChunk[]): RetrievedChunk[] {
   return picked;
 }
 
-function messageText(message: UIMessage): string {
-  return message.parts
-    .filter(
-      (part): part is { type: "text"; text: string } => part.type === "text"
-    )
-    .map((part) => part.text)
-    .join("")
-    .trim();
-}
-
-function getLastUserText(messages: UIMessage[]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    if (message.role !== "user") continue;
-    const text = messageText(message);
-    if (text) return text;
-  }
-  return "";
-}
