@@ -5,6 +5,7 @@ import "./motion.css";
 import "./lyrics.css";
 import "./ambient.css";
 import "./assistant.css";
+import "./friends.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MotionRuntime } from "@/components/motion/motion-runtime";

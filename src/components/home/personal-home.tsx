@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { AppDefinition, IconKey } from "@/config/apps";
 import { primaryApps } from "@/config/apps";
+import { friends } from "@/config/portfolio";
 import { siteConfig } from "@/config/site";
 import { AppIcon } from "@/components/desktop/icons";
 import { Clock } from "@/components/desktop/clock";
@@ -34,7 +35,7 @@ interface PersonalHomeProps {
 
 type WeatherStyle = CSSProperties & { "--rain-index": number };
 
-const SECTIONS = ["entries", "about", "writing", "letters"] as const;
+const SECTIONS = ["entries", "about", "writing", "letters", "friends"] as const;
 type Section = (typeof SECTIONS)[number];
 
 const SECTION_LABELS: Record<Section, string> = {
@@ -42,6 +43,7 @@ const SECTION_LABELS: Record<Section, string> = {
   about: "关于",
   writing: "笔记",
   letters: "留言",
+  friends: "友链",
 };
 
 const MAIN_ENTRIES = primaryApps.slice(0, 4);
@@ -371,6 +373,56 @@ export function PersonalHome({
             <Link href="/letters" className="home-letter-link">
               去留言
             </Link>
+          </div>
+        </section>
+
+        <section
+          className="home-section home-friends"
+          id="home-friends"
+          aria-labelledby="home-friends-title"
+          onMouseEnter={() => chooseSection("friends")}
+        >
+          <header className="home-section-head" data-reveal>
+            <div>
+              <p className="home-eyebrow dark-eyebrow">友链</p>
+              <h2 id="home-friends-title">会点开的那些站</h2>
+              <p>没有互挂任务，只留我确实在读的页面。</p>
+            </div>
+            <Link href="/friends" className="home-text-link">
+              全部友链
+            </Link>
+          </header>
+          <div className="home-friends-frame" data-reveal data-spotlight>
+            {friends.length > 0 ? (
+              <div className="home-friends-chips">
+                {friends.map((friend) => (
+                  <a
+                    key={`${friend.name}-${friend.url}`}
+                    className="home-friend-chip"
+                    href={friend.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    {friend.name}
+                    <span aria-hidden="true">↗</span>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="home-friends-empty">
+                <p>
+                  友链还在一个个补：遇到真正会点开的站才加进来，不放示例占位。
+                </p>
+                <div className="home-friends-actions">
+                  <Link href="/friends" className="home-text-link">
+                    看看友链页
+                  </Link>
+                  <Link href="/letters" className="home-text-link">
+                    推荐一个站 →
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

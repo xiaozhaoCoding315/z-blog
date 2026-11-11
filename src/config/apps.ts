@@ -389,6 +389,7 @@ export function isAccountPagePath(pathname: string): boolean {
 export function isFullPagePath(pathname: string): boolean {
   return (
     isAccountPagePath(pathname) ||
+    pathname === "/friends" || pathname.startsWith("/friends/") ||
     primaryApps.some(
       (app) =>
         app.path !== null &&
