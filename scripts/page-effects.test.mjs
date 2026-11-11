@@ -26,7 +26,7 @@ test("氛围层样式接在歌词样式之后，并挂在站点布局里", () =>
   assert.match(ambient, /export function PageAmbient/);
 });
 
-test("每个入口有自己的氛围，音乐页与助手页主动让位", () => {
+test("每个入口有自己的氛围，助手页用专属神经侧翼，音乐页让位", () => {
   for (const [prefix, variant] of [
     ["/notes", "ink"],
     ["/journal", "ink"],
@@ -42,11 +42,14 @@ test("每个入口有自己的氛围，音乐页与助手页主动让位", () =>
       `${prefix} 缺少 ${variant} 氛围`
     );
   }
-  assert.match(ambient, /pathname === "\/assistant"/);
+  assert.match(ambient, /pathname === "\/assistant"[\s\S]{0,60}return "cortex"/);
   assert.match(ambient, /pathname === "\/playlist"/);
   assert.match(ambient, /pathname === "\/terminal"/);
   assert.match(ambient, /return null/);
-  // 音乐页读音频时钟，氛围层不读；两套效果不共用语言
+  // 助手页的侧翼只读页面时间：不读音频，也不用琴弦 / 钢琴语言。
+  assert.match(ambient, /drawCortex/);
+  assert.match(ambient, /wing\(1, 1450\)/);
+  assert.match(ambient, /wing\(-1, 2650\)/);
   assert.doesNotMatch(ambient, /audioRef/);
   assert.doesNotMatch(ambient, /sectionAt/);
   assert.doesNotMatch(ambient, /<LyricsStage/);

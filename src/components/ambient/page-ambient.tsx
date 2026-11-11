@@ -15,8 +15,9 @@ import { usePathname } from "next/navigation";
  *   生活             —— 叶片与风
  *   其余阅读页        —— 极轻的尘埃与弧线
  *
- * 放歌时全站共用歌单的两侧琴弦（MusicProvider 统一挂载），
- * 助手页(/assistant)有自己的控制台与音乐粒子场，这里主动让位，不叠加第二套动效。
+ * 放歌时全站共用歌单的两侧琴弦（MusicProvider 统一挂载）。
+ * 助手页(/assistant)不共用任何音乐动效：页边绿区有专属的「神经侧翼」cortex，
+ * hero 内的音乐粒子场只在播放时出现，两者分层，互不重复。
  */
 
 export type AmbientVariant =
@@ -25,6 +26,7 @@ export type AmbientVariant =
   | "film"
   | "letters"
   | "life"
+  | "cortex"
   | "quiet";
 
 const ROUTES: Array<[string, AmbientVariant]> = [
@@ -39,9 +41,10 @@ const ROUTES: Array<[string, AmbientVariant]> = [
 
 export function ambientVariantFor(pathname: string): AmbientVariant | null {
   if (pathname === "/") return null;
+  if (pathname === "/assistant" || pathname.startsWith("/assistant/")) {
+    return "cortex";
+  }
   if (
-    pathname === "/assistant" ||
-    pathname.startsWith("/assistant/") ||
     pathname === "/playlist" ||
     pathname.startsWith("/playlist/") ||
     pathname === "/terminal" ||
@@ -298,6 +301,169 @@ export function PageAmbient() {
       }
     };
 
+    /**
+     * 助手页的「神经侧翼」：只发生在主栏两侧的绿色留白里。
+     *
+     * 与其他页面的氛围刻意区分：不是蓝图网格、不是飘散尘埃，而是一对
+     * 摆动的神经束——主干、电位针脚、伸向主栏的卷须，以及沿卷须奔跑的
+     * 脉冲。它只读页面自己的时间，不需要音乐、不会与 hero 内的粒子场重叠。
+     */
+    const drawCortex = (time: number) => {
+      // 主栏宽度与 globals.css 的 .fullpage-main 保持一致（min(1240, 100% - 44px)），
+      // 效果只落在两侧绿区，不压到中间那张浅色纸面。
+      const mainWidth = Math.min(1240, Math.max(0, width - 44));
+      const gutter = (width - mainWidth) / 2;
+      if (gutter < 28) return;
+
+      // 让开吸顶的顶栏 + 潮汐栏与页脚：氛围层在页面最上层，
+      // 压住导航文字会比效果本身更显眼。
+      const top = 118;
+      const bottom = height - 90;
+      if (bottom - top < 180) return;
+
+      const mint: [number, number, number] = [111, 255, 210];
+      const cyan: [number, number, number] = [107, 217, 255];
+      const amber: [number, number, number] = [255, 211, 122];
+      const rgba = (color: [number, number, number], alpha: number) =>
+        `rgba(${color[0]},${color[1]},${color[2]},${alpha})`;
+
+      const wing = (inward: 1 | -1, seedBase: number) => {
+        const trunkX = inward === 1 ? gutter * 0.46 : width - gutter * 0.46;
+        const reach = Math.max(10, Math.min(gutter * 0.5, 240));
+        const innerEdge = inward === 1 ? gutter - 6 : width - gutter + 6;
+
+        // 竖向光束：给绿区一层「已通电」的底，呼吸很慢。
+        const beam = context.createLinearGradient(
+          trunkX - reach,
+          0,
+          trunkX + reach,
+          0
+        );
+        beam.addColorStop(0, rgba(mint, 0));
+        beam.addColorStop(
+          0.5,
+          rgba(mint, 0.05 + Math.sin(time * 0.55 + seedBase) * 0.02)
+        );
+        beam.addColorStop(1, rgba(mint, 0));
+        context.fillStyle = beam;
+        context.fillRect(trunkX - reach, top, reach * 2, bottom - top);
+
+        // 摆动的主干：一条始终存在的神经束。
+        context.beginPath();
+        for (let y = top - 18; y <= bottom + 18; y += 14) {
+          const x = trunkX + Math.sin(y * 0.014 + time * 0.5 + seedBase) * 2.2;
+          if (y === top - 18) context.moveTo(x, y);
+          else context.lineTo(x, y);
+        }
+        context.strokeStyle = rgba(mint, 0.2);
+        context.lineWidth = 1;
+        context.stroke();
+
+        const count = Math.max(3, Math.round((bottom - top) / 100));
+        for (let index = 0; index < count; index += 1) {
+          const y = top + ((index + 0.5) / count) * (bottom - top);
+          const x = trunkX + Math.sin(y * 0.014 + time * 0.5 + seedBase) * 2.2;
+          const phase = hash(seedBase + index * 7);
+          const pulse =
+            0.5 + 0.5 * Math.sin(time * (0.45 + phase * 0.55) + phase * TAU);
+          const tint = index % 4 === 0 ? cyan : mint;
+
+          glow(x, y, 12 + pulse * 10, tint, 0.08 + pulse * 0.12);
+          context.fillStyle = rgba(tint, 0.24 + pulse * 0.32);
+          context.beginPath();
+          context.arc(x, y, 1.1 + pulse * 1.3, 0, TAU);
+          context.fill();
+
+          // 朝窗口外侧的电位针脚，长度随节点呼吸。
+          const tick = 4 + pulse * reach * 0.65;
+          context.strokeStyle = rgba(cyan, 0.07 + pulse * 0.11);
+          context.lineWidth = 1;
+          context.beginPath();
+          context.moveTo(x, y);
+          context.lineTo(x - inward * tick, y);
+          context.stroke();
+          context.fillStyle = rgba(cyan, 0.2 + pulse * 0.3);
+          context.fillRect(x - inward * tick, y - 1, 2, 2);
+
+          // 朝主栏一侧伸出的卷须，末端带一个静止节点。
+          const t = hash(seedBase + index * 31);
+          const ctrlX = x + inward * reach * 0.45;
+          const ctrlY = y + (t - 0.5) * 40;
+          const rawTargetX = x + inward * reach * (0.7 + t * 0.9);
+          const targetX =
+            inward === 1
+              ? Math.min(rawTargetX, innerEdge)
+              : Math.max(rawTargetX, innerEdge);
+          const targetY = y + (t - 0.5) * 80;
+          context.strokeStyle = rgba(mint, 0.05 + pulse * 0.06);
+          context.lineWidth = 0.7;
+          context.beginPath();
+          context.moveTo(x, y);
+          context.quadraticCurveTo(ctrlX, ctrlY, targetX, targetY);
+          context.stroke();
+          context.fillStyle = rgba(mint, 0.12 + pulse * 0.16);
+          context.beginPath();
+          context.arc(targetX, targetY, 1.1, 0, TAU);
+          context.fill();
+        }
+
+        // 沿卷须奔跑的脉冲：两条互不同步的慢周期，没有音乐也一直在传。
+        for (let lane = 0; lane < 2; lane += 1) {
+          const cycle = 3 + lane * 1.7 + hash(seedBase + lane) * 1.4;
+          const phase =
+            ((time + hash(seedBase + lane * 9) * cycle) / cycle) % 1;
+          if (phase > 0.6) continue;
+          const p = phase / 0.6;
+          const eased = p * p * (3 - 2 * p);
+          const index = Math.floor(
+            hash(seedBase + lane * 13 + Math.floor(time / cycle)) * count
+          );
+          const nodeY = top + ((index + 0.5) / count) * (bottom - top);
+          const nodeX =
+            trunkX + Math.sin(nodeY * 0.014 + time * 0.5 + seedBase) * 2.2;
+          const t = hash(seedBase + index * 31);
+          const ctrlX = nodeX + inward * reach * 0.45;
+          const ctrlY = nodeY + (t - 0.5) * 40;
+          const rawTargetX = nodeX + inward * reach * (0.7 + t * 0.9);
+          const targetX =
+            inward === 1
+              ? Math.min(rawTargetX, innerEdge)
+              : Math.max(rawTargetX, innerEdge);
+          const targetY = nodeY + (t - 0.5) * 80;
+          const at = (value: number) => {
+            const inv = 1 - value;
+            return {
+              x:
+                inv * inv * nodeX +
+                2 * inv * value * ctrlX +
+                value * value * targetX,
+              y:
+                inv * inv * nodeY +
+                2 * inv * value * ctrlY +
+                value * value * targetY,
+            };
+          };
+          const head = at(eased);
+          const tail = at(Math.max(0, eased - 0.12));
+          const tint = lane === 0 ? cyan : amber;
+          context.strokeStyle = rgba(tint, 0.18 + (1 - p) * 0.26);
+          context.lineWidth = 1.4;
+          context.beginPath();
+          context.moveTo(tail.x, tail.y);
+          context.lineTo(head.x, head.y);
+          context.stroke();
+          glow(head.x, head.y, 9, tint, 0.22);
+          context.fillStyle = rgba(tint, 0.55 + (1 - p) * 0.35);
+          context.beginPath();
+          context.arc(head.x, head.y, 1.6, 0, TAU);
+          context.fill();
+        }
+      };
+
+      wing(1, 1450);
+      wing(-1, 2650);
+    };
+
     const drawStatic = () => {
       context.clearRect(0, 0, width, height);
       if (variant === "ink") drawInk(0, 0);
@@ -305,6 +471,7 @@ export function PageAmbient() {
       else if (variant === "film") drawFilm(0);
       else if (variant === "letters") drawLetters(0);
       else if (variant === "life") drawLife(0, 0);
+      else if (variant === "cortex") drawCortex(0);
       else drawQuiet(0);
     };
 
@@ -350,6 +517,7 @@ export function PageAmbient() {
       else if (variant === "film") drawFilm(time);
       else if (variant === "letters") drawLetters(time);
       else if (variant === "life") drawLife(time, scroll);
+      else if (variant === "cortex") drawCortex(time);
       else drawQuiet(time);
 
       frameId = requestAnimationFrame(frame);
