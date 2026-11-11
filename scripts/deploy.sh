@@ -11,6 +11,9 @@ PROD_COMPOSE_FILE="$ROOT/docker-compose.prod.yml"
 BASE_COMPOSE_BASENAME="docker-compose.yml"
 PROD_COMPOSE_BASENAME="docker-compose.prod.yml"
 HEALTH_RETRIES="${DEPLOY_HEALTH_RETRIES:-30}"
+# 发布记录与镜像的保留数量。每次发布会新建一个不可变 release 镜像，并把上一版
+# 再打一个 rollback 标签；不清理的话两个标签一天就能堆出十来个（每个约 350MB）。
+KEEP_RELEASES="${DEPLOY_KEEP_RELEASES:-5}"
 REMOTE_SHELL="${DEPLOY_REMOTE_SHELL:-ssh}"
 SITE_URL="${NEXT_PUBLIC_SITE_URL:-}"
 RELEASE_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(git -C "$ROOT" rev-parse --short=12 HEAD 2>/dev/null || printf 'uncommitted')"
@@ -100,6 +103,7 @@ tar czf "$SRC_PACKAGE" -C "$ROOT" -T "$MANIFEST"
 SRC_SHA="$(sha256sum "$SRC_PACKAGE" | cut -d' ' -f1)"
 SOURCE_FINGERPRINT="$(printf '%s' "$SRC_SHA" | cut -c1-12)"
 IMAGE="blog-app:release-$RELEASE_ID-$SOURCE_FINGERPRINT"
+IMAGE_TAG="${IMAGE#blog-app:}"
 
 echo "==> [2/8] 本地构建不可变镜像：$IMAGE"
 BLOG_IMAGE="$IMAGE" NEXT_PUBLIC_SITE_URL="$SITE_URL" \
@@ -157,6 +161,11 @@ fi
 tar czf '$REMOTE_BACKUP_DIR/source-before.tar.gz' --exclude=.env --exclude='.env.*' --exclude=releases --exclude=backups . || exit 1
 PREVIOUS_IMAGE_ID=\"\$(\$COMPOSE images -q app 2>/dev/null | head -n 1)\"
 [ -n \"\$PREVIOUS_IMAGE_ID\" ] || { echo '缺少旧镜像 ID，无法建立回滚锚点' >&2; exit 1; }
+# 记录时统一带 sha256: 前缀（compose 不带、inspect 带，混着写回滚时容易对不上）
+case \"\$PREVIOUS_IMAGE_ID\" in
+  sha256:*) ;;
+  *) PREVIOUS_IMAGE_ID=\"sha256:\$PREVIOUS_IMAGE_ID\" ;;
+esac
 PREVIOUS_IMAGE_TAG=\"blog-app:rollback-$RELEASE_ID\"
 docker tag \"\$PREVIOUS_IMAGE_ID\" \"\$PREVIOUS_IMAGE_TAG\" || exit 1
 cat > '$REMOTE_RELEASE_DIR/rollback.env' <<EOF
@@ -187,7 +196,7 @@ cp /tmp/$(basename "$ROLLBACK_SCRIPT") '$REMOTE_ROLLBACK_SCRIPT' || exit 1
 chmod +x '$REMOTE_ROLLBACK_SCRIPT'
 "
 
-echo "==> [7/8] 远端切换不可变镜像（禁止 --build）与健康检查..."
+echo "==> [7/8] 远端切换不可变镜像（禁止 --build）、健康检查与清理旧版本..."
 REMOTE_SCRIPT="$REMOTE_SCRIPT
 if ! BLOG_IMAGE='$IMAGE' \$COMPOSE up -d --no-build app; then
   echo '容器启动失败，执行 rollback' >&2
@@ -209,6 +218,125 @@ if [ \$tries -ge $HEALTH_RETRIES ]; then
   exit 1
 fi
 printf 'NEW_IMAGE_ID=%s\\n' '$IMAGE_ID'
+
+# ---- 清理旧版本 ----
+# 只保留最近 N 次发布。每次发布会新建一个不可变 release 镜像，并把上一版再打一个
+# rollback 标签；两个都不清理的话，一天十次发布就是十来个 350MB 的镜像。
+# 保留集由 releases/ 决定（它才是发布的权威记录），backups/ 跟着同一份名单走——
+# 两个目录各自按 mtime 删会错位：可能出现「release 留着、它的备份被删了」，
+# 那种状态下回滚等于没有数据可退。
+# 清理失败不改变发布结果：磁盘清理不值得让一次成功的发布回滚。
+echo '--- 清理旧发布 ---'
+cd \"$DIR\"
+keep=$KEEP_RELEASES
+case \"\$keep\" in ''|*[!0-9]*) keep=5 ;; esac
+[ \"\$keep\" -ge 1 ] || keep=5
+# 注意 ID 前缀：compose images -q 返回 64 位十六进制，**不带** sha256:；
+# 而 docker image inspect --format '{{.Id}}' 是带 sha256: 的。两边统一成
+# 「不带前缀」再比，否则运行中版本永远匹配不上，保护等于没写。
+CURRENT_IMAGE_ID=\"\$(\$COMPOSE images -q app 2>/dev/null | head -n 1 | sed 's/^sha256://')\"
+
+# 当前运行版本：只有 releases/<id>/rollback.env 记着 NEW_IMAGE_ID，
+# backups/<id>/ 下没有这个文件，所以先在这里把它的 RELEASE_ID 找出来。
+# CURRENT_DIR 是**完整目录名**（线上带 release- 前缀），用来和 ls 的输出比较；
+# CURRENT_RELEASE 是剥掉前缀的纯 ID，用来和镜像 tag 比较。两者不能混用。
+CURRENT_DIR=\"\"
+CURRENT_RELEASE=\"\"
+if [ -n \"\$CURRENT_IMAGE_ID\" ]; then
+  for env in releases/*/rollback.env; do
+    [ -f \"\$env\" ] || continue
+    env_id=\"\$(sed -n 's/^NEW_IMAGE_ID=//p' \"\$env\" 2>/dev/null | head -n 1 | sed 's/^sha256://')\"
+    if [ -n \"\$env_id\" ] && [ \"\$env_id\" = \"\$CURRENT_IMAGE_ID\" ]; then
+      CURRENT_DIR=\"\$(basename \"\$(dirname \"\$env\")\")\"
+      CURRENT_RELEASE=\"\$(printf '%s' \"\$CURRENT_DIR\" | sed 's/^release-//')\"
+      break
+    fi
+  done
+fi
+
+# 保留集：最新的 N 个 release 目录。注意 ls 返回的是**完整目录名**
+# （线上带 release- 前缀，历史版本没有），所以比较时两边都用完整名，
+# 绝不能只在一侧剥前缀——那样永远匹配不上，会把全部目录删光。
+# 这段注释位于双引号字符串内：不要写反引号，它会被当成命令替换执行。
+KEEP_DIRS=\"\$(ls -1t releases 2>/dev/null | head -n \"\$keep\")\"
+if [ -n \"\$CURRENT_DIR\" ]; then
+KEEP_DIRS=\"\$(printf '%s\n%s' \"\$KEEP_DIRS\" \"\$CURRENT_DIR\")\"
+fi
+# 空行会让 grep -qxF \"\" 匹配一切，保护逻辑直接失效；当前版本通常也在
+# 窗口里，sort -u 顺手去重（否则后面按目录报告会重复打印）。
+KEEP_DIRS=\"\$(printf '%s\n' \"\$KEEP_DIRS\" | sed '/^\$/d' | sort -u)\"
+
+# fail-safe：保留集为空（或全都不存在）时一个都不删。
+# 清理脚本宁可什么都不做，也不能因为比较写错就把回滚材料全清掉。
+kept_existing=0
+for d in \$KEEP_DIRS; do
+  [ -d \"releases/\$d\" ] && kept_existing=\$((kept_existing + 1))
+done
+if [ \"\$kept_existing\" -eq 0 ]; then
+  echo \"跳过清理：保留集为空（当前 \$CURRENT_IMAGE_ID 未匹配到任何发布目录）\"
+else
+  # backups/ 里可能有人工建的应急快照（如事故后的 restore 备份），它们没有
+  # 对应的 releases/ 目录。只删「有发布记录可退」的那批：releases/ 里不存在的
+  # 备份目录一律不动——多留几百 MB 远比删掉唯一一份数据备份划算。
+  for old in \$(ls -1 releases 2>/dev/null); do
+    if printf '%s\n' \"\$KEEP_DIRS\" | grep -qxF \"\$old\"; then
+      continue
+    fi
+    rm -rf \"releases/\$old\" && echo \"删除：releases/\$old\"
+    if [ -d \"backups/\$old\" ]; then
+      rm -rf \"backups/\$old\" && echo \"删除：backups/\$old\"
+    fi
+  done
+  for old in \$(ls -1 backups 2>/dev/null); do
+    [ -d \"releases/\$old\" ] && continue
+    echo \"保留备份：backups/\$old（没有对应的发布记录，可能是应急快照）\"
+  done
+  for d in \$KEEP_DIRS; do
+    [ -d \"releases/\$d\" ] && [ -d \"backups/\$d\" ] || echo \"注意：\$d 缺 releases 或 backups 目录\"
+  done
+fi
+
+# 镜像标签：按创建时间从新到旧保留最新 N 个 release 标签（完整 tag，含前缀）
+KEEP_TAGS=\"\$(docker images --filter 'reference=blog-app:release-*' --format '{{.CreatedAt}}|{{.Tag}}' 2>/dev/null | sort -r | head -n \"\$keep\" | cut -d'|' -f2)\"
+# 兜底：docker 输出为空时至少保住这次刚发布的标签，绝不把当前版本清掉。
+# IMAGE_TAG 是本地变量，必须在这里就地展开，远端没有它。
+[ -n \"\$KEEP_TAGS\" ] || KEEP_TAGS='$IMAGE_TAG'
+# 当前运行版本的 release 标签必须留着，即使它已经超出保留窗口
+if [ -n \"\$CURRENT_RELEASE\" ]; then
+KEEP_TAGS=\"\$(printf '%s\n%s' \"\$KEEP_TAGS\" \"release-\$CURRENT_RELEASE\")\"
+fi
+KEEP_TAGS=\"\$(printf '%s\n' \"\$KEEP_TAGS\" | sed '/^\$/d')\"
+# rollback 标签的历史命名有两种：rollback-<ID>（本脚本）与 rollback-release-<ID>
+# （线上既有）。先把保留集归一到 ID，再把候选 tag 也归一到 ID 再比。
+KEEP_IDS=\"\$(printf '%s\n' \"\$KEEP_TAGS\" | sed 's/^release-//')\"
+if [ -n \"\$CURRENT_RELEASE\" ]; then
+KEEP_IDS=\"\$(printf '%s\n%s' \"\$KEEP_IDS\" \"\$CURRENT_RELEASE\")\"
+fi
+KEEP_IDS=\"\$(printf '%s\n' \"\$KEEP_IDS\" | sed '/^\$/d')\"
+
+if [ -z \"\$KEEP_TAGS\" ]; then
+  echo \"跳过镜像清理：保留集为空\"
+else
+  for tag in \$(docker images --filter 'reference=blog-app:release-*' --format '{{.Tag}}' 2>/dev/null); do
+    [ -n \"\$tag\" ] || continue
+    printf '%s\n' \"\$KEEP_TAGS\" | grep -qxF \"\$tag\" && continue
+    tag_id=\"\$(docker image inspect \"blog-app:\$tag\" --format '{{.Id}}' 2>/dev/null | sed 's/^sha256://' || true)\"
+    if [ -n \"\$CURRENT_IMAGE_ID\" ] && [ \"\$tag_id\" = \"\$CURRENT_IMAGE_ID\" ]; then
+      echo \"保留（运行中）：\$tag\"
+      continue
+    fi
+    docker rmi \"blog-app:\$tag\" >/dev/null 2>&1 && echo \"删除镜像：\$tag\" || echo \"跳过（仍被引用）：\$tag\"
+  done
+
+  for tag in \$(docker images --filter 'reference=blog-app:rollback-*' --format '{{.Tag}}' 2>/dev/null); do
+    [ -n \"\$tag\" ] || continue
+    rid=\"\$(printf '%s' \"\$tag\" | sed -e 's/^rollback-//' -e 's/^release-//')\"
+    printf '%s\n' \"\$KEEP_IDS\" | grep -qxF \"\$rid\" && continue
+    docker rmi \"blog-app:\$tag\" >/dev/null 2>&1 && echo \"删除回滚标签：\$tag\" || true
+  done
+fi
+docker image prune -f >/dev/null 2>&1 || true
+echo '--- 清理完成 ---'
 "
 
 "$REMOTE_SHELL" "$HOST" "$REMOTE_SCRIPT" \

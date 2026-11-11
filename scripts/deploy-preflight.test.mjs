@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 
@@ -37,6 +37,15 @@ fi
 if [ "$1" = "save" ]; then printf 'IMAGE_ARCHIVE\\n'; exit 0; fi
 if [ "$1" = "load" ]; then printf 'Loaded image: blog-app:deploy-test\\n'; exit 0; fi
 if [ "$1" = "image" ] && [ "$2" = "inspect" ]; then
+  # 夹具里登记过的 tag 返回它自己的 ID，清理逻辑才需要真的判断「是不是运行中的那个」
+  if [ -n "$DEPLOY_TEST_FIXTURE" ] && [ -f "$DEPLOY_TEST_FIXTURE" ]; then
+    wanted="\${3#blog-app:}"
+    while IFS='	' read -r f_tag f_id f_created f_kind; do
+      [ "$f_tag" = "$wanted" ] || continue
+      printf '%s\\n' "$f_id"
+      exit 0
+    done < "$DEPLOY_TEST_FIXTURE"
+  fi
   printf '%s\\n' 'sha256:3333333333333333333333333333333333333333333333333333333333333333'
   exit 0
 fi
@@ -47,7 +56,33 @@ if [ "$1" = "compose" ] && [ "$6" = "exec" ]; then
   exit 0
 fi
 if [ "$1" = "compose" ] && [ "$6" = "images" ]; then
-  printf '%s\\n' 'sha256:4444444444444444444444444444444444444444444444444444444444444444'
+  # 真实行为：compose images -q 输出 64 位十六进制，不带 sha256: 前缀
+  if [ -n "$DEPLOY_TEST_CURRENT_IMAGE" ]; then
+    printf '%s\\n' "\${DEPLOY_TEST_CURRENT_IMAGE#sha256:}"
+  else
+    printf '%s\\n' '4444444444444444444444444444444444444444444444444444444444444444'
+  fi
+  exit 0
+fi
+if [ "$1" = "images" ]; then
+  ref=""; want_created=0
+  for arg in "$@"; do
+    case "$arg" in
+      reference=*) ref="\${arg#reference=}" ;;
+      *CreatedAt*) want_created=1 ;;
+    esac
+  done
+  if [ -n "$DEPLOY_TEST_FIXTURE" ] && [ -f "$DEPLOY_TEST_FIXTURE" ]; then
+    while IFS='	' read -r f_tag f_id f_created f_kind; do
+      [ -n "$f_tag" ] || continue
+      case "$ref" in
+        *release-*) [ "$f_kind" = "release" ] || continue ;;
+        *rollback-*) [ "$f_kind" = "rollback" ] || continue ;;
+      esac
+      if [ "$want_created" = "1" ]; then printf '%s|%s\\n' "$f_created" "$f_tag"
+      else printf '%s\\n' "$f_tag"; fi
+    done < "$DEPLOY_TEST_FIXTURE"
+  fi
   exit 0
 fi
 if [ "$1" = "compose" ] && [ "$6" = "up" ]; then printf 'started\\n'; exit 0; fi
@@ -65,7 +100,36 @@ if [ "$1" = "tag" ]; then printf 'tagged\\n'; exit 0; fi
 exit 0
 `;
 
-function runDeploy({ confirmedUrl, buildUrl = siteUrl, failAt, omitDocker = false, extraEnv = {} } = {}) {
+// 在远端目录里铺一套真实的发布记录：目录名带 release- 前缀，releases/ 与 backups/
+// 成对出现，并且其中一份是「正在运行」的版本（rollback.env 的 NEW_IMAGE_ID 与
+// docker compose images -q app 的输出一致）。
+// 传 emergency: true 时只在 backups/ 建目录（人工应急快照的形态：没有发布记录）。
+function seedReleases(remoteRoot, releases) {
+  for (const release of releases) {
+    const name = `release-${release.id}`;
+    if (release.emergency) {
+      const directory = join(remoteRoot, "backups", name);
+      mkdirSync(directory, { recursive: true });
+      writeFileSync(join(directory, "blog.dump"), `pgdump of ${release.id}\n`);
+      utimesSync(directory, release.at, release.at);
+      continue;
+    }
+    for (const kind of ["releases", "backups"]) {
+      const directory = join(remoteRoot, kind, name);
+      mkdirSync(directory, { recursive: true });
+      // backups/<id>/ 没有 rollback.env，只有 releases/<id>/ 有 —— 这正是线上形态
+      writeFileSync(
+        join(directory, kind === "releases" ? "rollback.env" : "blog.dump"),
+        kind === "releases"
+          ? `RELEASE_ID=${release.id}\nNEW_IMAGE_ID=sha256:${release.image}\n`
+          : `pgdump of ${release.id}\n`,
+      );
+      utimesSync(directory, release.at, release.at);
+    }
+  }
+}
+
+function runDeploy({ confirmedUrl, buildUrl = siteUrl, failAt, omitDocker = false, extraEnv = {}, releases } = {}) {
   const work = mkdtempSync(join(tmpdir(), "deploy-preflight-"));
   const bin = posixPath(join(work, "bin"));
   const home = posixPath(join(work, "home"));
@@ -76,6 +140,20 @@ function runDeploy({ confirmedUrl, buildUrl = siteUrl, failAt, omitDocker = fals
   mkdirSync(join(work, "bin"));
   mkdirSync(join(work, "home"));
   mkdirSync(join(work, "remote"));
+
+  // 镜像清单夹具：tag \t ID \t CreatedAt \t kind（release / rollback）。
+  // docker 的 stub 从这里读，清理逻辑才能拿到和线上同形的数据。
+  const fixturePath = posixPath(join(work, "images.tsv"));
+  const fixtureRows = [];
+  if (releases) {
+    seedReleases(join(work, "remote"), releases);
+    releases.forEach((release, index) => {
+      const stamp = `2026-11-${String(10 - index).padStart(2, "0")}T10:00:00Z`;
+      fixtureRows.push(`release-${release.id}\tsha256:${release.image}\t${stamp}\trelease`);
+      fixtureRows.push(`rollback-${release.id}\tsha256:${release.image}\t${stamp}\trollback`);
+    });
+  }
+  writeFileSync(join(work, "images.tsv"), fixtureRows.join("\n") + (fixtureRows.length ? "\n" : ""));
 
   if (!omitDocker) writeStub(join(work, "bin"), "docker", DOCKER_STUB);
   writeStub(join(work, "bin"), "ssh", REMOTE_STUB);
@@ -127,10 +205,12 @@ exec /usr/bin/sha256sum "$@"
     DEPLOY_TEST_PGDUMP: posixPath(join(work, "blog.dump")),
     DEPLOY_TEST_BACKUP_DIR: posixPath(join(work, "remote", "backups")),
     DEPLOY_TEST_FAIL_AT: failAt,
+    DEPLOY_TEST_FIXTURE: fixturePath,
     PATH: `${bin}${delimiter}${process.env.PATH}`,
     HOME: home,
     DEPLOY_RELEASE_AUTHORIZED: "yes",
     DEPLOY_TEST_STUBS: "1",
+    DEPLOY_TEST_CURRENT_IMAGE: releases ? `sha256:${releases[0].image}` : "",
     ...extraEnv,
   };
   if (confirmedUrl === undefined) delete env.DEPLOY_SITE_URL;
@@ -150,6 +230,7 @@ exec /usr/bin/sha256sum "$@"
     commands,
     output,
     work,
+    remoteRoot: join(work, "remote"),
     cleanup: () => rmSync(work, { recursive: true, force: true }),
     findRemote: (suffix) => {
       const search = (directory) => {
@@ -262,6 +343,107 @@ test("远端启动失败时触发失败即停与回滚指令", () => {
   } finally {
     run.cleanup();
   }
+});
+
+test("发布成功后清理超出保留数量的旧发布目录，运行中的那份永不删除", () => {
+  const run = runDeploy({ confirmedUrl: siteUrl, extraEnv: { DEPLOY_KEEP_RELEASES: "2" } });
+  try {
+    assert.equal(run.status, 0, `应完成本地预演：\n${run.output}`);
+    // 远端脚本里必须出现清理动作，且清理在健康检查之后
+    assert.match(run.commands, /rm -rf "releases\/\$old"/);
+    assert.match(run.commands, /rm -rf "backups\/\$old"/);
+    // 没有发布记录的备份目录（人工应急快照）必须保住
+    assert.match(run.commands, /保留备份：backups\/\$old/);
+    assert.match(run.commands, /docker rmi "blog-app:\$tag"/);
+    assert.ok(
+      run.output.indexOf("清理旧发布") > run.output.indexOf("healthy"),
+      "清理应发生在健康检查通过之后",
+    );
+    // 运行中的镜像无论如何都要保住
+    assert.match(run.commands, /CURRENT_IMAGE_ID/);
+    assert.match(run.commands, /保留（运行中）/);
+  } finally {
+    run.cleanup();
+  }
+});
+
+// 线上目录名带 `release-` 前缀（历史版本不带），比较时两侧必须一致。
+// 这个用例用真实命名跑清理逻辑本身：剥前缀的那版曾把所有目录删光。
+test("真实 release- 目录下只删超出保留窗口的旧版本，运行中的那份留着", () => {
+  // 运行中的版本故意放在保留窗口之外（回滚到旧版后的常态）。
+  // 只要比较时一侧剥了前缀，它就会连同全部历史目录一起被删光。
+  const releases = [1, 2, 3, 4, 5].map((n) => ({
+    id: `2026110${n}T100000Z-abc${n}`,
+    image: `${String(n).repeat(64)}`,
+    at: new Date(Date.UTC(2026, 10, 10 - n, 10, 0, 0)),
+  }));
+  const running = releases[4];
+  const emergency = {
+    id: "emergency",
+    image: "e".repeat(64),
+    at: new Date(Date.UTC(2026, 10, 9, 10, 0, 0)),
+    emergency: true,
+  };
+  const run = runDeploy({
+    confirmedUrl: siteUrl,
+    extraEnv: { DEPLOY_KEEP_RELEASES: "2", DEPLOY_TEST_CURRENT_IMAGE: `sha256:${running.image}` },
+    releases: [...releases, emergency],
+  });
+  try {
+    assert.equal(run.status, 0, `应完成本地预演：\n${run.output}`);
+    const remaining = (kind) => {
+      const directory = join(run.remoteRoot, kind);
+      return existsSync(directory) ? readdirSync(directory).sort() : [];
+    };
+    const releaseDirs = remaining("releases");
+    const backupDirs = remaining("backups");
+
+    assert.ok(releaseDirs.includes(`release-${running.id}`), `运行中的版本被删了：${releaseDirs}`);
+    assert.ok(backupDirs.includes(`release-${running.id}`), `运行中的版本备份被删了：${backupDirs}`);
+    assert.deepEqual(
+      backupDirs.filter((name) => name !== "release-emergency"),
+      releaseDirs,
+      "releases/ 与 backups/ 必须保留同一批目录",
+    );
+    // 人工建的应急快照（backups/ 里有、releases/ 里没有）绝不能删
+    assert.ok(backupDirs.includes("release-emergency"), `应急备份被删了：${backupDirs}`);
+    // 保留窗口 2 = 本次发布的目录（新建、mtime 最新）+ 窗口内的最新一份旧版本，
+    // 再加窗口外的运行中版本
+    assert.equal(releaseDirs.length, 3, `应只剩本次发布、窗口内一份与运行中的版本：${releaseDirs}`);
+    for (const old of releases.slice(1, 3)) {
+      assert.ok(!releaseDirs.includes(`release-${old.id}`), `超出窗口的 ${old.id} 应被删除`);
+    }
+    assert.match(run.output, /清理完成/);
+  } finally {
+    run.cleanup();
+  }
+});
+
+test("清理按完整目录名比较，真实 release- 前缀下不会删光", () => {
+  const script = read("scripts/deploy.sh");
+  // 目录比较两侧都用完整名（源码里这段位于 REMOTE_SCRIPT 双引号字符串内，引号是转义的）
+  assert.ok(
+    script.includes(String.raw`grep -qxF \"\$old\"`),
+    "目录比较应使用完整目录名 $old，而不是剥过前缀的值",
+  );
+  // 目录循环里不能再出现剥前缀的写法（镜像段归一到 ID 是合法的，不在此列）
+  const dirLoop = script.slice(script.indexOf("# fail-safe：保留集为空"), script.indexOf("# 镜像标签："));
+  assert.ok(dirLoop.length > 0, "找不到目录清理段");
+  assert.ok(!dirLoop.includes("sed 's/^release-//'"), "目录循环里不应剥前缀后比较");
+  // 保留集为空时必须有 fail-safe，不执行删除
+  assert.match(script, /跳过清理：保留集为空/);
+  assert.match(script, /跳过镜像清理：保留集为空/);
+});
+
+// REMOTE_SCRIPT 是一整段双引号字符串：里面任何反引号都会被本地 shell 当成
+// 命令替换执行（曾经写进注释里的 `release-` 就变成了 `release-: not found`）。
+test("远端脚本里的注释不写反引号，避免本地命令替换", () => {
+  const script = read("scripts/deploy.sh");
+  const start = script.indexOf('REMOTE_SCRIPT="set -eu');
+  const end = script.indexOf('"$REMOTE_SHELL" "$HOST" "$REMOTE_SCRIPT"');
+  assert.ok(start > 0 && end > start, "找不到 REMOTE_SCRIPT 的范围");
+  const remote = script.slice(start, end);
+  assert.ok(!remote.includes("`"), "REMOTE_SCRIPT 内不能出现反引号，改用普通文字描述命令名");
 });
 
 test("源码包与 Docker 上下文排除本地产物，部署回归进入全量测试命令", () => {
