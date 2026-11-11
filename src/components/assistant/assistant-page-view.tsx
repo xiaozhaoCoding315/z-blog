@@ -1,7 +1,6 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import type { ChatStatus, UIMessage } from "ai";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -10,7 +9,9 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { useAssistantChat } from "@/components/assistant/assistant-provider";
 import {
+  groupMessageSources,
   messageSources,
   messageText,
   renderMessageText,
@@ -36,7 +37,7 @@ const CONTINUATION_START =
   /^(那|这|它|还有|继续|再|那么|所以|然后|呢|为什么|怎么)/;
 
 /** 界面只根据真实请求状态判断上下文，不伪造「已命中几篇」。 */
-function contextLabel(status: string, messages: ReturnType<typeof useChat>["messages"]) {
+function contextLabel(status: ChatStatus, messages: UIMessage[]) {
   if (status === "submitted") return "检索中";
   if (status === "streaming") return "生成中";
   if (messages.length > 0) return "已完成";
@@ -70,16 +71,15 @@ export function AssistantPageView({
   const router = useRouter();
   const {
     messages,
-    sendMessage,
+    send,
     status,
-    setMessages,
+    busy,
     error,
     stop,
+    clear,
     clearError,
     regenerate,
-  } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
-  });
+  } = useAssistantChat();
   const [input, setInput] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const [urlQuestion] = useState(
@@ -92,7 +92,6 @@ export function AssistantPageView({
   const queryHandled = useRef(false);
   const outputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const busy = status === "submitted" || status === "streaming";
 
   useEffect(() => {
     const node = outputRef.current;
@@ -110,17 +109,15 @@ export function AssistantPageView({
     if (!question || !chatEnabled || queryHandled.current) return;
     queryHandled.current = true;
     const timer = window.setTimeout(() => {
-      sendMessage({ text: question });
+      send(question);
       window.history.replaceState(null, "", "/assistant");
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [chatEnabled, sendMessage, urlQuestion]);
+  }, [chatEnabled, send, urlQuestion]);
 
   const submit = (text: string) => {
-    const question = text.trim();
-    if (!question || !chatEnabled || busy) return;
-    setInput("");
-    sendMessage({ text: question });
+    if (!chatEnabled) return;
+    if (send(text)) setInput("");
   };
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
@@ -134,10 +131,8 @@ export function AssistantPageView({
     router.push(source.href?.trim() || `/notes/${source.slug}`);
   };
 
-  const clear = () => {
-    stop();
-    setMessages([]);
-    clearError();
+  const clearConversation = () => {
+    clear();
     setInput("");
   };
 
@@ -265,6 +260,7 @@ export function AssistantPageView({
             if (message.role !== "assistant") return null;
             const sources = messageSources(message);
             if (!text && sources.length === 0) return null;
+            const sourceGroups = groupMessageSources(sources);
             const isStreaming =
               status === "streaming" &&
               message.id === messages[messages.length - 1]?.id;
@@ -303,17 +299,18 @@ export function AssistantPageView({
                     <span className="assistant-stream-caret" aria-hidden="true" />
                   )}
                 </div>
-                {sources.length > 0 && (
+                {sourceGroups.length > 0 && (
                   <footer className="assistant-source-list">
-                    <span>SOURCES / {sources.length}</span>
-                    {sources.map((source) => (
+                    <span>SOURCES / {sourceGroups.length}</span>
+                    {sourceGroups.map((group) => (
                       <button
-                        key={source.id}
+                        key={group.key}
                         type="button"
-                        onClick={() => openSource(source)}
+                        onClick={() => openSource(group.source)}
                       >
-                        [{source.id}] {source.title}
-                        {source.heading ? ` · ${source.heading}` : ""}
+                        {group.ids.map((id) => `[${id}]`).join("")}{" "}
+                        {group.title}
+                        {group.heading ? ` · ${group.heading}` : ""}
                       </button>
                     ))}
                   </footer>
@@ -371,6 +368,7 @@ export function AssistantPageView({
             <textarea
               id="assistant-input"
               ref={inputRef}
+              data-assistant-composer
               rows={2}
               maxLength={2000}
               value={input}
@@ -393,7 +391,7 @@ export function AssistantPageView({
             </span>
             <span className="assistant-composer-actions">
               {messages.length > 0 && (
-                <button type="button" onClick={clear}>清空</button>
+                <button type="button" onClick={clearConversation}>清空</button>
               )}
               <Link href="/notes">看全部笔记</Link>
             </span>

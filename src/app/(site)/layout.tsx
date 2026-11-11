@@ -8,6 +8,7 @@ import { AccountMenu } from "@/components/site/account-menu";
 import { AccountEntry } from "@/components/site/account-entry";
 import { DesktopShell } from "@/components/desktop/desktop-shell";
 import { PageAmbient } from "@/components/ambient/page-ambient";
+import { AssistantChatProvider } from "@/components/assistant/assistant-provider";
 import { MusicProvider } from "@/components/playlist/music-provider";
 import { snippets as snippetConfig } from "@/config/snippets";
 import { getAllNotes } from "@/content";
@@ -63,18 +64,20 @@ export default async function SiteLayout({
   const uptime = await getUptimeSnapshot();
 
   return (
-    <MusicProvider>
-      <PageAmbient />
-      <DesktopShell
-        accountMenu={accountMenu}
-        mobileAccountEntry={mobileAccountEntry}
-        aiEnabled={chatEnabled}
-        notes={notes}
-        snippets={snippets}
-        uptimeDays={uptime.days}
-      >
-        {children}
-      </DesktopShell>
-    </MusicProvider>
+    <AssistantChatProvider enabled={chatEnabled}>
+      <MusicProvider>
+        <PageAmbient />
+        <DesktopShell
+          accountMenu={accountMenu}
+          mobileAccountEntry={mobileAccountEntry}
+          aiEnabled={chatEnabled}
+          notes={notes}
+          snippets={snippets}
+          uptimeDays={uptime.days}
+        >
+          {children}
+        </DesktopShell>
+      </MusicProvider>
+    </AssistantChatProvider>
   );
 }

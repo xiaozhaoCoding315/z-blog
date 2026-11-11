@@ -18,7 +18,11 @@ import {
   embeddingModel,
 } from "@/lib/ai";
 import { githubSlug } from "@/lib/slug";
-import { buildRetrievalQuery } from "@/lib/chat-retrieval";
+import {
+  buildRetrievalQuery,
+  mergeChunksByPost,
+  type RetrievedChunk,
+} from "@/lib/chat-retrieval";
 import { parseChatPayload } from "@/lib/chat-input";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -46,14 +50,6 @@ export async function GET() {
   return NextResponse.json({ enabled: chatEnabled, retrieval: aiEnabled });
 }
 
-interface RetrievedChunk {
-  [key: string]: unknown;
-  post_slug: string;
-  title: string;
-  heading: string | null;
-  content: string;
-  similarity: number;
-}
 
 /**
  * POST /api/chat —— RAG 问答：
@@ -111,7 +107,7 @@ export async function POST(request: Request) {
             ORDER BY c.embedding <=> ${vectorStr}::vector
             LIMIT ${RETRIEVAL_CANDIDATES}`
       );
-      retrieved = pickContext(candidates);
+      retrieved = mergeChunksByPost(pickContext(candidates));
     } catch (err) {
       console.warn("[api/chat] 检索失败，退化为无上下文回答：", err);
     }
@@ -234,4 +230,3 @@ function pickContext(candidates: RetrievedChunk[]): RetrievedChunk[] {
   }
   return picked;
 }
-

@@ -8,7 +8,9 @@ import {
 } from "@/db/schema";
 import { formatDay } from "@/lib/life";
 import type { Platform } from "@/lib/community-input";
+import { isDirectAudioUrl } from "@/lib/playlist-core";
 import { profileDisplayName } from "@/lib/profile-core";
+import type { PetMusicCandidate } from "@/lib/pet-music";
 
 export interface SongView {
   id: number;
@@ -442,4 +444,85 @@ async function getPlaylistDetailCached(id: number): Promise<{
       })),
     },
   };
+}
+
+/**
+ * 小元点歌候选：所有「点开就能在站内出声」的已通过曲目。
+ *
+ * 只收有播放路径的曲目：网易云曲目要有 externalId（外链音频），其余平台
+ * 要有直链音频。评论区里那些只有平台页面的歌不进来，否则推荐完只能跳出去，
+ * 而不是像用户要求的那样直接在播放器里响起来。
+ */
+export async function getPetMusicCandidates(): Promise<{
+  available: boolean;
+  candidates: PetMusicCandidate[];
+}> {
+  try {
+    return await getPetMusicCandidatesCached();
+  } catch {
+    return { available: false, candidates: [] };
+  }
+}
+
+async function getPetMusicCandidatesCached(): Promise<{
+  available: boolean;
+  candidates: PetMusicCandidate[];
+}> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("songs");
+
+  const db = getDb();
+  if (!db) throw new Error("DATABASE_URL 未配置，无法读取点歌候选");
+
+  const rows = await db
+    .select({
+      id: songsTable.id,
+      title: songsTable.title,
+      artist: songsTable.artist,
+      url: songsTable.url,
+      platform: songsTable.platform,
+      externalId: songsTable.externalId,
+      coverUrl: songsTable.coverUrl,
+      duration: songsTable.duration,
+      note: songsTable.note,
+      playlistId: songsTable.playlistId,
+      playlistTitle: playlistsTable.title,
+      playlistCoverUrl: playlistsTable.coverUrl,
+    })
+    .from(songsTable)
+    .leftJoin(playlistsTable, eq(playlistsTable.id, songsTable.playlistId))
+    .where(eq(songsTable.status, "approved"))
+    .orderBy(
+      desc(songsTable.pinned),
+      desc(songsTable.createdAt),
+      desc(songsTable.id)
+    );
+
+  const candidates = rows
+    .filter((row) =>
+      row.platform === "netease"
+        ? Boolean(row.externalId)
+        : isDirectAudioUrl(row.url)
+    )
+    .map(
+      (row): PetMusicCandidate => ({
+        track: {
+          id: row.id,
+          title: row.title,
+          artist: row.artist,
+          url: row.url,
+          platform: toPlaylistPlatform(row.platform),
+          externalId: row.externalId,
+          coverUrl: row.coverUrl,
+          duration: row.duration,
+          note: row.note,
+        },
+        playlistId: row.playlistId,
+        playlistTitle: row.playlistTitle ?? "小元推荐",
+        playlistCover: row.playlistCoverUrl ?? row.coverUrl,
+      })
+    );
+
+  return { available: true, candidates };
 }

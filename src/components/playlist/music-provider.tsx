@@ -67,6 +67,35 @@ interface QueueState extends MusicQueueMeta {
   tracks: TrackView[];
 }
 
+export const PLAY_QUEUE_EVENT = "z-os:play-queue";
+
+export interface PlayQueueRequest {
+  tracks: TrackView[];
+  index: number;
+  meta: MusicQueueMeta;
+}
+
+/**
+ * 不消费 `useMusic()` 也能把歌送进全站播放器。
+ *
+ * context 里带着每帧变化的播放时间，小元面板一旦订阅，整段对话会跟着
+ * 播放进度重渲染。改用一次性的 window 事件：谁想点歌就发一条请求，
+ * Provider 收到后走正常的 `playQueue`，播放器、mediaSession 与萌宠的
+ * data-music-playing 全部照旧。
+ */
+export function requestPlayQueue(
+  tracks: TrackView[],
+  index: number,
+  meta: MusicQueueMeta
+): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<PlayQueueRequest>(PLAY_QUEUE_EVENT, {
+      detail: { tracks, index, meta },
+    })
+  );
+}
+
 export function MusicProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [queue, setQueue] = useState<QueueState | null>(null);
@@ -144,6 +173,26 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     },
     [select]
   );
+
+  // 小元等不订阅 context 的调用方，用一条 window 事件请求点歌。
+  useEffect(() => {
+    const onRequest = (event: Event) => {
+      const detail = (event as CustomEvent<PlayQueueRequest>).detail;
+      if (!detail || !Array.isArray(detail.tracks) || detail.tracks.length === 0) {
+        return;
+      }
+      if (!detail.meta || typeof detail.meta.title !== "string") return;
+      const index =
+        Number.isInteger(detail.index) &&
+        detail.index >= 0 &&
+        detail.index < detail.tracks.length
+          ? detail.index
+          : 0;
+      playQueue(detail.tracks, index, detail.meta);
+    };
+    window.addEventListener(PLAY_QUEUE_EVENT, onRequest);
+    return () => window.removeEventListener(PLAY_QUEUE_EVENT, onRequest);
+  }, [playQueue]);
 
   const startPlayback = useCallback(() => {
     playIntentRef.current += 1;
@@ -332,6 +381,16 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       root.style.removeProperty("--music-dock-clearance");
     };
   }, [current, queue, frameMode, dockHidden]);
+
+  // 萌宠只靠这个根节点标记判断要不要戴耳机、跟拍摇摆。用属性而不是 useMusic，
+  // 是因为播放时 time 会频繁更新，消费 context 会把整段对话一起重渲染。
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.musicPlaying = playing ? "true" : "false";
+    return () => {
+      delete root.dataset.musicPlaying;
+    };
+  }, [playing]);
 
   // 当前曲目的歌词只读一次：歌词页和两侧琴弦共用同一份，避免重复请求。
   useEffect(() => {

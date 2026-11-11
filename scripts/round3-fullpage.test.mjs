@@ -31,6 +31,7 @@ const assistantPage = read("../src/app/(site)/(apps)/assistant/page.tsx");
 const standaloneTerminal = read("../src/components/terminal/standalone-terminal.tsx");
 const standaloneAssistant = read("../src/components/assistant/standalone-assistant.tsx");
 const assistantView = read("../src/components/assistant/assistant-page-view.tsx");
+const assistantProvider = read("../src/components/assistant/assistant-provider.tsx");
 const assistantWindow = read("../src/components/assistant/assistant-window.tsx");
 const assistantShared = read("../src/components/assistant/assistant-shared.tsx");
 const terminalWindow = read("../src/components/terminal/terminal-window.tsx");
@@ -147,7 +148,9 @@ test("终端与 AI 助理各有独立完整页面，终端 ask 直达助理页",
 test("助理页复用真实流式状态、来源卡片与仓库笔记建议", () => {
   assert.match(assistantShared, /type === "data-sources"/);
   assert.match(assistantWindow, /from "@\/components\/assistant\/assistant-shared"/);
-  assert.match(assistantView, /useChat\(\{/);
+  assert.match(assistantProvider, /useChat\(\{/);
+  assert.match(assistantView, /useAssistantChat\(\)/);
+  assert.match(assistantWindow, /useAssistantChat\(\)/);
   assert.match(assistantView, /messageSources\(/);
   assert.match(assistantView, /retrievalEnabled/);
   assert.match(assistantView, /prompts\.map/);
@@ -282,4 +285,25 @@ test("旧 URL 与 AI 引用数据部件仍保持兼容", () => {
     );
   }
   assert.match(chatRoute, /type: "data-sources"/);
+});
+
+test("项目页改成档案排版，不再渲染三列看板", () => {
+  const projectsPage = read("../src/app/(site)/(apps)/projects/page.tsx");
+  const projectsCss = read("../src/app/projects.css");
+
+  assert.doesNotMatch(projectsPage, /KanbanBoard/);
+  assert.match(projectsPage, /className="projects-page"/);
+  assert.match(projectsPage, /className="project-stage"/);
+  assert.match(projectsPage, /className="project-feature"/);
+  assert.match(projectsPage, /className="project-status"/);
+  assert.match(projectsPage, /<details className="project-more">/);
+  // 索引、状态和数字都来自配置，不在页面里另写一份项目数据。
+  assert.match(projectsPage, /projects\.map\(/);
+  assert.match(projectsPage, /FEATURED\.highlights/);
+  assert.match(projectsCss, /\.project-stage\s*\{/);
+  assert.match(projectsCss, /\.project-feature-notes\s*\{/);
+  assert.match(projectsCss, /\.project-row\s*\{/);
+  assert.match(projectsCss, /\.project-more\[open\] summary i/);
+  assert.match(projectsCss, /prefers-reduced-motion: reduce/);
+  assert.match(rootLayout, /import "\.\/projects\.css";/);
 });

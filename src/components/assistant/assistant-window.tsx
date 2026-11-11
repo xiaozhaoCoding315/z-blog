@@ -1,7 +1,5 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
@@ -10,7 +8,9 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useDesktopRuntime } from "@/components/desktop/desktop-runtime";
+import { useAssistantChat } from "@/components/assistant/assistant-provider";
 import {
+  groupMessageSources,
   messageSources,
   messageText,
   renderMessageText,
@@ -42,21 +42,17 @@ export function AssistantWindow({
   const { windows } = useDesktopRuntime();
   const {
     messages,
-    sendMessage,
+    send,
     status,
-    setMessages,
+    busy,
     error,
     stop,
-    clearError,
-  } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
-  });
+    clear,
+  } = useAssistantChat();
   const [input, setInput] = useState("");
   const outputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const questionSeenRef = useRef(false);
-
-  const busy = status === "submitted" || status === "streaming";
 
   // 流式输出与错误出现时自动滚到底部。
   useEffect(() => {
@@ -83,10 +79,10 @@ export function AssistantWindow({
     if (!question || questionSeenRef.current) return;
     questionSeenRef.current = true;
     window.setTimeout(() => {
-      if (aiEnabled) sendMessage({ text: question });
+      if (aiEnabled) send(question);
       window.dispatchEvent(new Event("z-os:ask-consumed"));
     }, 0);
-  }, [aiEnabled, initialQuestion, sendMessage]);
+  }, [aiEnabled, initialQuestion, send]);
 
   const openSource = (source: ChatSource) => {
     windows.close("assistant");
@@ -95,10 +91,8 @@ export function AssistantWindow({
   };
 
   const submit = (text: string) => {
-    const question = text.trim();
-    if (!question || !aiEnabled || busy) return;
-    setInput("");
-    sendMessage({ text: question });
+    if (!aiEnabled) return;
+    if (send(text)) setInput("");
   };
 
   const onInputKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
@@ -163,6 +157,7 @@ export function AssistantWindow({
             if (message.role !== "assistant") return null;
             const sources = messageSources(message);
             if (!text && sources.length === 0) return null;
+            const sourceGroups = groupMessageSources(sources);
             return (
               <div key={message.id} className="os-assistant-reply">
                 <div className="os-assistant-line">
@@ -173,17 +168,17 @@ export function AssistantWindow({
                     {renderMessageText(text, sources, openSource)}
                   </span>
                 </div>
-                {sources.length > 0 && (
+                {sourceGroups.length > 0 && (
                   <div className="os-assistant-sources">
-                    {sources.map((source) => (
+                    {sourceGroups.map((group) => (
                       <button
-                        key={source.id}
+                        key={group.key}
                         type="button"
                         className="os-assistant-source"
-                        title={`打开：${source.title}`}
-                        onClick={() => openSource(source)}
+                        title={`打开：${group.title}`}
+                        onClick={() => openSource(group.source)}
                       >
-                        [{source.id}] {source.title}
+                        {group.ids.map((id) => `[${id}]`).join("")} {group.title}
                       </button>
                     ))}
                   </div>
@@ -251,13 +246,7 @@ export function AssistantWindow({
               <button
                 type="button"
                 className="os-assistant-action"
-                onClick={() => {
-                  // 先停掉在途请求，否则下一个 chunk 会把刚清掉的助理消息
-                  // 重新插回 transcript；错误行也一并清掉。
-                  stop();
-                  setMessages([]);
-                  clearError();
-                }}
+                onClick={clear}
               >
                 清空
               </button>

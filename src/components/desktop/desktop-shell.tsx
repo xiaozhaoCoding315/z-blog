@@ -18,6 +18,7 @@ import type {
   SearchableNote,
   SearchableSnippet,
 } from "@/components/search/search-local";
+import { XiaoyuanPet } from "@/components/assistant/xiaoyuan-pet";
 import { DesktopRuntimeContext } from "./desktop-runtime";
 import { GlobalWindows } from "./global-windows";
 import { MobileDock } from "./mobile-dock";
@@ -181,6 +182,7 @@ export function DesktopShell({
         )}
         {showDock && <MobileDock accountEntry={mobileAccountEntry} />}
         <Taskbar accountMenu={accountMenu} />
+        <XiaoyuanPet chatEnabled={aiEnabled} />
         <noscript>
           <nav className="os-noscript" aria-label="站点导航">
             <p>Personal Dev OS · 无脚本模式</p>

@@ -10,9 +10,11 @@ function read(relativePath) {
   return readFileSync(new URL(relativePath, import.meta.url), "utf8");
 }
 
+const MOTION_GATE =
+  "@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {";
+
 function gateSlice(source) {
-  const marker =
-    "@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {";
+  const marker = MOTION_GATE;
   const start = source.indexOf(marker);
   assert.notEqual(start, -1, "缺少组合动效门");
   let depth = 0;
@@ -36,7 +38,9 @@ function gateSlice(source) {
 
 const layout = read("../src/app/layout.tsx");
 const css = read("../src/app/assistant.css");
+const petCss = read("../src/app/pet.css");
 const view = read("../src/components/assistant/assistant-page-view.tsx");
+const provider = read("../src/components/assistant/assistant-provider.tsx");
 const ai = read("../src/lib/ai.ts");
 const route = read("../src/app/api/chat/route.ts");
 const envExample = read("../.env.example");
@@ -46,6 +50,10 @@ test("助手控制台样式独立成层，接在氛围层之后", () => {
   assert.match(
     layout,
     /import "\.\/lyrics\.css";\s*import "\.\/ambient\.css";\s*import "\.\/assistant\.css";/
+  );
+  assert.match(
+    layout,
+    /import "\.\/assistant\.css";\s*import "\.\/pet\.css";/
   );
   assert.match(css, /\.assistant-page\s*\{/);
   assert.match(css, /\.assistant-page \.assistant-workspace\s*\{/);
@@ -87,9 +95,11 @@ test("流式输出有可见证据：尾部光标、状态条、字符数与停�
   assert.match(view, /maxLength=\{2000\}/);
   assert.match(view, /assistant-composer-counter/);
   assert.match(view, /isStreaming \? "STREAMING" : "RESPONSE"/);
-  // 仍是真实 useChat/DefaultChatTransport，不是假打字机
-  assert.match(view, /useChat\(\{/);
-  assert.match(view, /new DefaultChatTransport/);
+  // 真实 useChat 已提到全站 Provider；界面只消费共享会话，不是假打字机
+  assert.match(provider, /useChat\(\{/);
+  assert.match(provider, /new DefaultChatTransport/);
+  assert.match(view, /useAssistantChat\(\)/);
+  assert.doesNotMatch(view, /useChat\(\{/);
   assert.match(view, /onClick=\{\(\) => stop\(\)\}/);
 });
 
@@ -138,6 +148,34 @@ test("持续动画只在组合动效门里，减少动效时读数静态可见",
   }
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?animation:\s*none !important/);
   assert.match(css, /\.assistant-page \.assistant-prompt:hover,[\s\S]*?transform:\s*none/);
+
+  const petGate = petCss.slice(petCss.indexOf(MOTION_GATE));
+  const petOutside = petCss.slice(0, petCss.indexOf(MOTION_GATE));
+  for (const name of [
+    "xiaoyuan-breathe",
+    "xiaoyuan-blink",
+    "xiaoyuan-dance",
+    "xiaoyuan-squish",
+    "xiaoyuan-hud-float",
+    "xiaoyuan-circuit-pulse",
+    "xiaoyuan-snack-bob",
+    "xiaoyuan-curl",
+    "xiaoyuan-game-bob",
+    "xiaoyuan-phone-bob",
+    "xiaoyuan-panel-in",
+    "xiaoyuan-caret",
+  ]) {
+    assert.match(petGate, new RegExp(`animation:\\s*${name}\\b`), `${name} 未进萌宠动效门`);
+    assert.doesNotMatch(
+      petOutside,
+      new RegExp(`animation:\\s*${name}\\b`),
+      `${name} 出现在萌宠动效门外`
+    );
+  }
+  assert.match(
+    petCss,
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?xiaoyuan-mascot-body[\s\S]*?animation:\s*none !important/
+  );
 });
 
 test("移动端控制台不挤压正文，核心环退场", () => {

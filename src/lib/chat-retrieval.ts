@@ -1,5 +1,14 @@
 import type { UIMessage } from "ai";
 
+export interface RetrievedChunk {
+  [key: string]: unknown;
+  post_slug: string;
+  title: string;
+  heading: string | null;
+  content: string;
+  similarity: number;
+}
+
 /** 指代类开头：这类追问单独拿去向量化会失去指代对象。 */
 const CONTINUATION_START =
   /^(那|这|它|他|她|还有|以及|继续|再|那么|所以|然后|呢|为什么|怎么)/;
@@ -49,4 +58,42 @@ export function buildRetrievalQuery(messages: UIMessage[]): string {
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+/**
+ * 一篇文章可能命中多个小节。引用来源按文章归并，避免来源列表里出现
+ * 标题完全相同的两行；上下文与来源使用同一份归并结果，[n] 编号仍然对齐。
+ */
+export function mergeChunksByPost(chunks: RetrievedChunk[]): RetrievedChunk[] {
+  const merged: RetrievedChunk[] = [];
+  const indexBySlug = new Map<string, number>();
+
+  for (const chunk of chunks) {
+    const index = indexBySlug.get(chunk.post_slug);
+    if (index === undefined) {
+      indexBySlug.set(chunk.post_slug, merged.length);
+      merged.push({ ...chunk });
+      continue;
+    }
+
+    const target = merged[index];
+    const heading = target.heading ?? chunk.heading;
+    const content =
+      heading && chunk.heading === heading
+        ? stripHeadingLine(chunk.content, heading)
+        : chunk.content;
+
+    target.heading = heading;
+    target.content = `${target.content}\n\n${content}`.trim();
+    target.similarity = Math.max(target.similarity, chunk.similarity);
+  }
+
+  return merged;
+}
+
+/** 归并同标题小节时去掉重复的 `## 标题` 行，正文只保留一份。 */
+function stripHeadingLine(content: string, heading: string): string {
+  const prefix = `## ${heading}`;
+  if (!content.startsWith(prefix)) return content;
+  return content.slice(prefix.length).replace(/^\s*\n/, "").trim();
 }

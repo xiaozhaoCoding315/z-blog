@@ -11,6 +11,52 @@ export interface ChatSource {
   href?: string;
 }
 
+export interface ChatSourceGroup {
+  key: string;
+  title: string;
+  heading?: string | null;
+  href?: string;
+  ids: number[];
+  source: ChatSource;
+}
+
+/**
+ * 旧会话里同一篇文章可能留下多条来源（不同小节各一条）。
+ * 来源列表按文章归组，显示成一行多个引用编号；正文里的 [n] 仍按下标
+ * 指向原始来源，所以点击行为不变。
+ */
+export function groupMessageSources(sources: ChatSource[]): ChatSourceGroup[] {
+  const groups: ChatSourceGroup[] = [];
+  const indexByKey = new Map<string, number>();
+
+  for (const source of sources) {
+    const key = source.slug || source.href || source.title;
+    const existing = indexByKey.get(key);
+    if (existing === undefined) {
+      indexByKey.set(key, groups.length);
+      groups.push({
+        key,
+        title: source.title,
+        heading: source.heading,
+        href: source.href,
+        ids: [source.id],
+        source,
+      });
+      continue;
+    }
+
+    const group = groups[existing];
+    if (!group.ids.includes(source.id)) group.ids.push(source.id);
+    if (!group.heading && source.heading) {
+      group.heading = source.heading;
+      group.href = source.href;
+      group.source = source;
+    }
+  }
+
+  return groups;
+}
+
 export function messageText(message: UIMessage): string {
   return message.parts
     .filter(

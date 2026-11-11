@@ -117,14 +117,14 @@ export const apps: AppDefinition[] = [
   },
   {
     id: "projects",
-    title: "项目看板",
+    title: "项目",
     path: "/projects",
     icon: "projects",
     desktop: false,
     launcher: true,
     public: true,
     phase: 3,
-    description: "正在做、维护中和已完成",
+    description: "三份档案：为什么做、做到哪一步",
     kind: "window",
     window: {
       defaultRect: { x: 180, y: 72, w: 880, h: 560 },
