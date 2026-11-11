@@ -13,6 +13,7 @@ function read(relativePath) {
 
 const provider = read("../src/components/playlist/music-provider.tsx");
 const globals = read("../src/app/globals.css");
+const motionCss = read("../src/app/motion.css");
 
 test("失效音源的 play() 拒绝不会清掉跳歌后的起播意图", () => {
   assert.match(provider, /const playIntentRef = useRef\(0\)/);
@@ -42,4 +43,20 @@ test("播放器按实测高度预留底部空间，输入区不会被 dock 盖�
     globals,
     /height: clamp\(260px, calc\(70dvh - var\(--music-dock-clearance, 0px\)\), 680px\)/
   );
+});
+
+test("播放器可收起为悬浮入口，收起不打断播放并释放底部留白", () => {
+  assert.match(provider, /const \[dockHidden, setDockHidden\] = useState\(false\)/);
+  // 主动点歌重新展开面板
+  assert.match(provider, /setDockHidden\(false\)/);
+  assert.match(provider, /const node = dockHidden \? restoreRef\.current : dockRef\.current/);
+  // 宽屏时入口落在主栏之外，不再整条预留；窄屏按入口尺寸避让
+  assert.match(provider, /dockHidden && gutter >= node\.offsetWidth \+ 24/);
+  assert.match(provider, /current && queue && !dockHidden && \(/);
+  assert.match(provider, /className="playlist-dock-min"/);
+  assert.match(provider, /className="playlist-restore"/);
+  assert.match(provider, /aria-label=\{`展开播放器：\$\{current\.title\}`\}/);
+  assert.match(motionCss, /\.playlist-dock-controls \.playlist-dock-min\s*\{/);
+  assert.match(motionCss, /\.playlist-restore\s*\{/);
+  assert.match(motionCss, /\.playlist-restore-disc\s*\{/);
 });

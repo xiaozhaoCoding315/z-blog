@@ -82,6 +82,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     null
   );
   const [lyricsOpen, setLyricsOpen] = useState(false);
+  /** 播放器收起为右下角悬浮唱片入口：只隐藏面板，不打断播放 */
+  const [dockHidden, setDockHidden] = useState(false);
   const [lyricsReload, setLyricsReload] = useState(0);
   const [lyricsResult, setLyricsResult] = useState<{
     key: string;
@@ -91,6 +93,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dockRef = useRef<HTMLDivElement | null>(null);
+  const restoreRef = useRef<HTMLButtonElement | null>(null);
   const coverButtonRef = useRef<HTMLButtonElement | null>(null);
   const autoplayRef = useRef(false);
   /** 连续音源失败计数：一首坏歌跳过即可，整队都坏时停下来，避免死循环切歌 */
@@ -135,6 +138,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       audioFailuresRef.current = 0;
       setSkipNotice(null);
       setQueue({ tracks, title: meta.title, cover: meta.cover });
+      // 主动点歌才重新展开播放器；自动切下一首保持收起，不打断用户腾出的空间。
+      setDockHidden(false);
       select(index);
     },
     [select]
@@ -292,21 +297,28 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // dock 是 fixed 的：把实际占用的高度写成 CSS 变量（含底部间距），
   // 终端输入行与小元同学的输入区据此预留空间，不会被播放器盖住。
-  // 尺寸随窗口、frameMode 与随身提示变化，用 ResizeObserver 跟随而不是写死。
+  // 收起后只剩右下角的一张悬浮唱片：宽屏时它落在 1240px 主栏之外，页面
+  // 无须再让出整条底部空间；窄屏仍按入口的实测尺寸预留，避免压住输入区。
   useEffect(() => {
     const root = document.documentElement;
     if (!current || !queue) {
       root.style.removeProperty("--music-dock-clearance");
       return;
     }
-    const node = dockRef.current;
+    const node = dockHidden ? restoreRef.current : dockRef.current;
     if (!node) return;
 
     const sync = () => {
       const bottom = Number.parseFloat(getComputedStyle(node).bottom) || 0;
+      const mainWidth = Math.min(1240, Math.max(0, window.innerWidth - 44));
+      const gutter = (window.innerWidth - mainWidth) / 2;
+      const reserve =
+        dockHidden && gutter >= node.offsetWidth + 24
+          ? 0
+          : node.offsetHeight + bottom + 12;
       root.style.setProperty(
         "--music-dock-clearance",
-        `${Math.ceil(node.offsetHeight + bottom + 12)}px`
+        `${Math.ceil(reserve)}px`
       );
     };
     sync();
@@ -319,7 +331,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("resize", sync);
       root.style.removeProperty("--music-dock-clearance");
     };
-  }, [current, queue, frameMode]);
+  }, [current, queue, frameMode, dockHidden]);
 
   // 当前曲目的歌词只读一次：歌词页和两侧琴弦共用同一份，避免重复请求。
   useEffect(() => {
@@ -452,7 +464,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       />
 
       <AnimatePresence>
-        {current && queue && (
+        {current && queue && !dockHidden && (
           <motion.div
             ref={dockRef}
             className="playlist-dock"
@@ -582,14 +594,56 @@ export function MusicProvider({ children }: { children: ReactNode }) {
               </button>
               <button
                 type="button"
+                className="playlist-dock-min"
+                onClick={() => setDockHidden(true)}
+                aria-label="收起播放器（音乐继续播放）"
+                title="收起播放器，音乐继续播放"
+              >
+                ▾
+              </button>
+              <button
+                type="button"
                 className="playlist-dock-close"
                 onClick={stop}
-                aria-label="收起播放器"
+                aria-label="停止播放并关闭播放器"
+                title="停止播放并关闭"
               >
                 ×
               </button>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {current && queue && dockHidden && (
+          <motion.button
+            ref={restoreRef}
+            type="button"
+            className="playlist-restore"
+            onClick={() => setDockHidden(false)}
+            aria-label={`展开播放器：${current.title}`}
+            title="展开播放器"
+            data-playing={playing ? "true" : "false"}
+            initial={{ opacity: 0, scale: 0.6, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.6, y: 10 }}
+            transition={{ type: "spring", stiffness: 320, damping: 26 }}
+          >
+            <span
+              className="playlist-restore-disc"
+              data-spin={playing ? "true" : "false"}
+            >
+              {cover ? (
+                <img src={cover} alt="" referrerPolicy="no-referrer" />
+              ) : (
+                <span>{current.title.slice(0, 1)}</span>
+              )}
+            </span>
+            <span className="playlist-restore-caret" aria-hidden="true">
+              ▴
+            </span>
+          </motion.button>
         )}
       </AnimatePresence>
 

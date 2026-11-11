@@ -764,6 +764,98 @@ html.motion-fallback [data-reveal]:not(.is-in) {
   color: #bad6cf;
 }
 
+.playlist-dock-controls .playlist-dock-min {
+  border-color: transparent;
+  color: #bad6cf;
+}
+
+/* 收起后的右下角悬浮入口：只留一张旋转唱片，点击重新展开面板 */
+.playlist-restore {
+  position: fixed;
+  right: 16px;
+  bottom: 12px;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgb(169 220 204 / 0.55);
+  border-radius: 50%;
+  background: rgb(4 36 33 / 0.94);
+  color: #e7fff8;
+  cursor: pointer;
+  box-shadow:
+    0 12px 30px rgb(2 24 23 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
+  backdrop-filter: blur(12px);
+  transition:
+    transform 170ms ease,
+    border-color 170ms ease,
+    box-shadow 170ms ease;
+}
+
+.playlist-restore:hover,
+.playlist-restore:focus-visible {
+  border-color: #c9ffe9;
+  transform: scale(1.06);
+  outline: none;
+}
+
+.playlist-restore[data-playing="true"] {
+  box-shadow:
+    0 0 0 4px rgb(169 220 204 / 0.14),
+    0 12px 30px rgb(2 24 23 / 0.35);
+}
+
+.playlist-restore-disc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #0a1f1d 0 18%, transparent 19%),
+    repeating-radial-gradient(circle at center, #0a1f1d 0 2px, #13332f 2px 4px);
+  animation: vinyl-spin 9s linear infinite;
+  animation-play-state: paused;
+}
+
+.playlist-restore-disc[data-spin="true"] {
+  animation-play-state: running;
+}
+
+.playlist-restore-disc img {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.16);
+}
+
+.playlist-restore-disc > span {
+  color: #a9dccc;
+  font-family: var(--font-heading);
+  font-size: 15px;
+}
+
+.playlist-restore-caret {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #a9dccc;
+  color: #042421;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1;
+}
+
 /* ------------------------------ 扫码绑定面板 ------------------------------ */
 
 .music-link-panel {
@@ -1561,6 +1653,17 @@ html.motion-fallback [data-reveal]:not(.is-in) {
     position: absolute;
     top: 8px;
     right: 10px;
+  }
+
+  .playlist-dock-controls .playlist-dock-min {
+    position: absolute;
+    top: 8px;
+    right: 46px;
+  }
+
+  .playlist-restore {
+    right: 10px;
+    bottom: 10px;
   }
 
   .playlist-dock-progress {
