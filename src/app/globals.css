@@ -1142,6 +1142,7 @@
     overflow: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
+    padding-bottom: var(--music-dock-clearance, 0px);
   }
 
   .os-mobile-appbar {
@@ -1228,7 +1229,7 @@
       position: relative;
       z-index: 1;
       overflow: visible;
-      padding-bottom: 72px;
+      padding-bottom: calc(72px + var(--music-dock-clearance, 0px));
     }
 
     .os-taskbar {
@@ -5888,7 +5889,8 @@ html:has(.os-shell[data-full="true"]) body {
     width: min(1240px, calc(100% - 44px));
     min-height: calc(100dvh - 124px);
     margin: 0 auto;
-    padding: 32px 0 72px;
+    /* 播放器是 fixed dock：额外预留它的实测高度，末尾内容能滚到它上方 */
+    padding: 32px 0 calc(72px + var(--music-dock-clearance, 0px));
     border: 1px solid #688b84;
     border-radius: 4px;
     background: rgb(244 255 251 / 0.96);
@@ -5936,7 +5938,7 @@ html:has(.os-shell[data-full="true"]) body {
   .standalone-terminal-shell {
     position: relative;
     isolation: isolate;
-    min-height: calc(100dvh - 120px);
+    min-height: calc(100dvh - 120px - var(--music-dock-clearance, 0px));
     overflow: hidden;
     border: 1px solid #28534d;
     border-radius: 4px;
@@ -5973,7 +5975,8 @@ html:has(.os-shell[data-full="true"]) body {
   .standalone-terminal-body {
     position: relative;
     z-index: 1;
-    height: min(70dvh, 680px);
+    /* 输入行贴在终端底部：随 dock 升高同步缩短，保证不落到播放器后面 */
+    height: clamp(260px, calc(70dvh - var(--music-dock-clearance, 0px)), 680px);
   }
 
   /* 完整终端页让磷光层从深色桌面里透出来；浮窗里的终端仍是实心窗口底色。 */
@@ -6536,7 +6539,7 @@ html:has(.os-shell[data-full="true"]) body {
       padding: 16px;
     }
     .standalone-terminal-body {
-      height: 72dvh;
+      height: clamp(240px, calc(72dvh - var(--music-dock-clearance, 0px)), 680px);
     }
   }
 

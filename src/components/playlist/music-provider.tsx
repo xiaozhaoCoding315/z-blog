@@ -90,10 +90,18 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     error?: string;
   } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const dockRef = useRef<HTMLDivElement | null>(null);
   const coverButtonRef = useRef<HTMLButtonElement | null>(null);
   const autoplayRef = useRef(false);
   /** 连续音源失败计数：一首坏歌跳过即可，整队都坏时停下来，避免死循环切歌 */
   const audioFailuresRef = useRef(0);
+  /**
+   * 每次「想让音乐开始播」的意图序号：select / startPlayback 同步 +1。
+   * 失效音源的 play() 会以 NotSupportedError 拒绝，而这个拒绝往往晚于
+   * 跳歌 state 已提交、新曲目的 effect 已排队；只看 cleanup 的 cancelled
+   * 标志来不及，会把刚设好的 autoplayRef 清掉，下一首就只加载不播放。
+   */
+  const playIntentRef = useRef(0);
   const noticeIdRef = useRef(0);
 
   const current =
@@ -110,6 +118,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const ambientAllowed = !pathname.startsWith("/assistant");
 
   const select = useCallback((index: number) => {
+    playIntentRef.current += 1;
     autoplayRef.current = true;
     setCurrentIndex(index);
     setPlaying(true);
@@ -132,14 +141,18 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   );
 
   const startPlayback = useCallback(() => {
+    playIntentRef.current += 1;
+    const intent = playIntentRef.current;
     autoplayRef.current = true;
     audioFailuresRef.current = 0;
     const audio = audioRef.current;
     if (!audio) return;
     setPlaying(true);
     if (audio.paused) {
-      // 自动播放被拦或音源失效时回落到暂停态；用户再点一次即可重新起播
+      // 自动播放被拦或音源失效时回落到暂停态；用户再点一次即可重新起播。
+      // 只有「这一意图仍是最新」时才落回暂停，避免旧曲目的拒绝覆盖新一次选曲。
       audio.play().catch(() => {
+        if (intent !== playIntentRef.current) return;
         autoplayRef.current = false;
         setPlaying(false);
       });
@@ -260,11 +273,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current;
     if (!audio || !audioSrc) return;
     let cancelled = false;
+    const intent = playIntentRef.current;
     audio.currentTime = 0;
     audio.load();
     if (autoplayRef.current) {
       audio.play().catch(() => {
-        if (cancelled) return;
+        // 旧音源的拒绝可能比新曲目的 effect 更早执行：意图序号已变就让它作废，
+        // 否则会把 autoplayRef 清掉，导致跳歌后的下一首永远停在暂停态。
+        if (cancelled || intent !== playIntentRef.current) return;
         autoplayRef.current = false;
         setPlaying(false);
       });
@@ -273,6 +289,37 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [audioSrc, playToken]);
+
+  // dock 是 fixed 的：把实际占用的高度写成 CSS 变量（含底部间距），
+  // 终端输入行与小元同学的输入区据此预留空间，不会被播放器盖住。
+  // 尺寸随窗口、frameMode 与随身提示变化，用 ResizeObserver 跟随而不是写死。
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!current || !queue) {
+      root.style.removeProperty("--music-dock-clearance");
+      return;
+    }
+    const node = dockRef.current;
+    if (!node) return;
+
+    const sync = () => {
+      const bottom = Number.parseFloat(getComputedStyle(node).bottom) || 0;
+      root.style.setProperty(
+        "--music-dock-clearance",
+        `${Math.ceil(node.offsetHeight + bottom + 12)}px`
+      );
+    };
+    sync();
+    const observer =
+      typeof ResizeObserver === "function" ? new ResizeObserver(sync) : null;
+    observer?.observe(node);
+    window.addEventListener("resize", sync);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", sync);
+      root.style.removeProperty("--music-dock-clearance");
+    };
+  }, [current, queue, frameMode]);
 
   // 当前曲目的歌词只读一次：歌词页和两侧琴弦共用同一份，避免重复请求。
   useEffect(() => {
@@ -407,6 +454,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       <AnimatePresence>
         {current && queue && (
           <motion.div
+            ref={dockRef}
             className="playlist-dock"
             data-home={pathname === "/" ? "true" : "false"}
             role="region"
