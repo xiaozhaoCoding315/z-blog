@@ -90,7 +90,9 @@ test("资料表单改为本地选图，不再提供外链输入", () => {
   assert.match(field, /createImageBitmap/);
   assert.match(field, /\/api\/profile\/avatar/);
   assert.match(field, /type="hidden" name="avatarUrl"/);
-  assert.match(field, /取消外链|不再接受外链/);
+  // 旧外链头像只做兼容预览，保存时会清掉；表单本身没有外链输入框
+  assert.match(field, /legacySrc/);
+  assert.doesNotMatch(field, /name="avatarUrl"\s+type="text"/);
 });
 
 test("路径穿越一律拒绝", () => {

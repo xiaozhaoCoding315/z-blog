@@ -5,12 +5,14 @@ import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
   comments as commentsTable,
+  friends as friendsTable,
   letters as lettersTable,
   moments as momentsTable,
   shelfItems,
   siteSettings,
   songs as songsTable,
 } from "@/db/schema";
+import { parseFriendInput } from "@/lib/friends-core";
 import { getSessionUser } from "@/lib/session";
 import { parseMomentId } from "@/lib/moment-core";
 import {
@@ -224,5 +226,42 @@ export async function deleteShelfItem(formData: FormData): Promise<void> {
   if (!db) return;
   await db.delete(shelfItems).where(eq(shelfItems.id, id));
   updateTag("shelf");
+  refresh();
+}
+
+/** 添加一条友链：公开页与首页共用 friends 缓存标签。 */
+export async function addFriend(formData: FormData): Promise<void> {
+  if (!(await requireOwner())) return;
+  const parsed = parseFriendInput(formData);
+  if (!parsed.ok) return;
+  const db = getDb();
+  if (!db) return;
+  await db.insert(friendsTable).values(parsed.value);
+  updateTag("friends");
+  refresh();
+}
+
+/** 修改一条友链；只按表单里的 id 更新，字段校验与添加共用纯函数。 */
+export async function updateFriend(formData: FormData): Promise<void> {
+  if (!(await requireOwner())) return;
+  const id = idFrom(formData);
+  const parsed = parseFriendInput(formData);
+  if (!id || !parsed.ok) return;
+  const db = getDb();
+  if (!db) return;
+  await db.update(friendsTable).set(parsed.value).where(eq(friendsTable.id, id));
+  updateTag("friends");
+  refresh();
+}
+
+/** 删除一条友链；id 必须是正的安全整数。 */
+export async function deleteFriend(formData: FormData): Promise<void> {
+  if (!(await requireOwner())) return;
+  const id = idFrom(formData);
+  if (!id) return;
+  const db = getDb();
+  if (!db) return;
+  await db.delete(friendsTable).where(eq(friendsTable.id, id));
+  updateTag("friends");
   refresh();
 }

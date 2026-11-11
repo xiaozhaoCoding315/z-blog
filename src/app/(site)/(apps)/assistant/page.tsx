@@ -28,7 +28,7 @@ export default async function AssistantPage({
   const notes = getAllNotes().slice(0, 3);
   const prompts = notes.map((note) => ({
     text: `《${note.meta.title}》里主要讲了什么？`,
-    note: `来自真实笔记 · ${note.meta.date}`,
+    note: `来自笔记 · ${note.meta.date}`,
   }));
 
   return (

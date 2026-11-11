@@ -14,6 +14,7 @@ import {
   users,
 } from "@/db/schema";
 import { getSessionUser } from "@/lib/session";
+import { FriendsAdmin } from "@/components/admin/friends-admin";
 import {
   getDesktopPin,
   getStatusSentence,
@@ -398,7 +399,7 @@ export default async function AdminPage() {
       <header data-reveal>
         <h1 className="font-heading text-3xl font-bold">审核后台</h1>
         <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-          状态句 · 桌面便签 · 待审留言 · 待审歌曲 · 评论 · 书架 · 导入歌单 · 单曲
+          状态句 · 桌面便签 · 待审留言 · 待审歌曲 · 评论 · 书架 · 友链 · 导入歌单 · 单曲
         </p>
       </header>
 
@@ -852,6 +853,8 @@ async function AdminSections() {
           </>
         )}
       </Section>
+
+      <FriendsAdmin />
 
       <Section title="导入歌单">
         {!playlists.available ? (

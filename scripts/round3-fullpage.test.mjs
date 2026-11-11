@@ -107,7 +107,7 @@ test("首页七个入口全部是完整页面链接，不再开局部小窗", ()
   assert.match(page, /home-note-visual/);
   assert.doesNotMatch(page, /windowContent|KanbanBoard|AboutProfile/);
   assert.match(page, /<Suspense fallback=\{<ReadingFallback label="实时状态" \/>\}>/);
-  assert.match(page, /NOT AVAILABLE/);
+  assert.match(page, /ReadingFallback/);
 });
 
 test("窗口深链与主入口统一走路径优先，隐藏应用仍被挡住", () => {

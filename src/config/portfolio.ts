@@ -1,5 +1,5 @@
 /**
- * 项目展示与友链数据——直接编辑这里即可更新页面。
+ * 项目展示与 Now 数据——直接编辑这里即可更新页面。
  */
 
 export interface Project {
@@ -106,34 +106,6 @@ export const projects: Project[] = [
     status: "已完成",
   },
 ];
-
-export interface FriendLink {
-  name: string;
-  url: string;
-  description: string;
-  /** 头像：站内 public 路径（如 /images/friends/x.png）或完整 https 地址；省略则用首字母 */
-  avatar?: string;
-  /** 一两个短标签（如「设计」「独立开发」），显示在卡片底部；可省略 */
-  tags?: string[];
-}
-
-/**
- * 友链列表 —— 只放真实的、你确实在看的站点。
- *
- * 刻意留空：占位域名挂在生产站点上只会减分。
- * 加一条时复制下面的模板（不需要的字段整行删掉）：
- *
- *   {
- *     name: "站点名",
- *     url: "https://friend.site",
- *     description: "一句话说清这个站写什么",
- *     avatar: "/images/friends/site.png",
- *     tags: ["设计", "常读"],
- *   },
- *
- * 加到第一条真实友链时，/friends 的卡片列表与首页友链区块会自动出现。
- */
-export const friends: FriendLink[] = [];
 
 /** Now 页面数据：我最近在做什么（nownownow.com 运动，改这里即可） */
 export const now = {

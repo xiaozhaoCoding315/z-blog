@@ -8,6 +8,7 @@ import { now as portfolioNow } from "@/config/portfolio";
 import { siteConfig } from "@/config/site";
 import { getAllNotes } from "@/content";
 import { getGithubActivity } from "@/lib/github-server";
+import { getFriends } from "@/lib/friends-server";
 import { getWeather } from "@/lib/weather-server";
 
 /**
@@ -20,9 +21,7 @@ function ReadingFallback({ label }: { label: string }) {
   return (
     <div className="os-window-pane" aria-live="polite">
       <p className="os-pane-label">读取中</p>
-      <p className="text-[13px] leading-6 text-muted-foreground">
-        {label} · 暂无数据时显示 NOT AVAILABLE
-      </p>
+      <p className="text-[13px] leading-6 text-muted-foreground">{label}…</p>
     </div>
   );
 }
@@ -52,9 +51,7 @@ async function StatusWidgetSlot() {
 function RecentNotes({ notes }: { notes: HomeNote[] }) {
   if (notes.length === 0) {
     return (
-      <p className="home-notes-empty">
-        内容库里还没有已发布笔记。这里不会用示例文章占位。
-      </p>
+      <p className="home-notes-empty">还没有发布笔记。</p>
     );
   }
 
@@ -76,7 +73,7 @@ function RecentNotes({ notes }: { notes: HomeNote[] }) {
           <span className="home-note-content">
             <time dateTime={note.date}>{note.date.replaceAll("-", ".")}</time>
             <h3>{note.title}</h3>
-            <p>{note.description || "这篇笔记没有摘要，点开读正文。"}</p>
+            <p>{note.description || "点开读正文。"}</p>
             <span className="home-note-tags">
               {note.tags.slice(0, 2).map((tag) => `#${tag}`).join(" ") || "未分类"}
             </span>
@@ -93,6 +90,7 @@ function RecentNotes({ notes }: { notes: HomeNote[] }) {
 export default async function HomePage() {
   await connection();
 
+  const friendsResult = await getFriends();
   const notes: HomeNote[] = getAllNotes().slice(0, 3).map((note) => ({
     slug: note.slug,
     title: note.meta.title,
@@ -105,6 +103,8 @@ export default async function HomePage() {
     <PersonalHome
       status={siteConfig.status}
       notes={notes}
+      friends={friendsResult.friends}
+      friendsAvailable={friendsResult.available}
       recentNotes={<RecentNotes notes={notes} />}
       statusWidget={
         <Suspense fallback={<ReadingFallback label="实时状态" />}>

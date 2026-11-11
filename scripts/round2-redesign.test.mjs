@@ -139,7 +139,7 @@ test("首页保留请求期边界并改为 PersonalHome", () => {
   assert.match(page, /import \{ PersonalHome, type HomeNote \} from "@\/components\/home\/personal-home"/);
   assert.match(page, /<PersonalHome/);
   assert.doesNotMatch(page, /<DesktopHome/);
-  assert.match(page, /NOT AVAILABLE/);
+  assert.match(page, /ReadingFallback/);
   assert.match(page, /<Suspense/);
 });
 

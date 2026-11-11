@@ -662,13 +662,6 @@
   line-height: 1.7;
 }
 
-.home-friends-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  margin-top: 14px;
-}
-
 @media (max-width: 900px) {
   .friends-grid {
     grid-template-columns: 1fr;

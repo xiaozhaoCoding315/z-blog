@@ -154,7 +154,7 @@ export function AvatarUploadField({
           <input type="hidden" name="avatarUrl" value={value} />
         </div>
         <p className="profile-form-hint">
-          支持 JPG / PNG / WebP，自动居中裁成正方形并压缩；不再接受外链。
+          支持 JPG / PNG / WebP，自动裁成正方形。
         </p>
         {legacySrc && !value && (
           <p className="profile-avatar-note">

@@ -116,7 +116,7 @@ export function PageFrame({
       </main>
       <footer className="fullpage-footer">
         <span>{siteConfig.author.name} · {siteConfig.weather.city}</span>
-        <span>七个入口 · 真实内容 · NOT AVAILABLE 如实显示</span>
+        <span>七个入口</span>
       </footer>
     </div>
   );

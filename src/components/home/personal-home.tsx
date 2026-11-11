@@ -10,8 +10,8 @@ import {
 } from "react";
 import type { AppDefinition, IconKey } from "@/config/apps";
 import { primaryApps } from "@/config/apps";
-import { friends } from "@/config/portfolio";
 import { siteConfig } from "@/config/site";
+import type { FriendLink } from "@/lib/friends-core";
 import { AppIcon } from "@/components/desktop/icons";
 import { Clock } from "@/components/desktop/clock";
 import { formatClock, useClockSeconds } from "@/components/desktop/clock-store";
@@ -28,6 +28,8 @@ export interface HomeNote {
 interface PersonalHomeProps {
   status: string;
   notes: HomeNote[];
+  friends: FriendLink[];
+  friendsAvailable: boolean;
   recentNotes: ReactNode;
   statusWidget: ReactNode;
   accountEntry?: ReactNode;
@@ -77,6 +79,8 @@ function TideClock({
 export function PersonalHome({
   status,
   notes,
+  friends,
+  friendsAvailable,
   recentNotes,
   statusWidget,
   accountEntry,
@@ -218,7 +222,7 @@ export function PersonalHome({
             <span aria-hidden="true">·</span>
             <span>{primaryApps.length} 个主要入口</span>
             <span aria-hidden="true">·</span>
-            <span>{notes.length} 篇真实笔记</span>
+            <span>{notes.length} 篇笔记</span>
           </div>
         </div>
 
@@ -235,7 +239,7 @@ export function PersonalHome({
                 <small>{notes[0].date.replaceAll("-", ".")}</small>
               </Link>
             ) : (
-              <p>内容库里还没有已发布笔记</p>
+              <p>还没有发布笔记</p>
             )}
           </div>
           <div
@@ -269,10 +273,10 @@ export function PersonalHome({
             <span key={copy}>
               {[
                 "PERSONAL DEV OS",
-                "真实内容 · 不摆占位",
                 "小元同学在线",
-                "七个完整入口",
                 "笔记 / 留言 / 歌单",
+                "七个入口",
+                "慢慢更新",
                 "夜间模式默认",
               ].map((label) => (
                 <span key={label}>
@@ -295,7 +299,6 @@ export function PersonalHome({
             <div>
               <p className="home-eyebrow dark-eyebrow">从这里开始</p>
               <h2 id="home-apps-title">七个完整页面</h2>
-              <p>按文字索引直接进入，不用再打开小窗口。</p>
             </div>
           </header>
 
@@ -326,10 +329,7 @@ export function PersonalHome({
           <div className="home-about-note" data-reveal data-spotlight>
             <p>
               我是{siteConfig.author.name}，现在在{siteConfig.weather.city}。
-              平时把需求、架构、实现到上线完整走一遍，也把读过的东西、正在做的项目和偶尔想听的歌留在站里。
-            </p>
-            <p>
-              这里不追热点，也不替平台整理时间线。能留下来的，都是自己确实读过、做过、想过的内容。
+              平时把需求、架构、实现到上线走一遍，也把读过的、做过的和想听的歌留在这里。
             </p>
             <Link href="/about" className="home-text-link">
               查看完整档案
@@ -346,8 +346,7 @@ export function PersonalHome({
           <header className="home-section-head" data-reveal>
             <div>
               <p className="home-eyebrow dark-eyebrow">最近在写</p>
-              <h2 id="home-writing-title">来自仓库的真实笔记</h2>
-              <p>标题、日期与摘要都来自内容层，没有示例文章占位。</p>
+              <h2 id="home-writing-title">最近发布的笔记</h2>
             </div>
             <Link href="/notes" className="home-text-link">
               全部笔记
@@ -368,7 +367,7 @@ export function PersonalHome({
             <div>
               <p className="home-eyebrow">留言板</p>
               <h2 id="home-letter-title">留一句话，或者推荐一首歌</h2>
-              <p>留言会先经过审核；读不到数据库时，如实显示 NOT AVAILABLE。</p>
+              <p>留言会先经过审核。</p>
             </div>
             <Link href="/letters" className="home-letter-link">
               去留言
@@ -384,16 +383,20 @@ export function PersonalHome({
         >
           <header className="home-section-head" data-reveal>
             <div>
-              <p className="home-eyebrow dark-eyebrow">友链</p>
-              <h2 id="home-friends-title">会点开的那些站</h2>
-              <p>没有互挂任务，只留我确实在读的页面。</p>
+              <p className="home-eyebrow dark-eyebrow">FRIENDS</p>
+              <h2 id="home-friends-title">友链</h2>
+              <p>平时会打开的站点。</p>
             </div>
             <Link href="/friends" className="home-text-link">
               全部友链
             </Link>
           </header>
           <div className="home-friends-frame" data-reveal data-spotlight>
-            {friends.length > 0 ? (
+            {!friendsAvailable ? (
+              <div className="home-friends-empty">
+                <p>友链暂时读不到，过一会儿再刷新。</p>
+              </div>
+            ) : friends.length > 0 ? (
               <div className="home-friends-chips">
                 {friends.map((friend) => (
                   <a
@@ -410,17 +413,7 @@ export function PersonalHome({
               </div>
             ) : (
               <div className="home-friends-empty">
-                <p>
-                  友链还在一个个补：遇到真正会点开的站才加进来，不放示例占位。
-                </p>
-                <div className="home-friends-actions">
-                  <Link href="/friends" className="home-text-link">
-                    看看友链页
-                  </Link>
-                  <Link href="/letters" className="home-text-link">
-                    推荐一个站 →
-                  </Link>
-                </div>
+                <p>还没有添加友链。</p>
               </div>
             )}
           </div>

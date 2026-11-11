@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FriendsCopy } from "@/components/friends/friends-copy";
 import { GithubIcon } from "@/components/icons/github";
-import { friends, type FriendLink } from "@/config/portfolio";
 import { siteConfig } from "@/config/site";
+import type { FriendLink } from "@/lib/friends-core";
+import { getFriends } from "@/lib/friends-server";
 
 export const metadata: Metadata = {
   title: "友链",
@@ -12,14 +13,6 @@ export const metadata: Metadata = {
 };
 
 type RainStyle = CSSProperties & { "--rain-index": number };
-
-const TICKER = [
-  "FRIEND LINKS",
-  "只放会点开的站",
-  "交换开放",
-  "真实内容 · 不摆占位",
-  "潮汐 · 友链",
-];
 
 const RAIN = Array.from({ length: 24 }, (_, index) => index);
 
@@ -76,8 +69,13 @@ function FriendCard({ friend, index }: { friend: FriendLink; index: number }) {
   );
 }
 
-export default function FriendsPage() {
-  const hasFriends = friends.length > 0;
+export default async function FriendsPage() {
+  const { available, friends } = await getFriends();
+  const hasFriends = available && friends.length > 0;
+  const ticker = [
+    ...(available ? friends.map((friend) => friend.name) : []),
+    "交换友链",
+  ];
   const exchangeText = [
     siteConfig.name,
     siteConfig.url,
@@ -108,26 +106,23 @@ export default function FriendsPage() {
 
         <div className="friends-hero-inner">
           <p className="friends-kicker" data-reveal>
-            FRIENDS / 常读站点
+            FRIENDS / 友链
           </p>
           <h1 id="friends-title" className="friends-title" data-reveal>
-            把常读的站点，
-            <br />
-            锚在这条潮汐线上
+            我常看的站点
           </h1>
           <p className="friends-lede" data-reveal>
-            这里只放我确实会点开的站：可能是一个人的随笔、一间小工作室，
-            或者某个把问题讲清楚的技术博客。没有互挂任务，也不凑数量。
+            这里放我平时会打开的网站。
           </p>
           <div className="friends-hero-meta" data-reveal>
-            <span>{hasFriends ? `${friends.length} 个友链` : "友链还在积累"}</span>
+            <span>
+              {available ? `${friends.length} 个站点` : "暂时读不到"}
+            </span>
             <span aria-hidden="true">·</span>
-            <span>交换开放</span>
-            <span aria-hidden="true">·</span>
-            <span>只放真实站点</span>
+            <span>交换友链</span>
           </div>
           <a className="friends-cue" href="#friends-list" data-reveal>
-            <span>沿潮汐线看看</span>
+            <span>看看下面的站点</span>
             <span className="friends-cue-line" aria-hidden="true">
               <span />
             </span>
@@ -135,8 +130,10 @@ export default function FriendsPage() {
         </div>
 
         <div className="friends-hero-foot" aria-hidden="true">
-          <span>LINK / {String(friends.length).padStart(2, "0")}</span>
-          <span>NORTH · {siteConfig.weather.city}</span>
+          <span>
+            FRIENDS /{" "}
+            {available ? String(friends.length).padStart(2, "0") : "--"}
+          </span>
         </div>
         <div className="home-tide-line home-tide-breathe" aria-hidden="true">
           <span />
@@ -147,7 +144,7 @@ export default function FriendsPage() {
         <div className="home-ticker-track">
           {Array.from({ length: 2 }, (_, copy) => (
             <span key={copy}>
-              {TICKER.map((label) => (
+              {ticker.map((label) => (
                 <span key={label}>
                   <i />
                   {label}
@@ -162,17 +159,28 @@ export default function FriendsPage() {
         <header className="friends-list-head" data-reveal>
           <div>
             <p className="friends-eyebrow">
-              DIRECTORY / {String(friends.length).padStart(2, "0")}
+              DIRECTORY /{" "}
+              {available ? String(friends.length).padStart(2, "0") : "--"}
             </p>
-            <h2>常读的站点</h2>
-            <p>没有排序权重，也没有互相挂链的任务，都是我自己会打开的页面。</p>
+            <h2>站点列表</h2>
+            <p>最近添加的排在前面。</p>
           </div>
-          <Link href="/letters" className="friends-text-link">
-            推荐一个站 →
-          </Link>
+          <a href="#friends-exchange" className="friends-text-link">
+            交换友链 →
+          </a>
         </header>
 
-        {hasFriends ? (
+        {!available ? (
+          <section
+            className="friends-empty"
+            aria-labelledby="friends-unavailable-title"
+            data-reveal
+          >
+            <p className="friends-eyebrow">NOT AVAILABLE</p>
+            <h2 id="friends-unavailable-title">友链暂时读不到</h2>
+            <p>过一会儿再刷新。</p>
+          </section>
+        ) : hasFriends ? (
           <div className="friends-grid">
             {friends.map((friend, index) => (
               <FriendCard
@@ -194,41 +202,27 @@ export default function FriendsPage() {
               <span />
               <span />
             </div>
-            <p className="friends-eyebrow">FRIEND SLOTS / 00</p>
-            <h2 id="friends-empty-title">还没有收录友链</h2>
-            <p>
-              这里不摆示例站占位。遇到真正会点开的站点，再一个个加进来；
-              你的站也可以先来自荐，我会先读几篇再决定。
-            </p>
+            <p className="friends-eyebrow">FRIENDS / 00</p>
+            <h2 id="friends-empty-title">还没有添加友链</h2>
+            <p>这里还没有收录站点。</p>
             <div className="friends-empty-actions">
               <Link href="/letters" className="friends-text-link">
-                去留言板自荐 →
+                去留言板交换友链 →
               </Link>
-              <a
-                href={siteConfig.links.github}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="friends-text-link"
-              >
-                在 GitHub 留言 ↗
-              </a>
             </div>
           </section>
         )}
 
         <section
           className="friends-exchange"
+          id="friends-exchange"
           aria-labelledby="friends-exchange-title"
           data-reveal
           data-spotlight
         >
           <div className="friends-exchange-head">
-            <p className="friends-eyebrow">LINK EXCHANGE</p>
             <h2 id="friends-exchange-title">交换友链</h2>
-            <p>
-              申请请附站点名称、链接和一句话介绍。我会先自己读几篇——
-              只加我确实会点开的站。
-            </p>
+            <p>把你的站点发到留言板或 GitHub，我会先去看看。</p>
           </div>
           <div className="friends-exchange-grid">
             <div className="friends-exchange-card">
@@ -238,7 +232,7 @@ export default function FriendsPage() {
               <FriendsCopy text={exchangeText} />
             </div>
             <div className="friends-exchange-card">
-              <span className="friends-exchange-label">怎么联系</span>
+              <span className="friends-exchange-label">联系方式</span>
               <a
                 href={siteConfig.links.github}
                 target="_blank"
@@ -252,7 +246,7 @@ export default function FriendsPage() {
                 留言板 →
               </Link>
               <p className="friends-exchange-note">
-                邮箱不常公开；留言板与 GitHub 是最稳的两条路。
+                留言板或 GitHub 都可以。
               </p>
             </div>
           </div>

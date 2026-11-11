@@ -37,7 +37,7 @@ test("首页保留请求期边界与流式状态洞", () => {
   assert.match(page, /export const instant = false/);
   assert.match(page, /<Suspense fallback=\{<ReadingFallback label="实时状态" \/>\}>/);
   assert.match(page, /status=\{siteConfig\.status\}/);
-  assert.match(page, /NOT AVAILABLE/);
+  assert.match(page, /ReadingFallback/);
 });
 
 test("首页改为 PersonalHome，七入口全部链接到完整页面", () => {

@@ -370,6 +370,21 @@ export async function ensureSchema() {
   );
 
   await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS friends (
+      id bigserial PRIMARY KEY,
+      name text NOT NULL,
+      url text NOT NULL,
+      description text NOT NULL DEFAULT '',
+      avatar text,
+      tags jsonb NOT NULL DEFAULT '[]'::jsonb,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS friends_created_idx ON friends (created_at DESC)`
+  );
+
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS site_settings (
       key text PRIMARY KEY,
       value text NOT NULL,

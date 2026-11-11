@@ -7753,6 +7753,238 @@ img.user-avatar {
   text-underline-offset: 4px;
 }
 
+/* ---------- 资料编辑：预览 + 表单 ---------- */
+.profile-studio {
+  display: grid;
+  grid-template-columns: minmax(260px, 308px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.profile-preview {
+  position: sticky;
+  top: 96px;
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  overflow: hidden;
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 90% 4%, #1b6b5b 0, transparent 52%),
+    linear-gradient(150deg, #042421, #0c2c29 62%, #103733);
+  color: #f4fffb;
+  box-shadow: 0 22px 50px -32px rgb(4 36 33 / 0.65);
+}
+
+.profile-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-preview-label {
+  color: #9fc9bf;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.profile-preview-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #b9ffe9;
+  box-shadow: 0 0 0 4px rgb(185 255 233 / 0.12);
+}
+
+.profile-preview .profile-form-avatar {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.profile-preview .user-avatar-lg {
+  width: 88px;
+  height: 88px;
+  border: 1px solid rgb(185 255 233 / 0.32);
+  font-size: 34px;
+}
+
+.profile-preview .profile-form-avatar-label {
+  margin-bottom: 6px;
+  color: #9fc9bf;
+}
+
+.profile-preview .profile-avatar-upload {
+  border-color: #d8fff1;
+  background: #d8fff1;
+  color: #062823;
+}
+
+.profile-preview .profile-avatar-upload:hover,
+.profile-preview .profile-avatar-upload:focus-visible {
+  background: #ffffff;
+  color: #042421;
+}
+
+.profile-preview .profile-avatar-remove {
+  border-color: rgb(216 255 241 / 0.35);
+  background: transparent;
+  color: #cbeae1;
+}
+
+.profile-preview .profile-avatar-remove:hover,
+.profile-preview .profile-avatar-remove:focus-visible {
+  border-color: #ffb4a8;
+  color: #ffb4a8;
+}
+
+.profile-preview .profile-form-hint,
+.profile-preview .profile-avatar-note,
+.profile-preview .profile-avatar-error {
+  color: #9fc9bf;
+}
+
+.profile-preview .profile-avatar-error {
+  color: #ffb4a8;
+}
+
+.profile-preview-identity {
+  padding-top: 2px;
+}
+
+.profile-preview-identity h2 {
+  font-family: var(--font-heading);
+  font-size: 25px;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.profile-preview-identity p {
+  margin-top: 4px;
+  color: #9fc9bf;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.profile-preview-bio {
+  padding-top: 16px;
+  border-top: 1px dashed rgb(159 201 191 / 0.3);
+  color: #d1ede4;
+  font-size: 14px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.profile-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: -4px;
+}
+
+.profile-preview-meta span {
+  padding: 4px 9px;
+  border: 1px solid rgb(159 201 191 / 0.28);
+  border-radius: 999px;
+  color: #d8fff1;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.profile-preview-link {
+  justify-self: start;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgb(185 255 233 / 0.4);
+  color: #c9ffe9;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.profile-preview-link:hover,
+.profile-preview-link:focus-visible {
+  border-bottom-color: #c9ffe9;
+  color: #ffffff;
+}
+
+.profile-form-main {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.profile-form-section {
+  padding: 22px;
+  border: 1px solid #b7d3ce;
+  border-radius: 16px;
+  background: #f9fffd;
+}
+
+.profile-form-section-head h2 {
+  color: #103733;
+  font-family: var(--font-heading);
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+.profile-form-section-head p {
+  margin-top: 5px;
+  color: #45615e;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.profile-form-section .profile-form-grid {
+  margin-top: 18px;
+}
+
+.profile-studio .profile-form-privacy {
+  margin-top: 0;
+  padding: 20px 22px;
+  border: 1px solid #b7d3ce;
+  border-radius: 16px;
+  background: #f9fffd;
+}
+
+.profile-studio .profile-form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 960px) {
+  .profile-studio {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-preview {
+    position: static;
+  }
+}
+
+@media (max-width: 700px) {
+  .profile-preview {
+    padding: 20px;
+  }
+
+  .profile-preview .profile-form-avatar {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .profile-form-section {
+    padding: 18px;
+  }
+
+  .profile-studio .profile-form-privacy {
+    padding: 18px;
+  }
+}
+
 /* ---------- 公开主页 ---------- */
 .profile-public-hero {
   position: relative;

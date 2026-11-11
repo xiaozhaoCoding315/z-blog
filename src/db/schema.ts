@@ -449,6 +449,30 @@ export const shelfItems = pgTable(
   ]
 );
 
+/**
+ * friends：站长在后台维护的友链。
+ *
+ * 独立成表，不再写进 src/config/portfolio.ts——加一个站点不用重新构建。
+ * avatar 可存站内路径或外链；tags 是短标签数组。
+ */
+export const friends = pgTable(
+  "friends",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    description: text("description").notNull().default(""),
+    avatar: text("avatar"),
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("friends_created_idx").on(table.createdAt.desc()),
+  ]
+);
+
 /** site_settings：站长可在后台修改的小配置，当前只有 status_sentence */
 export const siteSettings = pgTable("site_settings", {
   key: text("key").primaryKey(),
@@ -473,3 +497,4 @@ export type PlaylistDbRow = typeof playlists.$inferSelect;
 export type PlaylistSuggestionDbRow = typeof playlistSuggestions.$inferSelect;
 export type MusicAccountDbRow = typeof musicAccounts.$inferSelect;
 export type ShelfItemDbRow = typeof shelfItems.$inferSelect;
+export type FriendDbRow = typeof friends.$inferSelect;
