@@ -70,7 +70,7 @@ test("模型配置默认 Agnes-3.0-Flash，界面显示产品名而不是 API sl
   assert.match(ai, /CHAT_MODEL \?\? "agnes-3\.0-flash"/);
   assert.match(ai, /https:\/\/api\.agnes-ai\.cn\/v1/);
   assert.match(envExample, /CHAT_MODEL=agnes-3\.0-flash/);
-  assert.match(readme, /默认 `agnes-3\.0-flash`/);
+  assert.match(readme, /AI_BASE_URL.*CHAT_MODEL.*agnes-3\.0-flash/);
   assert.match(view, /formatModelLabel\(modelId\)/);
   assert.match(view, /MODEL \{modelLabel\}/);
   assert.match(view, /READY \/ \{modelLabel\}/);
