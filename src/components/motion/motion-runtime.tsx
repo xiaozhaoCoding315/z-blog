@@ -17,7 +17,9 @@ export function MotionRuntime() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    // 运行中改系统设置也要跟着变：不是刷新页面才生效。
+    let reduce = motionQuery.matches;
     document.documentElement.classList.add("motion-ready");
     document.documentElement.classList.add("motion-booted");
     document.documentElement.classList.remove("motion-fallback");
@@ -126,12 +128,31 @@ export function MotionRuntime() {
       active = null;
     };
 
+    // 系统在「减少动效」与「正常」之间切换时：新出现的元素直接给终态，
+    // 已经入场的元素撤掉指针光斑残留，不让旧状态卡在页面上。
+    const onMotionChange = (event: MediaQueryListEvent) => {
+      reduce = event.matches;
+      if (reduce) {
+        reset();
+        document
+          .querySelectorAll<HTMLElement>("[data-reveal]:not(.is-in)")
+          .forEach((element) => {
+            element.classList.add("is-in");
+            observer.unobserve(element);
+          });
+      } else {
+        scan();
+      }
+    };
+    motionQuery.addEventListener("change", onMotionChange);
+
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerleave", reset);
 
     return () => {
       observer.disconnect();
       window.clearTimeout(startTimer);
+      motionQuery.removeEventListener("change", onMotionChange);
       mutation?.disconnect();
       window.removeEventListener("scroll", queueReveal);
       window.removeEventListener("resize", queueReveal);

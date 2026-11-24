@@ -9,6 +9,10 @@ export interface Project {
   /** 主打项目：卡片跨双列，展示亮点列表 */
   featured?: boolean;
   highlights?: string[];
+  /** 在线入口的按钮文案；默认「访问站点」 */
+  linkLabel?: string;
+  /** 一两句可核对的现状说明，显示在入口旁 */
+  liveNote?: string;
   stack: string[];
   link?: string;
   repo?: string;
@@ -39,8 +43,9 @@ export const projects: Project[] = [
       "红-绿修复闭环：失败测试复现 bug → 最小补丁 → 全量复跑 → 人工批准",
       "变更影响雷达：依赖图分析「改这里会影响什么」+ 建议测试",
       "多栈沙箱验证：Python / Node 在真实容器里跑测试，读退出码自我纠错",
+      "两种工作区：开发模式面向代码仓库；论文模式按题目与提纲推进，可导出 MD / DOCX / PDF",
+      "手机遥控：手机上下的指令进入队列，回到电脑确认后才执行",
       "多用户 BYOK：每人自带模型 Key，五维限额 + 审计日志",
-      "夜间队列：睡前排队任务，早上带着证据审阅",
     ],
     outcomes: [
       "文件、终端、Git 三类核心操作形成可审计证据链",
@@ -55,7 +60,9 @@ export const projects: Project[] = [
       "Docker 沙箱",
       "GLM / DeepSeek / DashScope",
     ],
-    link: "http://60.205.0.224:8000",
+    link: "https://nova.zxycoder.cn",
+    linkLabel: "在线体验",
+    liveNote: "已通过域名对外提供，支持游客试用与自托管部署。",
     repo: "https://github.com/xiaozhaoCoding315/Nova-Agent",
     status: "进行中",
   },

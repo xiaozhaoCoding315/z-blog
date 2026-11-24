@@ -11,6 +11,7 @@ import {
 import type { AppDefinition, IconKey } from "@/config/apps";
 import { primaryApps } from "@/config/apps";
 import { siteConfig } from "@/config/site";
+import { IcpNotice } from "@/components/site/icp-notice";
 import type { FriendLink } from "@/lib/friends-core";
 import { AppIcon } from "@/components/desktop/icons";
 import { Clock } from "@/components/desktop/clock";
@@ -51,6 +52,20 @@ const SECTION_LABELS: Record<Section, string> = {
 const MAIN_ENTRIES = primaryApps.slice(0, 4);
 const SIDE_ENTRIES = primaryApps.slice(4);
 
+/**
+ * 入口的内容色只做分类标记：同一列里四种色调彼此可区分，
+ * 色值全部来自 globals.css 的 --tone-*，不在组件里写死。
+ */
+const ENTRY_TONES: Record<string, "teal" | "blue" | "violet" | "amber"> = {
+  terminal: "teal",
+  projects: "blue",
+  about: "amber",
+  playlist: "violet",
+  notes: "teal",
+  assistant: "violet",
+  letters: "amber",
+};
+
 function TideClock({
   label,
   className,
@@ -88,10 +103,15 @@ export function PersonalHome({
   const [section, setSection] = useState<Section>("entries");
 
   // 只有点击页内下滚提示时做一次平滑；滚轮与键盘仍走浏览器原生即时滚动。
+  // 系统开了「减少动效」就改成瞬时跳转，和全站其他动效保持同一条规则。
   const smoothScrollToApps = (event: ReactMouseEvent<HTMLAnchorElement>) => {
     const target = document.getElementById("home-apps");
     if (!target) return;
     event.preventDefault();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      target.scrollIntoView({ behavior: "auto", block: "start" });
+      return;
+    }
     target.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -118,7 +138,7 @@ export function PersonalHome({
     })).filter((item): item is { name: Section; element: HTMLElement } =>
       Boolean(item.element)
     );
-    const update = () => {
+    const measure = () => {
       const line = window.innerHeight * 0.42;
       let current: Section = "entries";
       for (const item of targets) {
@@ -126,12 +146,22 @@ export function PersonalHome({
       }
       setSection(current);
     };
-    update();
+    // 每帧最多算一次：滚动事件比屏幕刷新还密，直接 setState 会把主线程拖住。
+    let frame = 0;
+    const update = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        measure();
+      });
+    };
+    measure();
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
     return () => {
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
+      if (frame) cancelAnimationFrame(frame);
     };
   }, []);
 
@@ -146,6 +176,7 @@ export function PersonalHome({
       href={app.path ?? "/"}
       className="home-entry-line"
       data-home-index={index}
+      data-tone={ENTRY_TONES[app.id] ?? "teal"}
       data-current={section === "entries" ? "true" : "false"}
       data-reveal
       data-spotlight
@@ -293,6 +324,7 @@ export function PersonalHome({
         <section
           className="home-section home-entries"
           id="home-entries"
+          data-tone="teal"
           aria-labelledby="home-apps-title"
         >
           <header className="home-section-head" data-reveal>
@@ -317,6 +349,7 @@ export function PersonalHome({
         <section
           className="home-section home-about"
           id="home-about"
+          data-tone="amber"
           aria-labelledby="home-about-title"
           onMouseEnter={() => chooseSection("about")}
         >
@@ -340,6 +373,7 @@ export function PersonalHome({
         <section
           className="home-section home-writing"
           id="home-writing"
+          data-tone="teal"
           aria-labelledby="home-writing-title"
           onMouseEnter={() => chooseSection("writing")}
         >
@@ -360,6 +394,7 @@ export function PersonalHome({
         <section
           className="home-section home-letter"
           id="home-letters"
+          data-tone="amber"
           aria-labelledby="home-letter-title"
           onMouseEnter={() => chooseSection("letters")}
         >
@@ -378,6 +413,7 @@ export function PersonalHome({
         <section
           className="home-section home-friends"
           id="home-friends"
+          data-tone="blue"
           aria-labelledby="home-friends-title"
           onMouseEnter={() => chooseSection("friends")}
         >
@@ -431,6 +467,13 @@ export function PersonalHome({
             </a>
           ))}
         </nav>
+
+        {/* 首页把任务栏整个藏起来了（data-home），页脚也不存在——备案号必须
+            在这里单独出现，否则手机上首页一个字都看不到。 */}
+        <footer className="home-footer" data-reveal>
+          <span>{siteConfig.author.name} · {siteConfig.weather.city}</span>
+          <IcpNotice />
+        </footer>
       </main>
     </div>
   );

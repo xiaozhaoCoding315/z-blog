@@ -6,6 +6,8 @@
  * 的数据」变成站内结构，取不到时由上层退回手动导入——绝不静默伪造曲目。
  */
 
+import { extractUrlFromText } from "./share-text.ts";
+
 export type PlaylistPlatform = "netease" | "qq" | "other";
 
 export type ParseResult<T> =
@@ -472,17 +474,10 @@ export function neteaseOuterAudioUrl(externalId: string): string | null {
 /**
  * 从整段分享文案里取出第一个 http(s) 链接。
  * 网易云 / QQ 音乐的分享按钮给的是「说明文字 + 链接」的一整段，
- * 让访客再手动挑出链接纯属为难人。
+ * 让访客再手动挑出链接纯属为难人。实现放在 share-text.ts，
+ * 单曲推荐（客户端）与歌单导入（服务端）共用同一套规则。
  */
-export function extractUrlFromText(raw: string): string | null {
-  // 中文排版里括号/引号经常直接贴在链接后面，不能算进地址
-  const match = raw.match(
-    /https?:\/\/[^\s<>"'（），。！？、；：()【】「」《》一-鿿＀-￯]+/i
-  );
-  if (!match) return null;
-  // 中文标点经常紧跟链接，不属于地址本身
-  return match[0].replace(/[，。！？、；：,.!?;:]+$/u, "");
-}
+export { extractUrlFromText };
 
 export type SuggestionInput =
   | { kind: "url"; url: string }

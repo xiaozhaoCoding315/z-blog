@@ -1043,3 +1043,56 @@
     gap: 8px;
   }
 }
+/* ---------- 在线状态行：只在项目配置了 liveNote 时出现 ---------- */
+/*
+ * 用内容色里偏蓝的那一支标「正在线上」，和封面的青绿主色区分开；
+ * 链接是可点的真实域名，不在页面上编造运行指标。
+ */
+.project-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 8px 12px;
+  border: 1px solid rgb(163 201 222 / 0.28);
+  border-radius: 6px;
+  background: rgb(163 201 222 / 0.08);
+  color: #cfe6f2;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.project-live-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a3c9de;
+  box-shadow: 0 0 0 3px rgb(163 201 222 / 0.18);
+}
+
+.project-live a {
+  margin-left: auto;
+  color: #a3c9de;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.project-live a:hover,
+.project-live a:focus-visible {
+  color: #eaf7ff;
+}
+
+.project-live a:focus-visible {
+  outline: 1px solid #a3c9de;
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .project-live a {
+    margin-left: 0;
+  }
+}

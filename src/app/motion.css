@@ -51,7 +51,11 @@ html.motion-fallback [data-reveal]:not(.is-in) {
   transform: none !important;
 }
 
-[data-reveal] {
+/*
+ * 只在入场前提示合成层；.is-in 之后立刻撤掉。
+ * 常驻 will-change 会让整页元素一直占着独立图层，长页面滚动反而更慢。
+ */
+[data-reveal]:not(.is-in) {
   will-change: opacity, transform;
 }
 
@@ -123,7 +127,7 @@ html.motion-fallback [data-reveal]:not(.is-in) {
 .music-link-start,
 .music-link-playlist button,
 .music-link-all,
-.playlist-suggest-input button,
+.playlist-recommend-submit,
 .playlist-suggest-results button,
 .playlist-suggest-actions button,
 .account-auth-submit {
@@ -142,7 +146,7 @@ html.motion-fallback [data-reveal]:not(.is-in) {
 .music-link-start:hover,
 .music-link-playlist button:hover,
 .music-link-all:hover,
-.playlist-suggest-input button:hover,
+.playlist-recommend-submit:hover,
 .playlist-suggest-results button:hover,
 .playlist-suggest-actions button:hover,
 .account-auth-submit:hover {
@@ -155,7 +159,7 @@ html.motion-fallback [data-reveal]:not(.is-in) {
 .music-link-start:active,
 .music-link-playlist button:active,
 .music-link-all:active,
-.playlist-suggest-input button:active,
+.playlist-recommend-submit:active,
 .playlist-suggest-results button:active,
 .playlist-suggest-actions button:active,
 .account-auth-submit:active {
@@ -1224,39 +1228,7 @@ html.motion-fallback [data-reveal]:not(.is-in) {
   line-height: 1.8;
 }
 
-/* ------------------------------ 推荐歌单面板 ------------------------------ */
-
-.playlist-suggest-panel {
-  margin-top: 44px;
-  padding: clamp(20px, 3vw, 32px);
-  border: 1px solid #b7d3ce;
-  border-radius: 20px;
-  background:
-    linear-gradient(180deg, rgb(21 86 76 / 0.06), transparent 38%),
-    #f7fffc;
-  box-shadow: 0 22px 60px rgb(4 36 33 / 0.07);
-}
-
-.playlist-suggest-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.playlist-suggest-head h2 {
-  margin-top: 8px;
-  font-family: var(--font-heading);
-  font-size: clamp(1.5rem, 2.8vw, 2.1rem);
-}
-
-.playlist-suggest-head > div > p:not(.playlist-page-eyebrow) {
-  max-width: 62ch;
-  margin-top: 10px;
-  color: #2f504d;
-  font-size: 14px;
-  line-height: 1.8;
-}
+/* ------------------------------ 推荐入口（单曲 / 歌单） ------------------------------ */
 
 .playlist-suggest-count {
   flex: none;
@@ -1267,60 +1239,6 @@ html.motion-fallback [data-reveal]:not(.is-in) {
   color: #77591d;
   font-family: var(--font-mono);
   font-size: 10px;
-}
-
-.playlist-suggest-form {
-  display: grid;
-  gap: 10px;
-  margin-top: 22px;
-}
-
-.playlist-suggest-input {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-}
-
-.playlist-suggest-input input,
-.playlist-suggest-note {
-  width: 100%;
-  padding: 13px 16px;
-  border: 1px solid #b7d3ce;
-  border-radius: 999px;
-  background: #f4f1e7;
-  color: #103733;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.playlist-suggest-note {
-  border-radius: 14px;
-}
-
-.playlist-suggest-input input:focus-visible,
-.playlist-suggest-note:focus-visible {
-  border-color: #15564c;
-  box-shadow: 0 0 0 4px rgb(21 86 76 / 0.12);
-  outline: none;
-}
-
-.playlist-suggest-input button {
-  padding: 0 22px;
-  border: 0;
-  border-radius: 999px;
-  background: #15564c;
-  color: #f7fffc;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.playlist-suggest-input button:disabled {
-  opacity: 0.6;
-  cursor: wait;
 }
 
 .playlist-suggest-message {
@@ -1338,6 +1256,281 @@ html.motion-fallback [data-reveal]:not(.is-in) {
 .playlist-suggest-message.is-error {
   background: #f6e4e0;
   color: #8d3f36;
+}
+
+/* ---------- 统一推荐入口：单曲 / 歌单共用一次粘贴 ---------- */
+
+.playlist-recommend {
+  margin-top: 44px;
+  padding: clamp(20px, 3vw, 32px);
+  border: 1px solid #b7d3ce;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgb(21 86 76 / 0.06), transparent 38%),
+    #f7fffc;
+  box-shadow: 0 22px 60px rgb(4 36 33 / 0.07);
+}
+
+.playlist-recommend-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.playlist-recommend-head h2 {
+  margin-top: 8px;
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+}
+
+.playlist-recommend-head > div > p:not(.playlist-page-eyebrow) {
+  max-width: 62ch;
+  margin-top: 10px;
+  color: #2f504d;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.playlist-recommend-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.playlist-recommend-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #b7d3ce;
+  border-radius: 999px;
+  background: #eef8f4;
+  justify-self: start;
+}
+
+.playlist-recommend-tab {
+  min-height: 34px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #2f504d;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.playlist-recommend-tab[aria-pressed="true"] {
+  background: #15564c;
+  color: #f7fffc;
+}
+
+.playlist-recommend-tab:focus-visible {
+  outline: 2px solid #15564c;
+  outline-offset: 2px;
+}
+
+.playlist-recommend-paste {
+  width: 100%;
+  min-height: 72px;
+  padding: 13px 16px;
+  border: 1px solid #8fa8a1;
+  border-radius: 14px;
+  background: #f4f1e7;
+  color: #103733;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.playlist-recommend-paste:focus-visible,
+.playlist-recommend-note:focus-visible,
+.playlist-recommend-fields input:focus-visible {
+  border-color: #15564c;
+  box-shadow: 0 0 0 4px rgb(21 86 76 / 0.12);
+  outline: none;
+}
+
+.playlist-recommend-guess {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 13px;
+  border-radius: 12px;
+  background: #eef8f4;
+  color: #2f504d;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.playlist-recommend-guess[data-kind="song"] {
+  border-left: 3px solid #6b4fa0;
+}
+
+.playlist-recommend-guess[data-kind="playlist"] {
+  border-left: 3px solid #2f5d7c;
+}
+
+.playlist-recommend-guess[data-kind="unknown"] {
+  border-left: 3px solid #8a4b1f;
+}
+
+.playlist-recommend-guess button {
+  padding: 4px 10px;
+  border: 1px solid #15564c;
+  border-radius: 999px;
+  background: transparent;
+  color: #15564c;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.playlist-recommend-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.playlist-recommend-note {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #b7d3ce;
+  border-radius: 14px;
+  background: #f4f1e7;
+  color: #103733;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.playlist-recommend-manual {
+  border-top: 1px dashed #c7d8d3;
+  padding-top: 10px;
+}
+
+.playlist-recommend-manual > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 0;
+  color: #15564c;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.playlist-recommend-manual > summary::-webkit-details-marker {
+  display: none;
+}
+
+.playlist-recommend-manual > summary::before {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #15564c;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.playlist-recommend-manual[open] > summary::before {
+  content: "−";
+}
+
+.playlist-recommend-manual > summary small {
+  color: #5c7772;
+  font-size: 10px;
+}
+
+.playlist-recommend-manual > summary:focus-visible {
+  outline: 2px solid #15564c;
+  outline-offset: 2px;
+}
+
+.playlist-recommend-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.playlist-recommend-fields label {
+  display: grid;
+  gap: 5px;
+  color: #45615e;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.playlist-recommend-fields input {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid #8fa8a1;
+  border-radius: 10px;
+  background: #f7fffc;
+  color: #103733;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.playlist-recommend-field-wide {
+  grid-column: 1 / -1;
+}
+
+.playlist-recommend-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.playlist-recommend-submit {
+  min-height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #15564c;
+  color: #f7fffc;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.playlist-recommend-submit:hover {
+  background: #0f473f;
+}
+
+.playlist-recommend-submit:active {
+  transform: translateY(1px);
+}
+
+.playlist-recommend-submit:focus-visible {
+  outline: 2px solid #15564c;
+  outline-offset: 3px;
+}
+
+.playlist-recommend-submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.playlist-recommend-actions > span {
+  color: #45615e;
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .playlist-suggest-results {
@@ -1671,7 +1864,6 @@ html.motion-fallback [data-reveal]:not(.is-in) {
   }
 
   .music-link-head,
-  .playlist-suggest-head,
   .music-link-library-head {
     flex-direction: column;
     align-items: stretch;
@@ -1690,14 +1882,6 @@ html.motion-fallback [data-reveal]:not(.is-in) {
     justify-self: start;
   }
 
-  .playlist-suggest-input {
-    grid-template-columns: 1fr;
-  }
-
-  .playlist-suggest-input button {
-    min-height: 42px;
-  }
-
   .playlist-suggest-results li,
   .playlist-suggest-item {
     grid-template-columns: 46px minmax(0, 1fr);
@@ -1708,6 +1892,33 @@ html.motion-fallback [data-reveal]:not(.is-in) {
   .playlist-suggest-status {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .playlist-recommend-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .playlist-recommend-tabs {
+    justify-self: stretch;
+    justify-content: center;
+  }
+
+  .playlist-recommend-tab {
+    flex: 1;
+  }
+
+  .playlist-recommend-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .playlist-recommend-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .playlist-recommend-submit {
+    width: 100%;
   }
 }
 
@@ -1730,6 +1941,15 @@ html.motion-fallback [data-reveal]:not(.is-in) {
 
   .playlist-feature-card:hover,
   .playlist-card:hover {
+    transform: none;
+  }
+
+  .playlist-recommend-tab,
+  .playlist-recommend-submit {
+    transition: none;
+  }
+
+  .playlist-recommend-submit:active {
     transform: none;
   }
 }

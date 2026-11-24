@@ -42,8 +42,10 @@ export const siteConfig = {
     longitude: 116.4074,
   },
   footer: {
-    icp: "", // 备案号（有域名备案后填写）
-    beianUrl: "",
+    // 大陆服务器对外提供网站必须展示备案号并链到工信部备案系统。
+    // 留空则整块不渲染，本地开发与海外部署都不会多出一行。
+    icp: "冀ICP备2026051171号",
+    beianUrl: "https://beian.miit.gov.cn/",
   },
 } as const;
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { findAppById, findAppByPath, launcherApps } from "@/config/apps";
+import { IcpNotice } from "@/components/site/icp-notice";
 import { AppIcon } from "./icons";
 import { Clock } from "./clock";
 import { Launcher } from "./launcher";
@@ -189,6 +190,9 @@ export function Taskbar({ accountMenu }: { accountMenu: ReactNode }) {
         </div>
 
         <div className="os-taskbar-right">
+          {/* 备案号常驻任务栏：桌面页与首页都看得见。窄屏由 CSS 隐藏，
+              那个宽度下页脚还有一处，不会两头都没有。 */}
+          <IcpNotice className="os-taskbar-icp" />
           <span className="os-taskbar-clock">
             <Clock withSeconds={false} />
           </span>

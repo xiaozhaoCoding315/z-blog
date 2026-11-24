@@ -10,8 +10,7 @@ import {
 } from "@/lib/songs-server";
 import { getPlaylistSuggestions } from "@/lib/playlist-suggestions-server";
 import { PLATFORM_LABEL, SongRow } from "@/components/playlist/song-row";
-import { SongForm } from "@/components/playlist/song-form";
-import { PlaylistSuggestPanel } from "@/components/playlist/playlist-suggest-panel";
+import { RecommendPanel } from "@/components/playlist/recommend-panel";
 import { UserAvatar } from "@/components/site/user-avatar";
 
 export const metadata: Metadata = { title: "歌单" };
@@ -70,8 +69,8 @@ export default async function PlaylistPage() {
           <p className="playlist-page-eyebrow">LISTENING ROOM · 随时开听</p>
           <h1>歌单</h1>
           <p>
-            站长从网易云和 QQ 音乐整张导入，曲目可以直接在站内播放；
-            大家也可以不贴链接推荐歌单，站长采纳后署上你的名字。
+            站长从网易云和 QQ 音乐整张导入，曲目可以直接在站内播放。
+            你也可以推荐一首歌或一张歌单——粘贴分享文案就行，不用自己挑链接。
           </p>
         </div>
         <div className="playlist-page-head-side">
@@ -245,7 +244,7 @@ export default async function PlaylistPage() {
             </section>
           )}
 
-          <PlaylistSuggestPanel
+          <RecommendPanel
             loggedIn={Boolean(user)}
             ready={ready}
             suggestions={suggestionResult.suggestions}
@@ -253,32 +252,6 @@ export default async function PlaylistPage() {
             isOwner={user?.role === "owner"}
           />
 
-          <section className="playlist-submit" aria-labelledby="playlist-submit-title" data-reveal>
-            <div>
-              <h2 id="playlist-submit-title">推荐一首单曲</h2>
-              <p>
-                填歌名、艺人和平台链接，写一句推荐语。登录后提交，站长听过了才会挂出来。
-                想推荐整张歌单的话，用上面那个入口，不用贴链接。
-              </p>
-            </div>
-            <div className="playlist-submit-body">
-              {user ? (
-                <SongForm />
-              ) : ready ? (
-                <div className="playlist-login-cta">
-                  <Link href="/login?next=/playlist">去登录</Link>
-                  <span>推荐需要登录；提交后待审，只有你和站长看得到</span>
-                </div>
-              ) : (
-                <div className="playlist-unavailable">
-                  <p className="playlist-unavailable-code">NOT AVAILABLE</p>
-                  <p>
-                    服务器还没配置会话密钥或发信账号，暂时收不了推荐。浏览不受影响。
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
         </>
       )}
     </div>

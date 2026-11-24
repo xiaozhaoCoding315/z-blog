@@ -61,7 +61,7 @@ function ProjectLinks({ project }: { project: Project }) {
           target="_blank"
           rel="noreferrer noopener"
         >
-          访问站点
+          {project.linkLabel ?? "访问站点"}
           <span aria-hidden="true">↗</span>
         </a>
       ) : null}
@@ -143,7 +143,7 @@ export default function ProjectsPage() {
               到能跑起来。
             </h1>
             <p className="project-stage-lede">
-              三份档案，记录为什么做、做到哪一步，以及最后留下了什么。
+              {projects.length} 份档案，记录为什么做、做到哪一步，以及最后留下了什么。
             </p>
           </div>
 
@@ -183,6 +183,16 @@ export default function ProjectsPage() {
             <h2>{FEATURED.name}</h2>
             {FEATURED.tagline ? (
               <p className="project-tagline">{FEATURED.tagline}</p>
+            ) : null}
+            {FEATURED.link && FEATURED.liveNote ? (
+              <p className="project-live">
+                <span className="project-live-dot" aria-hidden="true" />
+                {FEATURED.liveNote}
+                <a href={FEATURED.link} target="_blank" rel="noreferrer noopener">
+                  {FEATURED.link.replace(/^https?:\/\//, "")}
+                  <span aria-hidden="true"> ↗</span>
+                </a>
+              </p>
             ) : null}
           </div>
 
@@ -243,9 +253,11 @@ export default function ProjectsPage() {
           <header className="project-archive-head">
             <div>
               <p className="project-kicker is-ink">FIELD NOTES / 其余档案</p>
-              <h2 id="archive-title">另外两份</h2>
+              <h2 id="archive-title">
+                另外{ARCHIVE.length === 2 ? "两份" : `${ARCHIVE.length} 份`}
+              </h2>
               <p className="project-archive-lede">
-                一个每天在用，一个已经交付。
+                仍在维护的和已经交付的，都留在这里。
               </p>
             </div>
             <span className="project-archive-count">

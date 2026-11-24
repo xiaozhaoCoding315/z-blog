@@ -10,6 +10,7 @@ import {
   primaryApps,
 } from "@/config/apps";
 import { siteConfig } from "@/config/site";
+import { IcpNotice } from "@/components/site/icp-notice";
 import { formatClock, useClockSeconds } from "@/components/desktop/clock-store";
 import { ScrollProgress } from "@/components/motion/scroll-progress";
 import { AppFrame } from "./app-frame";
@@ -116,6 +117,9 @@ export function PageFrame({
       </main>
       <footer className="fullpage-footer">
         <span>{siteConfig.author.name} · {siteConfig.weather.city}</span>
+        {/* 备案号必须是页脚里独立的可见元素；「七个入口」留在最后一个，
+            移动端的 `span:last-child` 规则只隐藏它，不会连备案号一起藏掉。 */}
+        <IcpNotice />
         <span>七个入口</span>
       </footer>
     </div>

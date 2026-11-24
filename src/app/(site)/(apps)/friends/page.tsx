@@ -222,33 +222,47 @@ export default async function FriendsPage() {
         >
           <div className="friends-exchange-head">
             <h2 id="friends-exchange-title">交换友链</h2>
-            <p>把你的站点发到留言板或 GitHub，我会先去看看。</p>
+            <p>
+              两步就够：复制下面我的站点资料，再到留言板用模板写下你的站点。
+              站长会先去看看，合适就放上来。
+            </p>
           </div>
-          <div className="friends-exchange-grid">
-            <div className="friends-exchange-card">
-              <span className="friends-exchange-label">我的站点</span>
-              <p className="friends-exchange-name">{siteConfig.name}</p>
-              <p className="friends-exchange-url">{siteConfig.url}</p>
-              <FriendsCopy text={exchangeText} />
-            </div>
-            <div className="friends-exchange-card">
-              <span className="friends-exchange-label">联系方式</span>
-              <a
-                href={siteConfig.links.github}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="friends-exchange-link"
-              >
-                <GithubIcon className="friends-exchange-icon" />
-                GitHub Issue ↗
-              </a>
-              <Link href="/letters" className="friends-exchange-link">
-                留言板 →
-              </Link>
-              <p className="friends-exchange-note">
-                留言板或 GitHub 都可以。
-              </p>
-            </div>
+          <ol className="friends-exchange-steps">
+            <li>
+              <span className="friends-exchange-step">01</span>
+              <div>
+                <p className="friends-exchange-step-title">复制我的站点资料</p>
+                <p className="friends-exchange-name">{siteConfig.name}</p>
+                <p className="friends-exchange-url">{siteConfig.url}</p>
+                <FriendsCopy text={exchangeText} />
+              </div>
+            </li>
+            <li>
+              <span className="friends-exchange-step">02</span>
+              <div>
+                <p className="friends-exchange-step-title">写下你的站点</p>
+                <p className="friends-exchange-note">
+                  模板会带出站点名、网址和一句话介绍，填完提交即可。
+                </p>
+                <Link
+                  href="/letters?template=friend#letter-form"
+                  className="friends-exchange-primary"
+                >
+                  用模板去留言板
+                </Link>
+              </div>
+            </li>
+          </ol>
+          <div className="friends-exchange-alt">
+            <a
+              href={siteConfig.links.github}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="friends-exchange-link"
+            >
+              <GithubIcon className="friends-exchange-icon" />
+              也可以发 GitHub Issue ↗
+            </a>
           </div>
         </section>
       </div>
