@@ -17,7 +17,10 @@ function writeStub(directory, name, body) {
   writeFileSync(join(directory, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
 }
 
+// 夹具要交给 Git Bash 里的 sh 执行，Windows 盘符路径得先换成 /d/... 形式。
+// Linux/macOS 上本来就是 POSIX 路径，直接原样返回——CI 里没有 cygpath。
 function posixPath(windowsPath) {
+  if (process.platform !== "win32") return windowsPath;
   const result = spawnSync("sh", ["-c", 'cygpath -u "$1"', "sh", windowsPath], { encoding: "utf8" });
   assert.equal(result.status, 0, `无法转换测试路径：${result.stderr}`);
   return result.stdout.trim();
