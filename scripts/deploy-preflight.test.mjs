@@ -26,9 +26,12 @@ function posixPath(windowsPath) {
   return result.stdout.trim();
 }
 
+// 桩跑在 /bin/sh 下：Ubuntu 的 sh 是 dash，`${@: -1}` 这种 bash 取末位参数的
+// 写法会直接报 Bad substitution，所以老老实实循环一遍。
 const REMOTE_STUB = `
 printf 'ssh %s\\n' "$*" >> "$DEPLOY_TEST_LOG"
-remote_script="\${@: -1}"
+remote_script=""
+for arg in "$@"; do remote_script="$arg"; done
 eval "$remote_script"
 `;
 
@@ -196,6 +199,17 @@ exec /usr/bin/sha256sum "$@"
 `);
   writeStub(join(work, "bin"), "mktemp", 'printf \'%s\\n\' "$DEPLOY_TEST_TMP_TEMPLATE"\nmkdir -p "$DEPLOY_TEST_TMP_TEMPLATE"\n');
 
+  // 「Docker CLI 不可用」这条用例要模拟一个真的没有 docker 的机器。CI runner
+  // 预装了 docker，只靠不铺桩是挡不住的——PATH 里照样能找到 /usr/bin/docker，
+  // 脚本就会真的去跑 docker compose build。这里把带 docker 的目录从 PATH 里摘掉。
+  const dockerBinary = process.platform === "win32" ? "docker.exe" : "docker";
+  const inheritedPath = omitDocker
+    ? (process.env.PATH ?? "")
+        .split(delimiter)
+        .filter((entry) => entry && !existsSync(join(entry, dockerBinary)))
+        .join(delimiter)
+    : process.env.PATH;
+
   const env = {
     ...process.env,
     NEXT_PUBLIC_SITE_URL: buildUrl,
@@ -209,7 +223,7 @@ exec /usr/bin/sha256sum "$@"
     DEPLOY_TEST_BACKUP_DIR: posixPath(join(work, "remote", "backups")),
     DEPLOY_TEST_FAIL_AT: failAt,
     DEPLOY_TEST_FIXTURE: fixturePath,
-    PATH: `${bin}${delimiter}${process.env.PATH}`,
+    PATH: `${bin}${delimiter}${inheritedPath}`,
     HOME: home,
     DEPLOY_RELEASE_AUTHORIZED: "yes",
     DEPLOY_TEST_STUBS: "1",
