@@ -85,22 +85,27 @@ test("模型配置默认 Agnes-3.0-Flash，界面显示产品名而不是 API sl
   assert.match(view, /part\.toLowerCase\(\) === "agnes"\) return "Agnes"/);
 });
 
-test("流式输出有可见证据：尾部光标、状态条、字符数与停止按钮", () => {
-  assert.match(view, /status === "streaming" &&\s*message\.id === messages\[messages\.length - 1\]\?\.id/);
-  assert.match(view, /data-streaming=\{isStreaming \? "true" : "false"\}/);
-  assert.match(view, /assistant-stream-caret/);
-  assert.match(view, /assistant-message-metrics/);
-  assert.match(view, /SSE · LIVE/);
-  assert.match(view, /assistant-stream-bars/);
-  assert.match(view, /maxLength=\{2000\}/);
-  assert.match(view, /assistant-composer-counter/);
-  assert.match(view, /isStreaming \? "STREAMING" : "RESPONSE"/);
+test("流式输出有可见证据：尾部光标、状态行与停止按钮", () => {
+  // 三处对话共用一个内核，流式证据也只在那一处实现。
+  const thread = read("../src/components/assistant/chat-thread.tsx");
+  assert.match(
+    thread,
+    /const streaming = status === "streaming" && message\.id === lastId/
+  );
+  assert.match(thread, /data-streaming=\{streaming \? "true" : "false"\}/);
+  assert.match(thread, /xy-chat-caret/);
+  assert.match(thread, /xy-chat-dots/);
+  assert.match(thread, /xy-composer-send is-stop/);
+  assert.match(thread, /maxLength=\{NOTE_MAX\}/);
+  assert.match(thread, /const NOTE_MAX = 2000/);
+  assert.match(thread, /event\.nativeEvent\.isComposing/);
   // 真实 useChat 已提到全站 Provider；界面只消费共享会话，不是假打字机
   assert.match(provider, /useChat\(\{/);
   assert.match(provider, /new DefaultChatTransport/);
   assert.match(view, /useAssistantChat\(\)/);
+  assert.match(view, /<ChatThread/);
+  assert.match(view, /<ChatComposer/);
   assert.doesNotMatch(view, /useChat\(\{/);
-  assert.match(view, /onClick=\{\(\) => stop\(\)\}/);
 });
 
 test("模型繁忙时快速失败，并把供应商错误翻译成用户能看懂的话", () => {
@@ -181,5 +186,5 @@ test("持续动画只在组合动效门里，减少动效时读数静态可见",
 test("移动端控制台不挤压正文，核心环退场", () => {
   assert.match(css, /@media \(max-width: 1023px\)[\s\S]*?\.assistant-core\s*\{\s*display:\s*none/);
   assert.match(css, /@media \(max-width: 700px\)[\s\S]*?grid-template-rows:\s*auto minmax\(320px, 50dvh\) auto/);
-  assert.match(css, /@media \(max-width: 700px\)[\s\S]*?\.assistant-composer-channel\s*\{\s*display:\s*none/);
+  assert.match(css, /@media \(max-width: 700px\)[\s\S]*?\.assistant-composer-links\s*\{\s*display:\s*none/);
 });

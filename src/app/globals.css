@@ -2338,85 +2338,106 @@ html:has(.os-shell[data-full="true"]) body {
   }
 }
 
-/* ============ Personal Dev OS 终端式助理 ============ */
+/* ============ 小元同学：三处对话共用一套内核 ============ */
+/*
+ * 浮窗、/assistant 全页、桌面窗口原本各写一套排版：浮窗每条消息重复
+ * 「你 / 小元同学」的作者标签，全页把回答塞进卡片，桌面窗口是终端行。
+ * 现在三者共用 ChatThread / ChatComposer，样式也只剩这一份。
+ *
+ * 颜色靠变量注入：助理页继承 --ai-*（深色控制台），桌面窗口换成站点
+ * 语义色（跟随夜班 / 稿纸 / 蓝图），浮窗用默认的薄荷绿。
+ */
 @layer components {
-  .os-assistant {
+  .xy-chat {
+    --xy-ink: var(--ai-ink, #e6fff8);
+    --xy-dim: var(--ai-dim, #8fc7bb);
+    --xy-mint: var(--ai-mint, #6fffd2);
+    --xy-cyan: var(--ai-cyan, #6bd9ff);
+    --xy-line: var(--ai-line, rgb(111 255 210 / 0.16));
+    --xy-line-strong: var(--ai-line-strong, rgb(111 255 210 / 0.4));
+    --xy-danger: var(--ai-danger, #ff9e8f);
+    --xy-user-bg: rgb(107 217 255 / 0.1);
     display: flex;
     flex-direction: column;
-    height: 100%;
+    gap: 18px;
     min-height: 0;
-    background: var(--window);
-    color: var(--ink);
-    font-family: var(--font-mono);
-    font-size: 13px;
-    line-height: 1.65;
+    color: var(--xy-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.75;
   }
 
-  .os-assistant-output {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 14px 16px 6px;
-    scrollbar-color: var(--rule) transparent;
-    scrollbar-width: thin;
+  .xy-chat.is-dense {
+    gap: 14px;
+    font-size: 14px;
+    line-height: 1.7;
   }
 
-  .os-assistant-output::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+  /* 提问：右对齐、浅底色块。不写作者名——谁问的一目了然。 */
+  .xy-chat-user {
+    align-self: flex-end;
+    max-width: 82%;
+    padding: 9px 13px;
+    border: 1px solid color-mix(in srgb, var(--xy-cyan) 26%, transparent);
+    border-radius: 14px 14px 4px 14px;
+    background: var(--xy-user-bg);
+    color: var(--xy-ink);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
   }
 
-  .os-assistant-output::-webkit-scrollbar-thumb {
-    background: var(--rule);
-    border-radius: 4px;
+  .xy-chat-user p {
+    margin: 0;
   }
 
-  .os-assistant-output::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .os-assistant-line {
-    display: flex;
+  /* 回答：左对齐、不套气泡。长回答占满栏宽，才不至于挤成窄条。 */
+  .xy-chat-answer {
+    display: grid;
     gap: 8px;
-    white-space: pre-wrap;
+    max-width: 100%;
+  }
+
+  .xy-chat-sign {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--xy-dim);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+
+  .xy-chat-seal {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--xy-line-strong);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--xy-mint) 12%, transparent);
+    color: var(--xy-mint);
+    font-family: var(--font-heading);
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .xy-chat.is-dense .xy-chat-seal {
+    width: 17px;
+    height: 17px;
+    font-size: 10px;
+  }
+
+  .xy-chat-text {
+    color: var(--xy-ink);
     overflow-wrap: anywhere;
-  }
-
-  .os-assistant-user {
-    color: var(--ink);
-  }
-
-  .os-assistant-reply + .os-assistant-reply,
-  .os-assistant-user + .os-assistant-user,
-  .os-assistant-user + .os-assistant-reply,
-  .os-assistant-reply + .os-assistant-user {
-    margin-top: 10px;
-  }
-
-  .os-assistant-prompt {
-    flex: none;
-    color: var(--phosphor);
-    font-weight: 600;
-  }
-
-  .os-assistant-bullet {
-    flex: none;
-    color: var(--phosphor);
-  }
-
-  .os-assistant-text {
-    flex: 1;
-    min-width: 0;
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
   }
 
-  .os-assistant-ref {
+  .xy-chat-ref {
     padding: 0 1px;
     border: 0;
     background: transparent;
-    color: var(--phosphor);
+    color: var(--xy-mint);
     font: inherit;
     cursor: pointer;
     text-decoration: underline;
@@ -2424,153 +2445,331 @@ html:has(.os-shell[data-full="true"]) body {
     transition: color 140ms ease;
   }
 
-  .os-assistant-ref:hover,
-  .os-assistant-ref:focus-visible {
-    color: var(--ink);
+  .xy-chat-ref:hover,
+  .xy-chat-ref:focus-visible {
+    color: var(--xy-ink);
   }
 
-  .os-assistant-sources {
+  .xy-chat-caret {
+    display: inline-block;
+    width: 0.42em;
+    height: 1em;
+    margin-left: 2px;
+    background: var(--xy-mint);
+    vertical-align: -0.14em;
+  }
+
+  /* 来源与复制收在回答下方一行：先读到内容，再决定要不要深挖。 */
+  .xy-chat-foot {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    margin: 4px 0 2px 18px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
   }
 
-  .os-assistant-source {
+  .xy-chat-source {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
     max-width: 100%;
-    overflow: hidden;
-    padding: 0;
-    border: 0;
+    min-height: 30px;
+    padding: 0 9px;
+    border: 1px solid var(--xy-line);
+    border-radius: 6px;
     background: transparent;
-    color: var(--ink-dim);
-    font: inherit;
-    font-size: 11px;
+    color: var(--xy-mint);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
     text-align: left;
+    cursor: pointer;
+    transition: border-color 140ms ease, background-color 140ms ease;
+  }
+
+  .xy-chat-source small {
+    overflow: hidden;
+    color: var(--xy-dim);
+    font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
-    cursor: pointer;
-    transition: color 140ms ease;
   }
 
-  .os-assistant-source:hover,
-  .os-assistant-source:focus-visible {
-    color: var(--phosphor);
+  .xy-chat-source:hover,
+  .xy-chat-source:focus-visible {
+    border-color: var(--xy-line-strong);
+    background: color-mix(in srgb, var(--xy-mint) 8%, transparent);
   }
 
-  .os-assistant-busy,
-  .os-assistant-offline {
-    color: var(--ink-dim);
-  }
-
-  .os-assistant-error {
-    color: var(--danger);
-  }
-
-  .os-assistant-suggestions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 8px 0 4px;
-  }
-
-  .os-assistant-suggestion-label {
-    color: var(--ink-dim);
-    font-size: 11px;
-  }
-
-  .os-assistant-suggestion {
-    padding: 0;
-    border: 0;
+  .xy-chat-copy {
+    min-height: 30px;
+    margin-left: auto;
+    padding: 0 9px;
+    border: 1px solid transparent;
+    border-radius: 6px;
     background: transparent;
-    color: var(--ink-dim);
-    font: inherit;
+    color: var(--xy-dim);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: color 140ms ease, border-color 140ms ease;
+  }
+
+  .xy-chat-copy:hover,
+  .xy-chat-copy:focus-visible {
+    border-color: var(--xy-line);
+    color: var(--xy-ink);
+  }
+
+  .xy-chat-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--xy-dim);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .xy-chat-dots {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 11px;
+  }
+
+  .xy-chat-dots i {
+    width: 3px;
+    height: 4px;
+    background: var(--xy-mint);
+  }
+
+  .xy-chat-error {
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--xy-danger) 32%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--xy-danger) 8%, transparent);
+    color: var(--xy-danger);
     font-size: 13px;
+  }
+
+  /* 空会话：一句问候 + 几个真实问题，不用示例对话占位。 */
+  .xy-chat-greeting {
+    display: grid;
+    gap: 12px;
+  }
+
+  .xy-chat-greeting p {
+    color: var(--xy-dim);
+    font-size: 14px;
+    line-height: 1.75;
+  }
+
+  .xy-chat-suggestions {
+    display: grid;
+    gap: 6px;
+  }
+
+  .xy-chat-suggestions > p {
+    color: var(--xy-dim);
+    font-size: 13px;
+  }
+
+  .xy-chat-suggestions button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--xy-line);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--xy-mint) 4%, transparent);
+    color: var(--xy-ink);
+    font: inherit;
+    font-size: 14px;
     text-align: left;
     cursor: pointer;
-    transition: color 140ms ease;
+    transition: border-color 150ms ease, background-color 150ms ease;
   }
 
-  .os-assistant-suggestion:hover,
-  .os-assistant-suggestion:focus-visible {
-    color: var(--phosphor);
+  .xy-chat-suggestions button span {
+    color: var(--xy-mint);
   }
 
-  .os-assistant-form {
+  .xy-chat-suggestions button:hover,
+  .xy-chat-suggestions button:focus-visible {
+    border-color: var(--xy-line-strong);
+    background: color-mix(in srgb, var(--xy-mint) 9%, transparent);
+  }
+
+  /* 输入：单行胶囊。发送键在行内，提示与计数退到下一行。 */
+  .xy-composer {
+    --xy-ink: var(--ai-ink, #e6fff8);
+    --xy-dim: var(--ai-dim, #8fc7bb);
+    --xy-mint: var(--ai-mint, #6fffd2);
+    --xy-line: var(--ai-line, rgb(111 255 210 / 0.16));
+    --xy-line-strong: var(--ai-line-strong, rgb(111 255 210 / 0.4));
+    --xy-danger: var(--ai-danger, #ff9e8f);
     flex: none;
-    padding: 8px 16px 12px;
-    border-top: 1px solid transparent;
-    transition: border-color 180ms ease;
+    display: grid;
+    gap: 6px;
+    padding: 10px 0 0;
+    border-top: 1px solid var(--xy-line);
+    color: var(--xy-ink);
+    font-family: var(--font-sans);
   }
 
-  .os-assistant:focus-within .os-assistant-form {
-    border-top-color: color-mix(in srgb, var(--phosphor) 30%, var(--rule));
-  }
-
-  .os-assistant-input-row {
+  .xy-composer-row {
     display: flex;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: 8px;
+    padding: 6px 6px 6px 12px;
+    border: 1px solid var(--xy-line);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--xy-ink) 4%, transparent);
+    transition: border-color 160ms ease;
   }
 
-  .os-assistant-input {
+  .xy-composer-row:focus-within {
+    border-color: var(--xy-line-strong);
+  }
+
+  .xy-composer-row textarea {
     flex: 1;
     min-width: 0;
-    min-height: 1.65em;
-    max-height: 96px;
-    padding: 0;
+    min-height: 1.75em;
+    max-height: 120px;
+    padding: 4px 0;
     border: 0;
     background: transparent;
-    color: var(--ink);
+    color: var(--xy-ink);
     font: inherit;
-    line-height: 1.65;
+    font-size: 15px;
+    line-height: 1.75;
     outline: none;
     resize: none;
     field-sizing: content;
   }
 
-  .os-assistant-input::placeholder {
-    color: var(--ink-dim);
+  .xy-composer.is-dense .xy-composer-row textarea {
+    font-size: 14px;
   }
 
-  .os-assistant-form-meta {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 6px;
-    color: var(--ink-dim);
-    font-size: 10px;
+  .xy-composer-row textarea::placeholder {
+    color: var(--xy-dim);
   }
 
-  .os-assistant-action {
+  .xy-composer-send {
     flex: none;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--ink-dim);
-    font: inherit;
-    font-size: 11px;
+    min-width: 56px;
+    min-height: 34px;
+    padding: 0 14px;
+    border: 1px solid color-mix(in srgb, var(--xy-mint) 45%, transparent);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--xy-mint) 14%, transparent);
+    color: var(--xy-ink);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
     cursor: pointer;
-    transition: color 140ms ease;
+    transition: background-color 150ms ease, border-color 150ms ease, opacity 150ms ease;
   }
 
-  .os-assistant-action:hover,
-  .os-assistant-action:focus-visible {
-    color: var(--phosphor);
+  .xy-composer-send:hover:not(:disabled),
+  .xy-composer-send:focus-visible:not(:disabled) {
+    border-color: var(--xy-mint);
+    background: color-mix(in srgb, var(--xy-mint) 24%, transparent);
   }
 
-  .os-assistant-action:disabled {
+  .xy-composer-send:disabled {
     opacity: 0.4;
     cursor: default;
   }
 
+  .xy-composer-send.is-stop {
+    border-color: color-mix(in srgb, var(--xy-danger) 45%, transparent);
+    background: color-mix(in srgb, var(--xy-danger) 12%, transparent);
+  }
+
+  .xy-composer-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--xy-dim);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+  }
+
+  .xy-composer-meta button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    transition: color 140ms ease;
+  }
+
+  .xy-composer-meta button:hover,
+  .xy-composer-meta button:focus-visible {
+    color: var(--xy-ink);
+  }
+
+  .xy-composer-count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 桌面窗口跟随站点主题，而不是固定成深色控制台。 */
+  .os-assistant {
+    --xy-ink: var(--ink);
+    --xy-dim: var(--ink-dim);
+    --xy-mint: var(--phosphor);
+    --xy-cyan: var(--info);
+    --xy-line: var(--rule);
+    --xy-line-strong: color-mix(in srgb, var(--phosphor) 45%, var(--rule));
+    --xy-danger: var(--danger);
+    --xy-user-bg: color-mix(in srgb, var(--info) 12%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    min-height: 0;
+    padding: 14px 16px 12px;
+    background: var(--window);
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+
+  .os-assistant .xy-chat {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
+  }
+
+  .os-assistant .xy-composer {
+    --xy-ink: var(--ink);
+    --xy-dim: var(--ink-dim);
+    --xy-mint: var(--phosphor);
+    --xy-line: var(--rule);
+    --xy-line-strong: color-mix(in srgb, var(--phosphor) 45%, var(--rule));
+    --xy-danger: var(--danger);
+  }
+
+  .os-assistant-offline {
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .os-assistant-ref,
-    .os-assistant-source,
-    .os-assistant-suggestion,
-    .os-assistant-form,
-    .os-assistant-action {
+    .xy-chat-ref,
+    .xy-chat-source,
+    .xy-chat-copy,
+    .xy-chat-suggestions button,
+    .xy-composer-row,
+    .xy-composer-send,
+    .xy-composer-meta button {
       transition: none;
     }
   }
@@ -4082,97 +4281,6 @@ html:has(.os-shell[data-full="true"]) body {
     .os-snippet-tab,
     .os-snippet-copy {
       transition: none;
-    }
-  }
-}
-
-/* ============ Personal Dev OS 关于本机（Phase 3） ============ */
-@layer components {
-  /*
-   * 两栏 neofetch：左 ASCII Z 标，右 key: value。
-   * 档案是文本而不是图片；窄屏单列，右侧读数独立横向滚动，
-   * 不让最长的一行（Stack / Commits·90D）把整页撑出横向溢出。
-   */
-  .os-about-neofetch {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: 28px;
-    margin-top: 22px;
-    padding-top: 18px;
-    border-top: 1px solid var(--rule);
-  }
-
-  .os-about-mark-wrap {
-    min-width: 0;
-  }
-
-  .os-about-mark {
-    margin: 0;
-    color: var(--phosphor);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 1.1;
-    letter-spacing: 0;
-    white-space: pre;
-    user-select: none;
-  }
-
-  .os-about-rows {
-    min-width: 0;
-    margin: 0;
-    padding: 0 0 2px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-color: var(--rule) transparent;
-    scrollbar-width: thin;
-  }
-
-  .os-about-row {
-    display: grid;
-    grid-template-columns: 112px minmax(0, max-content);
-    align-items: baseline;
-    column-gap: 12px;
-    padding: 4px 0;
-    font-family: var(--font-mono);
-    font-size: 13px;
-    line-height: 1.65;
-  }
-
-  .os-about-row dt {
-    color: var(--ink-dim);
-    font-size: 12px;
-    letter-spacing: 0.02em;
-  }
-
-  .os-about-row dd {
-    margin: 0;
-    color: var(--ink);
-    white-space: nowrap;
-  }
-
-  /* Theme 不是服务端观测值：标注它只反映当前客户端的预设。 */
-  .os-about-hint {
-    margin-left: 7px;
-    color: var(--ink-dim);
-    font-size: 12px;
-    letter-spacing: 0;
-  }
-
-  .about-page .os-about-mark {
-    font-size: 13px;
-    line-height: 1.2;
-  }
-
-  @media (max-width: 639px) {
-    .os-about-neofetch {
-      grid-template-columns: minmax(0, 1fr);
-      align-items: start;
-      gap: 16px;
-    }
-
-    .os-about-mark {
-      font-size: 12px;
     }
   }
 }
@@ -6733,7 +6841,6 @@ html:has(.os-shell[data-full="true"]) body {
   .assistant-source-list button,
   .assistant-composer > label,
   .assistant-composer-meta,
-  .os-about-hint,
   .os-menu-presets button
 ) {
   font-size: 13px;
@@ -10295,6 +10402,212 @@ button.playlist-track-main {
     .letter-form-submit,
     .letters-exchange-primary,
     .letters-exchange-secondary {
+      transition: none;
+    }
+  }
+}
+
+/* ============ 笔记系列导轨 ============ */
+/*
+ * 导轨是页边信息，不是又一个卡片：左侧一条竖线，当前这篇在线上打个点，
+ * 其余退成可点的灰字。窄屏收到正文上方，只占一行高度。
+ */
+@layer components {
+  .series-rail {
+    margin: 0 0 2rem;
+    padding: 0 0 0 0.9rem;
+    border-left: 2px solid var(--rule);
+  }
+
+  .series-rail-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.5rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .series-rail-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--phosphor);
+    text-transform: uppercase;
+  }
+
+  .series-rail-title {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .series-rail-count {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .series-rail-list {
+    display: grid;
+    gap: 1px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .series-rail-item {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.3rem 0.4rem 0.3rem 0;
+    color: var(--ink-dim);
+    font-size: 13.5px;
+    line-height: 1.6;
+    transition: color 140ms ease;
+  }
+
+  .series-rail-item:hover,
+  .series-rail-item:focus-visible {
+    color: var(--ink);
+  }
+
+  .series-rail-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--rule);
+  }
+
+  .series-rail-item.is-current {
+    color: var(--ink);
+    font-weight: 600;
+    cursor: default;
+  }
+
+  .series-rail-item.is-current .series-rail-num {
+    color: var(--phosphor);
+  }
+
+  .series-rail-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 导读页：三条阅读线，每条一段话 + 一串编号链接。 */
+  .notes-start {
+    display: grid;
+    gap: 2.75rem;
+  }
+
+  .notes-start-intro {
+    max-width: 62ch;
+  }
+
+  .notes-start-intro p {
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--ink-dim);
+  }
+
+  .notes-start-line {
+    display: grid;
+    gap: 0.9rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .notes-start-line-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.7rem;
+  }
+
+  .notes-start-line-head h2 {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .notes-start-line-head p {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+
+  .notes-start-list {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .notes-start-item {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.5rem 0.2rem;
+    color: var(--ink);
+    transition: color 140ms ease;
+  }
+
+  .notes-start-item:hover,
+  .notes-start-item:focus-visible {
+    color: var(--phosphor);
+  }
+
+  .notes-start-num {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--rule);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .notes-start-name {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  .notes-start-desc {
+    grid-column: 2 / -1;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--ink-dim);
+  }
+
+  .notes-start-meta {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--ink-dim);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 640px) {
+    .series-rail {
+      margin-bottom: 1.5rem;
+    }
+
+    .notes-start-item {
+      grid-template-columns: 2rem minmax(0, 1fr);
+    }
+
+    .notes-start-meta {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .series-rail-item,
+    .notes-start-item {
       transition: none;
     }
   }

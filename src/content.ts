@@ -6,6 +6,7 @@ import {
   listRawNotes,
   getRawNote,
   getAllTags,
+  groupNotesBySeries,
   type Note,
 } from "@/lib/content-core";
 
@@ -43,4 +44,32 @@ export function getAdjacentNotes(slug: string) {
 export const getNoteTags = cache(() => {
   const notes = listRawNotes().filter((p) => !p.meta.draft);
   return getAllTags(notes);
+});
+
+/** 已发布笔记的系列分组，供 /notes/start 导读页使用 */
+export const getNoteSeries = cache(() => {
+  const notes = listRawNotes().filter((p) => !p.meta.draft);
+  return groupNotesBySeries(notes);
+});
+
+/**
+ * 某一篇笔记所在的系列与它在系列里的位置。不在系列里就返回 null，
+ * 笔记页据此决定是否渲染导轨。
+ */
+export const getNoteSeriesContext = cache((slug: string) => {
+  const notes = listRawNotes().filter((p) => !p.meta.draft);
+  const note = notes.find((p) => p.slug === slug);
+  const series = note?.meta.series;
+  if (!note || !series) return null;
+  const group = groupNotesBySeries(notes).find((g) => g.title === series);
+  if (!group) return null;
+  const index = group.notes.findIndex((p) => p.slug === slug);
+  if (index === -1) return null;
+  return {
+    title: group.title,
+    notes: group.notes,
+    index,
+    position: index + 1,
+    total: group.notes.length,
+  };
 });

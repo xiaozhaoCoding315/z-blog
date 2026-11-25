@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -27,13 +26,8 @@ import {
 import { recommendSongForPet } from "@/app/(site)/(apps)/playlist/pet-actions";
 import { requestPlayQueue } from "@/components/playlist/music-provider";
 import { useAssistantChat } from "@/components/assistant/assistant-provider";
-import {
-  groupMessageSources,
-  messageSources,
-  messageText,
-  renderMessageText,
-  type ChatSource,
-} from "@/components/assistant/assistant-shared";
+import { ChatComposer, ChatThread } from "@/components/assistant/chat-thread";
+import type { ChatSource } from "@/components/assistant/assistant-shared";
 
 const PET_PROMPTS = [
   "推荐一首歌",
@@ -846,10 +840,9 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
     send,
     stop,
     clear,
-    regenerate,
-    clearError,
   } = useAssistantChat();
   const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [input, setInput] = useState("");
   const [reactionKey, setReactionKey] = useState(0);
   const [pressed, setPressed] = useState(false);
@@ -860,7 +853,7 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
   const [manualMusic, setManualMusic] = useState(false);
   const [position, setPosition] = useState<PetPosition | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [panelStyle, setPanelStyle] = useState<CSSProperties | null>(null);
+  const [panelPlacement, setPanelPlacement] = useState<CSSProperties | null>(null);
   const [recommendation, setRecommendation] =
     useState<PetMusicCandidate | null>(null);
   const [recommending, setRecommending] = useState(false);
@@ -883,7 +876,6 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const threadRef = useRef<HTMLDivElement>(null);
   const shouldReturnFocusRef = useRef(false);
   const wasPanelOpenRef = useRef(false);
   const pressTimerRef = useRef<number | null>(null);
@@ -945,17 +937,15 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
   const placePanel = useCallback(() => {
     const root = petRef.current;
     if (!position || !root) {
-      setPanelStyle(null);
+      setPanelPlacement(null);
       return;
     }
     const rect = root.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const panelWidth = Math.max(240, Math.min(392, vw - 24));
-    const maxHeight = Math.max(
-      180,
-      Math.min(560, vh * 0.62, vh - 152)
-    );
+    // 与 pet.css 的 --pet-panel-w / --pet-panel-max 对齐：440×640 上限。
+    const panelWidth = Math.max(240, Math.min(440, vw - 24));
+    const maxHeight = Math.max(180, Math.min(640, vh - 152));
     const gap = 10;
     const margin = 12;
     const above = Math.max(0, rect.top - margin - gap);
@@ -965,7 +955,7 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
       margin,
       Math.min(rect.left + rect.width / 2 - panelWidth / 2, vw - panelWidth - margin)
     );
-    setPanelStyle({
+    setPanelPlacement({
       position: "fixed",
       left,
       width: panelWidth,
@@ -976,14 +966,17 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
     });
   }, [position]);
 
+  // 面板定位只在「打开 / 拖动位置变化 / 窗口尺寸变化」时重算。首帧在
+  // rAF 里跑，避免 effect 内同步 setState 触发的级联渲染；关闭时不清 state，
+  // 由下面派生的 activePanelStyle 直接失效，省掉一次多余渲染。
   useEffect(() => {
-    if (!panelOpen) {
-      setPanelStyle(null);
-      return;
-    }
-    placePanel();
+    if (!panelOpen) return;
+    const frame = window.requestAnimationFrame(placePanel);
     window.addEventListener("resize", placePanel);
-    return () => window.removeEventListener("resize", placePanel);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", placePanel);
+    };
   }, [panelOpen, placePanel]);
 
   // 关闭后把焦点还给萌宠按钮，避免键盘用户被丢回页面顶部。
@@ -1026,11 +1019,6 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
     );
     return () => window.clearTimeout(timer);
   }, [panelOpen]);
-
-  useEffect(() => {
-    const node = threadRef.current;
-    if (node) node.scrollTop = node.scrollHeight;
-  }, [messages, status, error, panelOpen]);
 
   // 眼睛轻轻跟着指针走；直接写 CSS 变量，避免每次 pointermove 都重渲染整段对话。
   useEffect(() => {
@@ -1352,13 +1340,6 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
     setInput("");
   };
 
-  const onInputKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== "Enter" || event.shiftKey) return;
-    if (event.nativeEvent.isComposing) return;
-    event.preventDefault();
-    submit(input);
-  };
-
   const openSource = (source: ChatSource) => {
     setOpen(false);
     router.push(source.href?.trim() || `/notes/${source.slug}`);
@@ -1369,14 +1350,8 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
     setInput("");
   };
 
-  const retry = () => {
-    clearError();
-    regenerate();
-  };
-
   if (!chatEnabled) return null;
 
-  const lastMessage = messages[messages.length - 1];
   const hint = assistantRoute
     ? "我就在页面上，去输入框找我"
     : busy
@@ -1408,7 +1383,7 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
           className="xiaoyuan-panel"
           role="dialog"
           aria-label="小元同学对话"
-          style={panelStyle ?? undefined}
+          style={position ? (panelPlacement ?? undefined) : undefined}
         >
           <header className="xiaoyuan-panel-head">
             <span className="xiaoyuan-panel-avatar">
@@ -1428,45 +1403,15 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
             <span className="xiaoyuan-panel-actions">
               <button
                 type="button"
-                className="xiaoyuan-panel-pick"
-                aria-label="让小元推荐一首歌并播放"
-                title="让小元推荐一首歌，直接在播放器里响起"
-                disabled={recommending}
-                onClick={() => void recommendAndPlay()}
+                className="xiaoyuan-panel-more"
+                aria-label="更多操作"
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                title="更多操作"
+                onClick={() => setMenuOpen((value) => !value)}
               >
-                <span aria-hidden="true">♪</span>
+                ⋯
               </button>
-              <button
-                type="button"
-                className="xiaoyuan-panel-music"
-                aria-pressed={manualMusic}
-                aria-label={
-                  manualMusic ? "关闭小元的听歌模式" : "开启小元的听歌模式"
-                }
-                title="外部播放器或跨站音乐也能让小元戴上耳机"
-                onClick={toggleMusic}
-              >
-                <span aria-hidden="true">♫</span>
-                <span className="xiaoyuan-panel-music-label">听歌</span>
-              </button>
-              {position && (
-                <button
-                  type="button"
-                  className="xiaoyuan-panel-home"
-                  aria-label="把小元放回右下角"
-                  title="回到右下角"
-                  onClick={resetPosition}
-                >
-                  ⌂
-                </button>
-              )}
-              <Link
-                href="/assistant"
-                className="xiaoyuan-panel-expand"
-                onClick={() => closePanel()}
-              >
-                全页
-              </Link>
               <button
                 type="button"
                 className="xiaoyuan-panel-close"
@@ -1476,26 +1421,86 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
                 ×
               </button>
             </span>
+
+            {/* 五个并排的小按钮换成一张菜单：头像旁只留「更多」与「关闭」。 */}
+            {menuOpen && (
+              <div className="xiaoyuan-panel-menu" role="menu" aria-label="小元同学的操作">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="xiaoyuan-panel-pick"
+                  disabled={recommending}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void recommendAndPlay();
+                  }}
+                >
+                  <span aria-hidden="true">♪</span>
+                  {recommending ? "找歌中…" : "推荐一首歌"}
+                </button>
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  className="xiaoyuan-panel-music"
+                  aria-checked={manualMusic}
+                  aria-label={
+                    manualMusic ? "关闭小元的听歌模式" : "开启小元的听歌模式"
+                  }
+                  title="外部播放器或跨站音乐也能让小元戴上耳机"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    toggleMusic();
+                  }}
+                >
+                  <span aria-hidden="true">♫</span>
+                  <span className="xiaoyuan-panel-music-label">
+                    听歌模式{manualMusic ? "（开）" : ""}
+                  </span>
+                </button>
+                {position && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="xiaoyuan-panel-home"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      resetPosition();
+                    }}
+                  >
+                    <span aria-hidden="true">⌂</span>
+                    回到右下角
+                  </button>
+                )}
+                <Link
+                  href="/assistant"
+                  role="menuitem"
+                  className="xiaoyuan-panel-expand"
+                  onClick={() => closePanel()}
+                >
+                  <span aria-hidden="true">↗</span>
+                  打开全页
+                </Link>
+              </div>
+            )}
           </header>
 
-          <div
-            ref={threadRef}
+          <ChatThread
+            dense
+            messages={messages}
+            status={status}
+            error={error}
+            onOpenSource={openSource}
             className="xiaoyuan-panel-thread"
-            role="log"
-            aria-live="polite"
-            aria-label="与小元同学的对话"
-          >
-            {messages.length === 0 && (
-              <div className="xiaoyuan-panel-empty">
-                <p className="xiaoyuan-panel-greeting">
+            empty={
+              <div className="xy-chat-greeting">
+                <p>
                   我是小元同学。站内的问题、项目或技术话题，都可以直接问我。
                 </p>
-                <div className="xiaoyuan-panel-prompts">
+                <div className="xy-chat-suggestions">
                   {PET_PROMPTS.map((prompt) => (
                     <button
                       key={prompt}
                       type="button"
-                      className="xiaoyuan-panel-prompt"
                       onClick={() => submit(prompt)}
                     >
                       {prompt}
@@ -1504,77 +1509,8 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
                   ))}
                 </div>
               </div>
-            )}
-
-            {messages.map((message) => {
-              const text = messageText(message);
-              if (message.role === "user") {
-                if (!text) return null;
-                return (
-                  <div key={message.id} className="xiaoyuan-msg is-user">
-                    <span className="xiaoyuan-msg-author">你</span>
-                    <p className="xiaoyuan-msg-bubble">{text}</p>
-                  </div>
-                );
-              }
-              if (message.role !== "assistant") return null;
-              const sources = messageSources(message);
-              if (!text && sources.length === 0) return null;
-              const sourceGroups = groupMessageSources(sources);
-              const streaming =
-                status === "streaming" && message.id === lastMessage?.id;
-              return (
-                <div key={message.id} className="xiaoyuan-msg is-answer">
-                  <span className="xiaoyuan-msg-author">
-                    <i className="xiaoyuan-msg-seal" aria-hidden="true">
-                      元
-                    </i>
-                    小元同学
-                  </span>
-                  <div className="xiaoyuan-msg-bubble">
-                    {renderMessageText(text, sources, openSource)}
-                    {streaming && (
-                      <span className="xiaoyuan-caret" aria-hidden="true" />
-                    )}
-                  </div>
-                  {sourceGroups.length > 0 && (
-                    <div className="xiaoyuan-msg-sources">
-                      {sourceGroups.map((group) => (
-                        <button
-                          key={group.key}
-                          type="button"
-                          onClick={() => openSource(group.source)}
-                        >
-                          {group.ids.map((id) => `[${id}]`).join("")}{" "}
-                          {group.title}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {busy && (
-              <div className="xiaoyuan-typing" role="status">
-                <span aria-hidden="true">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                {status === "submitted" ? "正在检索站内笔记" : "正在流式生成"}
-              </div>
-            )}
-
-            {error && (
-              <div className="xiaoyuan-error" role="alert">
-                <span>请求失败：{error.message || "请稍后重试"}</span>
-                <button type="button" onClick={retry}>
-                  重试
-                </button>
-              </div>
-            )}
-          </div>
+            }
+          />
 
           {(recommendation || recommendError) && (
             <div className="xiaoyuan-panel-recommend">
@@ -1631,52 +1567,24 @@ export function XiaoyuanPet({ chatEnabled }: { chatEnabled: boolean }) {
             </div>
           )}
 
-          <form
-            className="xiaoyuan-panel-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submit(input);
-            }}
-          >
-            <div className="xiaoyuan-panel-input-row">
-              <span aria-hidden="true">&gt;</span>
-              <textarea
-                ref={inputRef}
-                rows={1}
-                maxLength={2000}
-                value={input}
-                placeholder="问小元同学…"
-                aria-label="问小元同学"
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={onInputKeyDown}
-              />
-              {busy ? (
-                <button
-                  type="button"
-                  className="xiaoyuan-panel-send is-stop"
-                  onClick={stop}
-                >
-                  停止
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  className="xiaoyuan-panel-send"
-                  disabled={!input.trim()}
-                >
-                  发送
-                </button>
-              )}
-            </div>
-            <div className="xiaoyuan-panel-form-meta">
-              <span>Enter 发送 · Shift+Enter 换行</span>
-              {messages.length > 0 && (
+          <ChatComposer
+            dense
+            value={input}
+            onChange={setInput}
+            onSubmit={() => submit(input)}
+            onStop={stop}
+            busy={busy}
+            autoFocus
+            hint={
+              messages.length > 0 ? (
                 <button type="button" onClick={clearConversation}>
                   清空
                 </button>
-              )}
-            </div>
-          </form>
+              ) : (
+                "Enter 发送 · Shift+Enter 换行"
+              )
+            }
+          />
         </section>
       )}
 

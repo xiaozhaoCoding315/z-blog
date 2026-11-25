@@ -3,6 +3,8 @@ title: 我把 2G 内存的服务器从 OOM 里捞了出来
 date: 2026-07-15
 description: 一次真实的翻车：在 2C2G 的 ECS 上直接跑 next build，SSH 直接失联。记录排查过程、swap 的真实作用，以及最后为什么改成「本地构建 + 传镜像」。
 tags: [Docker, Linux, 部署, 运维]
+series: 从零搭一个博客
+order: 5
 ---
 
 先讲结论：**2G 内存的机器不要在上面跑 `next build`**。不是慢的问题，是会把整台机器拖死。

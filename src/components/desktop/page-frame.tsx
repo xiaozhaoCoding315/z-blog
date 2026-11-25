@@ -16,6 +16,29 @@ import { ScrollProgress } from "@/components/motion/scroll-progress";
 import { AppFrame } from "./app-frame";
 
 /**
+ * 每种内容用一套自己的骨架，而不是七个页面共用「纸卡 + 巨大等宽标题」。
+ *
+ * - editorial：笔记 / 生活 / 关于 / 开发日志。纸面、衬线标题、62ch 正文。
+ * - workstation：项目 / 终端 / 片段。深色工作台、等宽、档案编号。
+ * - letter：留言板 / 友链。信纸、横线、称呼与落款。
+ * - media：歌单 / 相册 / 书架。封面直接铺在桌面上，不套卡片。
+ */
+const LAYOUT_BY_APP: Record<string, "editorial" | "workstation" | "letter" | "media"> = {
+  notes: "editorial",
+  life: "editorial",
+  about: "editorial",
+  journal: "editorial",
+  projects: "workstation",
+  terminal: "workstation",
+  snippets: "workstation",
+  letters: "letter",
+  friends: "letter",
+  playlist: "media",
+  gallery: "media",
+  shelf: "media",
+};
+
+/**
  * 第三轮的全页外壳：七个主入口与它们的子页面回到自然文档流，
  * 旧页面继续使用原来的桌面应用窗框。
  */
@@ -56,6 +79,7 @@ export function PageFrame({
         : "个人主页"
     : app?.title ?? pathname;
   const appIndex = app ? primaryApps.findIndex((item) => item.id === app.id) : -1;
+  const layout = app ? (LAYOUT_BY_APP[app.id] ?? "editorial") : "editorial";
   const tideLabel =
     appIndex >= 0
       ? `潮汐 · ${String(appIndex + 1).padStart(2, "0")} / ${app?.title}`
@@ -65,6 +89,7 @@ export function PageFrame({
     <div
       className="fullpage-shell"
       data-page-theme={pageTheme}
+      data-layout={layout}
       data-readable-theme={pathname.startsWith("/notes/") ? "true" : "false"}
     >
       <ScrollProgress />

@@ -13,7 +13,7 @@ const apps = [
   { id: "gallery", title: "生活胶囊", keywords: ["照片", "photo"] },
   { id: "projects", title: "项目看板", keywords: ["kanban"] },
   { id: "snippets", title: "代码片段", keywords: ["code"] },
-  { id: "about", title: "关于本机", keywords: ["info"] },
+  { id: "about", title: "关于", keywords: ["info"] },
   { id: "notes", title: "笔记", keywords: ["blog", "posts"] },
 ];
 

@@ -3,6 +3,8 @@ title: Next 16 的 Cache Components 把我坑了两次
 date: 2026-08-06
 description: 一个"实时看板"接口永远返回构建那一刻的数据，一个运行天数永远显示破折号。两个 bug 同源：预渲染期读时间是错误，但把数据放客户端又会让静态 HTML 变成空壳。
 tags: [Next.js, 全站, 缓存, 踩坑]
+series: 从零搭一个博客
+order: 4
 ---
 
 我的博客升级到 Next 16 之后，`next.config.ts` 里开了这两个开关：

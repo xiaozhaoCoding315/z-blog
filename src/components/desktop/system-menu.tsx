@@ -110,7 +110,7 @@ export function SystemMenu({ accountMenu }: { accountMenu: ReactNode }) {
         >
           重置窗口布局
         </button>
-        <Link href="/about">关于本机</Link>
+        <Link href="/about">关于</Link>
         <a href="/feed.xml">RSS</a>
         <a
           href={siteConfig.links.github}

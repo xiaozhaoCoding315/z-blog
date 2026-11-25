@@ -8,6 +8,7 @@ import "./assistant.css";
 import "./pet.css";
 import "./friends.css";
 import "./projects.css";
+import "./layouts.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MotionRuntime } from "@/components/motion/motion-runtime";

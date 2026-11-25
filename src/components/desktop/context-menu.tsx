@@ -161,7 +161,7 @@ export function ContextMenu({
         role="menuitem"
         onClick={() => choose(() => router.push("/about"))}
       >
-        <span>关于本机</span>
+        <span>关于</span>
         <span aria-hidden>›</span>
       </button>
     </div>

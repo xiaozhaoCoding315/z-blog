@@ -88,7 +88,7 @@ export function Launcher({ apps }: { apps: AppDefinition[] }) {
         </button>
         <span aria-hidden>·</span>
         <Link href="/about" onClick={closePanels}>
-          关于本机
+          关于
         </Link>
         <span aria-hidden>·</span>
         <a href="/feed.xml">RSS</a>

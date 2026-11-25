@@ -214,9 +214,12 @@ test("水位线入场动效只声明在组合门内，且基础态可见", () =>
   assert.match(css, /@keyframes home-card-in[\s\S]*?from\s*\{/);
 });
 
-test("真实应用数读数改用 primaryApps，不再报旧桌面图标数", () => {
-  assert.match(about, /import \{ primaryApps \} from "@\/config\/apps"/);
-  assert.match(about, /String\(primaryApps\.length\)/);
+test("关于页只讲人与站点，不再报桌面读数", () => {
+  // 「关于本机」的 neofetch 读数（OS / Shell / Theme / 应用数）已整段移除。
+  assert.doesNotMatch(about, /primaryApps/);
+  assert.doesNotMatch(about, /os-about-neofetch|os-about-row/);
+  assert.match(about, /getAllNotes\(\)\.length/);
+  assert.match(about, /skillGroups\.map/);
   assert.match(terminal, /import \{ isPrimaryAppId, primaryApps, findAppById \}/);
   assert.match(terminal, /desktopAppCount: primaryApps\.length/);
 });

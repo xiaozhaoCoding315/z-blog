@@ -99,7 +99,7 @@ export function renderMessageText(
       <button
         key={index}
         type="button"
-        className="os-assistant-ref"
+        className="xy-chat-ref"
         title={`引用：${source.title}`}
         onClick={() => onOpen(source)}
       >

@@ -51,11 +51,14 @@ test("首页改为 PersonalHome，七入口全部链接到完整页面", () => {
   assert.doesNotMatch(page, /KanbanBoard|AboutProfile|windowContent/);
 });
 
-test("关于本机 Apps 行取主入口注册表真实数量", () => {
-  assert.match(about, /import \{ primaryApps \} from "@\/config\/apps"/);
-  assert.match(about, /\{ label: "Apps", value: String\(primaryApps\.length\) \}/);
-  assert.match(about, /\{ label: "AI", value: chatEnabled \? "已配置" : "未配置" \}/);
-  assert.match(about, /NOT AVAILABLE/);
+test("关于页不再展示 neofetch 读数，只留人与站点", () => {
+  // OS / Host / Shell / Apps / Theme 这类构建参数对访客没有意义，
+  // 删掉后页面只回答「这是谁、在做什么、能力到哪」。
+  assert.doesNotMatch(about, /os-about-neofetch/);
+  assert.doesNotMatch(about, /label: "Shell"/);
+  assert.doesNotMatch(about, /label: "Theme"/);
+  assert.match(about, /skillGroups\.map/);
+  assert.match(about, /关于本站/);
 });
 
 test("无脚本导航与 Spotlight 只索引主入口", () => {

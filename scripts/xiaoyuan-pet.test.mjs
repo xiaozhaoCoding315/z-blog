@@ -30,6 +30,7 @@ const pageView = read("../src/components/assistant/assistant-page-view.tsx");
 const windowView = read("../src/components/assistant/assistant-window.tsx");
 const session = read("../src/lib/assistant-session.ts");
 const css = read("../src/app/pet.css");
+const thread = read("../src/components/assistant/chat-thread.tsx");
 
 test("小元同学挂在站点外壳里，所有页面都点得到", () => {
   assert.match(siteLayout, /<AssistantChatProvider enabled=\{chatEnabled\}>/);
@@ -64,8 +65,9 @@ test("助手页、终端窗口与萌宠共用同一个 useChat 实例", () => {
   // 助手页的 ?q= 与终端 ask 都写进共享会话，而不是各自的局部状态。
   assert.match(pageView, /send\(question\)/);
   assert.match(windowView, /send\(question\)/);
-  // 对话在萌宠面板和整页之间切换后仍然指向同一组消息。
-  assert.match(pet, /messages\.map\(\(message\)/);
+  // 对话在萌宠面板和整页之间切换后仍然指向同一组消息：三处都渲染同一个
+  // ChatThread，浮窗只是把它设成紧凑模式。
+  assert.match(pet, /<ChatThread[\s\S]*messages=\{messages\}/);
   assert.match(pet, /const \{[\s\S]*messages,[\s\S]*send,[\s\S]*\} = useAssistantChat\(\)/);
 });
 
@@ -98,15 +100,16 @@ test("面板直接对话，在助手页则把焦点送回整页输入框", () =>
   assert.match(pet, /\[data-assistant-composer\]/);
   assert.match(pet, /scrollIntoView\(/);
   assert.match(pet, /composer\.focus\(/);
-  assert.match(pageView, /data-assistant-composer/);
+  // 输入框本身来自共享内核，data-assistant-composer 也挂在那一处。
+  assert.match(thread, /data-assistant-composer/);
+  assert.match(pageView, /<ChatComposer/);
   assert.match(pet, /\(source\.href\?\.trim\(\) \|\| `\/notes\/\$\{source\.slug\}`\)/);
   assert.match(pet, /<Link[\s\S]*href="\/assistant"/);
-  assert.match(pet, /maxLength=\{2000\}/);
-  assert.match(pet, /Shift\+Enter 换行/);
-  assert.match(pet, /event\.nativeEvent\.isComposing/);
+  assert.match(thread, /maxLength=\{NOTE_MAX\}/);
+  assert.match(thread, /Shift\+Enter 换行|shiftKey/);
+  assert.match(thread, /event\.nativeEvent\.isComposing/);
   assert.match(pet, /clearConversation/);
-  assert.match(pet, /onClick=\{retry\}/);
-  assert.match(pet, /xiaoyuan-streaming|xiaoyuan-caret/);
+  assert.match(thread, /xy-chat-caret/);
   // 点击与待机都有自己的反馈动作。
   assert.match(pet, /data-idle=/);
   assert.match(pet, /data-press=/);
@@ -143,9 +146,11 @@ test("重复检索来源按文章归组，旧会话也不再显示重复标题",
   const shared = read("../src/components/assistant/assistant-shared.tsx");
   assert.match(route, /mergeChunksByPost\(pickContext\(candidates\)\)/);
   assert.match(shared, /export function groupMessageSources/);
-  assert.match(pet, /groupMessageSources\(sources\)/);
-  assert.match(windowView, /groupMessageSources\(sources\)/);
-  assert.match(pageView, /groupMessageSources\(sources\)/);
+  // 归组在共享内核里做一次，三处不再各写一遍。
+  assert.match(thread, /groupMessageSources\(sources\)/);
+  assert.match(pet, /<ChatThread/);
+  assert.match(windowView, /<ChatThread/);
+  assert.match(pageView, /<ChatThread/);
 });
 
 test("同一篇文章的多个检索块合并成一条来源", async () => {
@@ -287,11 +292,12 @@ test("音乐感应覆盖页内媒体、mediaSession 与跨站播放器", () => {
   assert.match(pet, /document\.documentElement\.dataset\.musicPlaying === "true"/);
   assert.match(pet, /new MutationObserver\(sync\)/);
   // 跨站 iframe 读不到播放状态时，面板里可以手动戴上耳机。
+  // 听歌开关收进了「更多」菜单，作为 menuitemcheckbox 用 aria-checked 表达状态。
   assert.match(pet, /className="xiaoyuan-panel-music"/);
-  assert.match(pet, /aria-pressed=\{manualMusic\}/);
+  assert.match(pet, /aria-checked=\{manualMusic\}/);
   assert.match(pet, /aria-label=\{\s*manualMusic \? "关闭小元的听歌模式"/);
-  assert.match(css, /\.xiaoyuan-panel-music\[aria-pressed="true"\]/);
-  assert.match(css, /\.xiaoyuan-panel-music-label/);
+  assert.match(css, /\.xiaoyuan-panel-music\[aria-checked="true"\]/);
+  assert.match(pet, /className="xiaoyuan-panel-music-label"/);
 });
 
 test("萌宠拖动位置夹在视口内，并在本地记住", () => {
@@ -351,7 +357,7 @@ test("小元能听懂点歌，推荐后直接送到播放器", () => {
   assert.match(pet, /className="xiaoyuan-panel-pick"/);
   assert.match(pet, /className="xiaoyuan-pet-recommend"/);
   assert.match(css, /\.xiaoyuan-pet-recommend\s*\{/);
-  assert.match(css, /\.xiaoyuan-panel-pick\s*\{/);
+  assert.match(css, /\.xiaoyuan-panel-pick > span\[aria-hidden="true"\]/);
 
   for (const text of [
     "推荐一首歌",

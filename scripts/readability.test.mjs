@@ -272,13 +272,8 @@ test("关于页建立 32 / 20 / 16 / 13 的清晰层级，正文不再用 13–1
   assert.doesNotMatch(aboutProfile, /text-\[(?:9|10|11|13|14|15)px\]|text-sm/);
   assert.doesNotMatch(aboutProfile, /uppercase tracking-\[0\.14em\]/);
 
-  const row = findBlock(".os-about-row {", "关于本机数据行");
-  const label = findBlock(".os-about-row dt {", "关于本机数据标签");
-  const hint = findBlock(".os-about-hint {", "关于本机提示");
-  assert.match(row, /font-size:\s*13px/);
-  assert.match(row, /line-height:\s*1\.65/);
-  assert.match(label, /font-size:\s*12px/);
-  assert.match(hint, /font-size:\s*12px/);
+  // neofetch 读数表已删：页面不再有 key/value 行与「客户端可切换」提示。
+  assert.doesNotMatch(aboutProfile, /os-about-row|os-about-hint/);
 });
 
 test("笔记列表的标题、摘要、筛选与元信息有可扫读的字号和行高", () => {

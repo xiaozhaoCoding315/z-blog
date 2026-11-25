@@ -49,7 +49,7 @@ export function MoreWindow({ hasFriends }: { hasFriends: boolean }) {
           <span aria-hidden>↗</span>
         </a>
         <Link href="/about" className="os-pane-link">
-          <span>关于本机</span>
+          <span>关于</span>
           <span aria-hidden>→</span>
         </Link>
         <OpenSettingsButton />

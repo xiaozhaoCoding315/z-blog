@@ -12,7 +12,9 @@
   --pet-cyan: #6bd9ff;
   --pet-amber: #ffd37a;
   --pet-ink: #02100e;
-  --pet-panel-max: min(560px, 62dvh, calc(100dvh - 152px));
+  /* 面板按「一段对话」的尺寸给：440 宽、最多 640 高，窄屏再退让。 */
+  --pet-panel-w: min(440px, calc(100vw - 24px));
+  --pet-panel-max: min(640px, calc(100dvh - 152px));
   position: fixed;
   right: clamp(14px, 2.2vw, 26px);
   bottom: calc(18px + var(--music-dock-clearance, 0px));
@@ -510,18 +512,23 @@
 
 /* ---------- 对话面板 ---------- */
 
+/*
+ * 面板长在萌宠上方、右边缘对齐：392 宽时一句话要折三行，读完得上下扫。
+ * 现在给到 440×640，正好是一屏能读完的对话长度；矮屏按 --pet-panel-max 退让。
+ */
 .xiaoyuan-panel {
   position: absolute;
   right: 0;
-  bottom: calc(100% + 4px);
+  bottom: calc(100% + 8px);
   z-index: 2;
   display: flex;
   flex-direction: column;
-  width: min(392px, calc(100vw - 24px));
+  width: var(--pet-panel-w);
+  height: var(--pet-panel-max);
   max-height: var(--pet-panel-max);
   overflow: hidden;
   border: 1px solid rgb(111 255 210 / 0.26);
-  border-radius: 16px;
+  border-radius: 18px;
   background:
     radial-gradient(circle at 100% 0%, rgb(107 217 255 / 0.09), transparent 40%),
     linear-gradient(180deg, #051b18, #020d0b);
@@ -529,10 +536,34 @@
     0 30px 70px rgb(0 0 0 / 0.45),
     inset 0 1px 0 rgb(111 255 210 / 0.08);
   color: #e6fff8;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+}
+
+/*
+ * 线程占满头部与输入框之间：对话变长时只有中间滚动，头与输入框始终在位。
+ * 网格底纹留着，作为浮窗与控制台共同的「屏幕」质感。
+ */
+.xiaoyuan-panel-thread {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 14px;
+  background:
+    linear-gradient(90deg, rgb(111 255 210 / 0.028) 1px, transparent 1px) 0 0 / 40px 40px,
+    linear-gradient(rgb(111 255 210 / 0.023) 1px, transparent 1px) 0 0 / 40px 40px;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(111 255 210 / 0.22) transparent;
+}
+
+.xiaoyuan-panel > .xy-composer {
+  flex: 0 0 auto;
+  padding: 10px 14px 12px;
+  background: linear-gradient(180deg, #041512, #020b0a);
 }
 
 .xiaoyuan-panel-head {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -603,116 +634,110 @@
 }
 
 .xiaoyuan-panel-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-}
-
-.xiaoyuan-panel-expand {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 8px;
-  border: 1px solid rgb(111 255 210 / 0.2);
-  border-radius: 6px;
-  color: #a9e7d7;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  transition: border-color 150ms ease, color 150ms ease;
-}
-
-.xiaoyuan-panel-expand:hover,
-.xiaoyuan-panel-expand:focus-visible {
-  border-color: rgb(111 255 210 / 0.5);
-  color: #fff;
-}
-
-.xiaoyuan-panel-music {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 30px;
-  padding: 0 8px;
-  border: 1px solid rgb(111 255 210 / 0.2);
-  border-radius: 6px;
-  background: transparent;
-  color: #a9e7d7;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
+  margin-left: auto;
 }
 
-.xiaoyuan-panel-music > span[aria-hidden="true"] {
-  font-size: 11px;
-  line-height: 1;
-}
-
-.xiaoyuan-panel-music:hover,
-.xiaoyuan-panel-music:focus-visible {
-  border-color: rgb(111 255 210 / 0.5);
-  color: #fff;
-}
-
-.xiaoyuan-panel-music[aria-pressed="true"] {
-  border-color: rgb(111 255 210 / 0.52);
-  background: rgb(111 255 210 / 0.16);
-  color: #eafff8;
-  box-shadow: 0 0 14px rgb(111 255 210 / 0.18);
-}
-
-.xiaoyuan-panel-pick {
+/*
+ * 头像右边原本挤着五个图标按钮（点歌、听歌、归位、全页、关闭），
+ * 每个都要读一遍才知道是干什么的。现在只留「更多」与「关闭」，
+ * 其余收进菜单，用文字说明自己。
+ */
+.xiaoyuan-panel-more,
+.xiaoyuan-panel-close {
   display: grid;
   place-items: center;
   width: 30px;
   height: 30px;
   padding: 0;
-  border: 1px solid rgb(255 211 122 / 0.34);
-  border-radius: 6px;
-  background: rgb(255 211 122 / 0.08);
-  color: var(--pet-amber);
-  font-size: 13px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #8fc7bb;
   line-height: 1;
   cursor: pointer;
   transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
 }
 
-.xiaoyuan-panel-pick:hover:not(:disabled),
-.xiaoyuan-panel-pick:focus-visible:not(:disabled) {
-  border-color: rgb(255 211 122 / 0.7);
-  background: rgb(255 211 122 / 0.16);
-  color: #fff1cf;
+.xiaoyuan-panel-more {
+  font-size: 16px;
+}
+
+.xiaoyuan-panel-close {
+  font-size: 17px;
+}
+
+.xiaoyuan-panel-more:hover,
+.xiaoyuan-panel-more:focus-visible,
+.xiaoyuan-panel-more[aria-expanded="true"],
+.xiaoyuan-panel-close:hover,
+.xiaoyuan-panel-close:focus-visible {
+  border-color: rgb(111 255 210 / 0.28);
+  background: rgb(111 255 210 / 0.06);
+  color: #fff;
+}
+
+.xiaoyuan-panel-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 10px;
+  z-index: 3;
+  display: grid;
+  min-width: 168px;
+  padding: 5px;
+  border: 1px solid rgb(111 255 210 / 0.22);
+  border-radius: 11px;
+  background: #041714;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
+}
+
+.xiaoyuan-panel-menu :is(button, a) {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #d5f4ea;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.xiaoyuan-panel-menu :is(button, a) > span[aria-hidden="true"] {
+  width: 14px;
+  color: var(--pet-mint);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: center;
+}
+
+.xiaoyuan-panel-menu :is(button, a):hover,
+.xiaoyuan-panel-menu :is(button, a):focus-visible {
+  background: rgb(111 255 210 / 0.1);
+  color: #fff;
+}
+
+.xiaoyuan-panel-pick > span[aria-hidden="true"] {
+  color: var(--pet-amber) !important;
 }
 
 .xiaoyuan-panel-pick:disabled {
-  border-color: rgb(255 211 122 / 0.16);
-  color: rgb(255 211 122 / 0.42);
+  color: rgb(159 231 215 / 0.45);
   cursor: wait;
 }
 
-.xiaoyuan-panel-home {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 1px solid rgb(111 255 210 / 0.2);
-  border-radius: 6px;
-  background: transparent;
-  color: #8fc7bb;
-  font-size: 13px;
-  line-height: 1;
-  cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
-}
-
-.xiaoyuan-panel-home:hover,
-.xiaoyuan-panel-home:focus-visible {
-  border-color: rgb(111 255 210 / 0.5);
-  background: rgb(111 255 210 / 0.08);
-  color: #fff;
+.xiaoyuan-panel-music[aria-checked="true"] {
+  background: rgb(111 255 210 / 0.14);
+  color: #eafff8;
 }
 
 .xiaoyuan-pet[data-dragging="true"] .xiaoyuan-pet-trigger {
@@ -740,235 +765,6 @@
   border-color: rgb(111 255 210 / 0.28);
   background: rgb(111 255 210 / 0.06);
   color: #fff;
-}
-
-.xiaoyuan-panel-thread {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 148px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 13px 12px;
-  background:
-    linear-gradient(90deg, rgb(111 255 210 / 0.028) 1px, transparent 1px) 0 0 / 40px 40px,
-    linear-gradient(rgb(111 255 210 / 0.023) 1px, transparent 1px) 0 0 / 40px 40px;
-  scrollbar-width: thin;
-  scrollbar-color: rgb(111 255 210 / 0.22) transparent;
-}
-
-.xiaoyuan-panel-empty {
-  display: grid;
-  gap: 12px;
-  padding: 4px 2px 6px;
-}
-
-.xiaoyuan-panel-greeting {
-  color: #c6e9df;
-  font-family: var(--font-sans);
-  font-size: 12.5px;
-  line-height: 1.7;
-}
-
-.xiaoyuan-panel-prompts {
-  display: grid;
-  gap: 6px;
-}
-
-.xiaoyuan-panel-prompt {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid rgb(111 255 210 / 0.15);
-  border-radius: 7px;
-  background: rgb(111 255 210 / 0.035);
-  color: #dffcf3;
-  font-family: var(--font-sans);
-  font-size: 11.5px;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    transform 160ms ease,
-    border-color 160ms ease,
-    background-color 160ms ease;
-}
-
-.xiaoyuan-panel-prompt span {
-  color: var(--pet-mint);
-  font-family: var(--font-mono);
-}
-
-.xiaoyuan-panel-prompt:hover,
-.xiaoyuan-panel-prompt:focus-visible {
-  border-color: rgb(111 255 210 / 0.38);
-  background: rgb(111 255 210 / 0.08);
-  transform: translateX(2px);
-}
-
-.xiaoyuan-msg {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.xiaoyuan-msg.is-user {
-  justify-items: end;
-}
-
-.xiaoyuan-msg-author {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 2px;
-  color: #8fc7bb;
-  font-size: 8.5px;
-  letter-spacing: 0.14em;
-}
-
-.xiaoyuan-msg.is-user .xiaoyuan-msg-author {
-  color: rgb(107 217 255 / 0.7);
-}
-
-.xiaoyuan-msg-seal {
-  display: grid;
-  place-items: center;
-  width: 14px;
-  height: 14px;
-  border: 1px solid rgb(111 255 210 / 0.3);
-  border-radius: 3px;
-  color: var(--pet-mint);
-  font-family: var(--font-heading), serif;
-  font-size: 8px;
-  font-style: normal;
-  letter-spacing: 0;
-}
-
-.xiaoyuan-msg-bubble {
-  max-width: 93%;
-  margin: 0;
-  padding: 8px 10px;
-  border: 1px solid rgb(111 255 210 / 0.15);
-  border-radius: 11px 11px 11px 4px;
-  background: rgb(111 255 210 / 0.05);
-  color: #e6fff8;
-  font-family: var(--font-sans);
-  font-size: 12.5px;
-  line-height: 1.68;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-
-.xiaoyuan-msg.is-user .xiaoyuan-msg-bubble {
-  border-color: rgb(107 217 255 / 0.22);
-  border-radius: 11px 11px 4px 11px;
-  background: rgb(107 217 255 / 0.08);
-  color: #e6faff;
-}
-
-.xiaoyuan-msg-bubble .os-assistant-ref {
-  padding: 0 1px;
-  color: var(--pet-mint);
-  font: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.xiaoyuan-msg-bubble .os-assistant-ref:hover,
-.xiaoyuan-msg-bubble .os-assistant-ref:focus-visible {
-  color: #fff;
-}
-
-.xiaoyuan-msg-sources {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  max-width: 93%;
-}
-
-.xiaoyuan-msg-sources button {
-  max-width: 100%;
-  overflow: hidden;
-  padding: 3px 6px;
-  border: 1px solid rgb(111 255 210 / 0.13);
-  border-radius: 4px;
-  background: transparent;
-  color: #9fe7d7;
-  font-size: 8.5px;
-  line-height: 1.4;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease;
-}
-
-.xiaoyuan-msg-sources button:hover,
-.xiaoyuan-msg-sources button:focus-visible {
-  border-color: rgb(111 255 210 / 0.34);
-  color: #fff;
-}
-
-.xiaoyuan-caret {
-  display: inline-block;
-  width: 0.45em;
-  height: 1em;
-  margin-left: 2px;
-  background: var(--pet-mint);
-  box-shadow: 0 0 8px var(--pet-mint);
-  vertical-align: -0.14em;
-}
-
-.xiaoyuan-typing {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 2px 0;
-  color: #8fc7bb;
-  font-size: 9.5px;
-  letter-spacing: 0.05em;
-}
-
-.xiaoyuan-typing > span {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 11px;
-}
-
-.xiaoyuan-typing i {
-  width: 3px;
-  height: 4px;
-  background: var(--pet-mint);
-  box-shadow: 0 0 5px rgb(111 255 210 / 0.4);
-}
-
-.xiaoyuan-error {
-  display: grid;
-  gap: 6px;
-  padding: 9px 10px;
-  border: 1px solid rgb(255 158 143 / 0.3);
-  border-radius: 9px;
-  background: rgb(255 158 143 / 0.07);
-  color: #ffb4a8;
-  font-family: var(--font-sans);
-  font-size: 10.5px;
-  line-height: 1.55;
-}
-
-.xiaoyuan-error button {
-  justify-self: start;
-  padding: 3px 8px;
-  border: 1px solid rgb(255 158 143 / 0.32);
-  border-radius: 4px;
-  background: transparent;
-  color: #ffd0c8;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  cursor: pointer;
 }
 
 /* 点歌结果：一张贴着输入框的小唱片卡，证明歌真的进了播放器。 */
@@ -1084,111 +880,6 @@
   color: #ffb4a8;
   font-size: 9.5px;
   line-height: 1.5;
-}
-
-.xiaoyuan-panel-form {
-  flex: 0 0 auto;
-  padding: 10px 12px 9px;
-  border-top: 1px solid rgb(111 255 210 / 0.13);
-  background: linear-gradient(180deg, #041512, #020b0a);
-}
-
-.xiaoyuan-panel-input-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: end;
-  padding: 5px 8px;
-  border: 1px solid rgb(111 255 210 / 0.18);
-  border-radius: 9px;
-  background: rgb(2 12 10 / 0.82);
-  transition: border-color 180ms ease, box-shadow 180ms ease;
-}
-
-.xiaoyuan-panel-input-row:focus-within {
-  border-color: rgb(111 255 210 / 0.42);
-  box-shadow: 0 0 20px rgb(111 255 210 / 0.07);
-}
-
-.xiaoyuan-panel-input-row > span {
-  padding-bottom: 6px;
-  color: var(--pet-mint);
-  font-size: 12px;
-  line-height: 1;
-}
-
-.xiaoyuan-panel-input-row textarea {
-  min-height: 26px;
-  max-height: 84px;
-  padding: 4px 0;
-  border: 0;
-  outline: none;
-  resize: none;
-  background: transparent;
-  color: #e6fff8;
-  font-family: var(--font-sans);
-  font-size: 12.5px;
-  line-height: 1.55;
-  caret-color: var(--pet-mint);
-}
-
-.xiaoyuan-panel-input-row textarea::placeholder {
-  color: rgb(143 199 187 / 0.5);
-}
-
-.xiaoyuan-panel-send {
-  padding: 5px 9px;
-  border: 1px solid rgb(111 255 210 / 0.5);
-  border-radius: 5px;
-  background: rgb(111 255 210 / 0.1);
-  color: var(--pet-mint);
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  cursor: pointer;
-  transition: background-color 150ms ease, color 150ms ease;
-}
-
-.xiaoyuan-panel-send:hover:not(:disabled),
-.xiaoyuan-panel-send:focus-visible:not(:disabled) {
-  background: var(--pet-mint);
-  color: var(--pet-ink);
-}
-
-.xiaoyuan-panel-send:disabled {
-  border-color: rgb(111 255 210 / 0.14);
-  background: transparent;
-  color: rgb(143 199 187 / 0.38);
-}
-
-.xiaoyuan-panel-send.is-stop {
-  border-color: rgb(255 211 122 / 0.42);
-  color: var(--pet-amber);
-}
-
-.xiaoyuan-panel-form-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 6px;
-  color: rgb(143 199 187 / 0.62);
-  font-size: 8px;
-  letter-spacing: 0.03em;
-}
-
-.xiaoyuan-panel-form-meta button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #9fe7d7;
-  font: inherit;
-  cursor: pointer;
-}
-
-.xiaoyuan-panel-form-meta button:hover,
-.xiaoyuan-panel-form-meta button:focus-visible {
-  color: #fff;
 }
 
 .xiaoyuan-panel :is(button, a, textarea):focus-visible {
@@ -1505,19 +1196,20 @@
     animation: xiaoyuan-panel-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
-  .xiaoyuan-caret {
+  /* 流式光标与「正在写」三点来自共享对话内核，只在浮窗里给动效。 */
+  .xiaoyuan-panel .xy-chat-caret {
     animation: xiaoyuan-caret 900ms steps(1, end) infinite;
   }
 
-  .xiaoyuan-typing i {
+  .xiaoyuan-panel .xy-chat-dots i {
     animation: xiaoyuan-bar 900ms ease-in-out infinite;
   }
 
-  .xiaoyuan-typing i:nth-child(2) {
+  .xiaoyuan-panel .xy-chat-dots i:nth-child(2) {
     animation-delay: 120ms;
   }
 
-  .xiaoyuan-typing i:nth-child(3) {
+  .xiaoyuan-panel .xy-chat-dots i:nth-child(3) {
     animation-delay: 240ms;
   }
 }
@@ -2105,12 +1797,7 @@
 
   .xiaoyuan-panel {
     width: calc(100vw - 20px);
-  }
-}
-
-@media (max-width: 379px) {
-  .xiaoyuan-panel-music-label {
-    display: none;
+    height: var(--pet-panel-max);
   }
 }
 
@@ -2159,8 +1846,8 @@
   .xiaoyuan-pet-eq b,
   .xiaoyuan-pet-status::after,
   .xiaoyuan-pet-spark,
-  .xiaoyuan-caret,
-  .xiaoyuan-typing i {
+  .xiaoyuan-panel .xy-chat-caret,
+  .xiaoyuan-panel .xy-chat-dots i {
     animation: none !important;
   }
 
@@ -2181,21 +1868,20 @@
   .xiaoyuan-mascot-heart,
   .xiaoyuan-mascot-game-stars,
   .xiaoyuan-panel,
-  .xiaoyuan-panel-prompt,
-  .xiaoyuan-panel-input-row,
-  .xiaoyuan-panel-send,
-  .xiaoyuan-panel-expand,
-  .xiaoyuan-panel-music,
+  .xiaoyuan-panel-more,
   .xiaoyuan-panel-close,
-  .xiaoyuan-msg-sources button {
+  .xiaoyuan-panel-menu :is(button, a),
+  .xiaoyuan-panel .xy-chat-suggestions button,
+  .xiaoyuan-panel .xy-composer-row,
+  .xiaoyuan-panel .xy-composer-send {
     transition: none;
   }
 
   .xiaoyuan-pet-trigger:hover,
   .xiaoyuan-pet-trigger:focus-visible,
   .xiaoyuan-pet[data-open="true"] .xiaoyuan-pet-trigger,
-  .xiaoyuan-panel-prompt:hover,
-  .xiaoyuan-panel-prompt:focus-visible {
+  .xiaoyuan-panel .xy-chat-suggestions button:hover,
+  .xiaoyuan-panel .xy-chat-suggestions button:focus-visible {
     transform: none;
   }
 }

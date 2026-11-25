@@ -91,8 +91,8 @@ test("首页、留言、笔记、助手等页面都实际带上动效属性", ()
   assert.match(letters, /data-reveal/);
   assert.match(letters, /data-spotlight/);
   assert.match(notes, /data-reveal/);
-  assert.match(assistant, /assistant-message-enter/);
-  assert.match(assistant, /assistant-composer-pill/);
+  assert.match(assistant, /data-reveal/);
+  assert.match(assistant, /<ChatComposer/);
   assert.match(playlist, /data-spotlight/);
   assert.match(playlist, /data-reveal/);
   assert.match(detail, /data-tilt/);

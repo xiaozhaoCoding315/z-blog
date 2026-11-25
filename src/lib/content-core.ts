@@ -32,6 +32,16 @@ export const noteMetaSchema = z.object({
   draft: z.boolean().default(false),
   /** 封面图：/images/... 下的相对路径；不写则笔记顶部直接进正文 */
   cover: z.string().nullish(),
+  /**
+   * 系列名。同一系列的笔记按 order 排成一条线，笔记页顶部会挂一条
+   * 「这是第几篇」的导轨。不写就是独立文章，导轨不出现。
+   */
+  series: z
+    .string()
+    .nullish()
+    .transform((v) => (v && v.trim() ? v.trim() : undefined)),
+  /** 系列内的顺序，从 1 开始。同一系列里重复的顺序会在读取时暴露出来。 */
+  order: z.number().int().positive().nullish(),
 });
 
 export type NoteMeta = z.infer<typeof noteMetaSchema>;
@@ -128,6 +138,32 @@ export function getRawNote(slug: string): Note | null {
   if (!filepath.startsWith(NOTES_DIR + path.sep)) return null;
   if (!fs.existsSync(filepath)) return null;
   return parseFile(filepath);
+}
+
+/**
+ * 按系列归组。只收「写了 series 且写了 order」的笔记：缺 order 的笔记
+ * 排不出位置，硬塞一个默认值只会让导轨说谎，所以直接不进系列。
+ * 系列内按 order 升序；同一 order 重复时按日期兜底，保证顺序稳定。
+ */
+export function groupNotesBySeries(notes: Note[]) {
+  const map = new Map<string, Note[]>();
+  for (const note of notes) {
+    const { series, order } = note.meta;
+    if (!series || typeof order !== "number") continue;
+    const list = map.get(series);
+    if (list) list.push(note);
+    else map.set(series, [note]);
+  }
+  return [...map.entries()]
+    .map(([title, items]) => ({
+      title,
+      notes: items.sort(
+        (a, b) =>
+          (a.meta.order ?? 0) - (b.meta.order ?? 0) ||
+          new Date(a.meta.date).getTime() - new Date(b.meta.date).getTime()
+      ),
+    }))
+    .sort((a, b) => a.title.localeCompare(b.title, "zh-Hans-CN"));
 }
 
 export function getAllTags(notes: Note[]): { tag: string; count: number }[] {

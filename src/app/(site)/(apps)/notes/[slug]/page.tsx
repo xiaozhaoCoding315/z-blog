@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getAllNotes, getNoteBySlug, getAdjacentNotes } from "@/content";
+import {
+  getAllNotes,
+  getNoteBySlug,
+  getAdjacentNotes,
+  getNoteSeriesContext,
+} from "@/content";
 import { extractHeadings } from "@/lib/content-core";
 import { RenderMDX } from "@/lib/mdx";
 import { siteConfig } from "@/config/site";
@@ -16,6 +21,7 @@ import { ViewCounter } from "@/components/blog/view-counter";
 import { LikeButton } from "@/components/blog/like-button";
 import { SummaryFallback } from "@/components/blog/summary-fallback";
 import { RelatedPosts } from "@/components/blog/related-posts";
+import { SeriesRail } from "@/components/blog/series-rail";
 import { ArticleTools } from "@/components/blog/article-tools";
 import { CommentList } from "@/components/life/comment-list";
 import { CommentForm } from "@/components/life/comment-form";
@@ -69,6 +75,7 @@ export default async function NotePage({
 
   const headings = extractHeadings(note.content);
   const { prev, next } = getAdjacentNotes(slug);
+  const series = getNoteSeriesContext(slug);
   const relatedFallback = getAllNotes()
     .filter(
       (n) =>
@@ -86,7 +93,12 @@ export default async function NotePage({
       <ArticleTools />
       <article className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         {/* 页边目录 + 正文：标题与正文同栏，目录挂在左侧页边 */}
-        <div className="mx-auto grid max-w-5xl gap-10 xl:grid-cols-[180px_minmax(0,1fr)] xl:gap-12">
+        {/*
+          基础列必须是 minmax(0,1fr)：auto 列会按 min-content 撑开，
+          而代码块的 <code> 是 min-width: fit-content，窄屏上会把整列
+          顶出视口。加了 0 下限，pre 才会按自己的 overflow-x 滚动。
+        */}
+        <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-10 xl:grid-cols-[180px_minmax(0,1fr)] xl:gap-12">
           <aside className="hidden xl:block">
             <div className="sticky top-10">
               <TableOfContents items={headings} />
@@ -128,6 +140,20 @@ export default async function NotePage({
                 </div>
                 <LikeButton slug={slug} />
               </div>
+
+              {/*
+                系列导轨放在标题下面：读者从搜索或分享进来时，先知道
+                「这是整条线的第几篇」，再决定要不要从第一篇读起。
+              */}
+              {series && (
+                <div className="mt-6" data-reveal>
+                  <SeriesRail
+                    title={series.title}
+                    notes={series.notes}
+                    index={series.index}
+                  />
+                </div>
+              )}
 
               {note.meta.cover && (
                 <figure className="mt-6">

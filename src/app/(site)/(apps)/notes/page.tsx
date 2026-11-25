@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { getAllNotes, getNoteTags } from "@/content";
+import Link from "next/link";
+import { getAllNotes, getNoteTags, getNoteSeries } from "@/content";
 import { BlogBrowser } from "@/components/blog/blog-browser";
 import { toCardData } from "@/components/blog/post-card";
 
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 export default function NotesPage() {
   const notes = getAllNotes().map(toCardData);
   const tags = getNoteTags();
+  const series = getNoteSeries();
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
@@ -20,6 +22,14 @@ export default function NotesPage() {
         </h1>
         <p className="mt-2 font-mono text-[13px] leading-5 text-muted-foreground">
           共 {notes.length} 篇
+          {series.length > 0 && (
+            <>
+              <span aria-hidden> · </span>
+              <Link href="/notes/start" className="link-underline">
+                {series.length} 条阅读线
+              </Link>
+            </>
+          )}
         </p>
       </header>
       <BlogBrowser posts={notes} allTags={tags} />

@@ -1,98 +1,33 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { ThemeValue } from "@/components/about/theme-value";
 import { GithubIcon } from "@/components/icons/github";
-import { primaryApps } from "@/config/apps";
 import { siteConfig } from "@/config/site";
 import { now } from "@/config/portfolio";
 import { skillGroups } from "@/config/skills";
 import { getAllNotes } from "@/content";
-import { chatEnabled } from "@/lib/ai";
-import {
-  getGithubActivity,
-  type GithubActivity,
-} from "@/lib/github-server";
 import { getStatusSentence } from "@/lib/settings-server";
-import { getUptimeSnapshot } from "@/lib/uptime-server";
-
-/**
- * 8 行 ASCII Z 标：纯文本，不假装是照片，也不额外请求一张图片。
- * 它是装饰（aria-hidden）——姓名由旁边可见的标题承载，读屏器不再重复朗读。
- */
-const ASCII_Z = [
-  "╔══════════╗",
-  "║ ██████╗  ║",
-  "║ ╚══███╔╝ ║",
-  "║   ███╔╝  ║",
-  "║  ███╔╝   ║",
-  "║ ██████╗  ║",
-  "║ ╚═════╝  ║",
-  "╚══════════╝",
-].join("\n");
-
-const STACK = "Next.js 16 / React 19 / PostgreSQL";
 
 interface AboutProfileProps {
   /** page：档案 + 现在/能力/关于本站；window：紧凑档案 + 完整页入口。 */
   variant?: "page" | "window";
-  /**
-   * 首页已经取过 GitHub 读数，直接传下来，避免同一请求再走一次网络。
-   * /about 不传，由组件自己取。
-   */
-  activity?: GithubActivity;
 }
 
 /**
- * 关于本机：`/about` 与首页「关于本机」窗口共用同一份档案。
- * 服务端渲染真实值；Theme 是唯一的客户端读数，单独放在 theme-value。
+ * 关于：`/about` 与首页「关于」窗口共用同一份档案。
+ *
+ * 这里不再放 neofetch 读数（OS / Shell / Theme / Commits）。访客来读的是
+ * 这个人是谁、在做什么、能力到哪，而不是这台机器的构建参数；那些读数
+ * 只在终端里对站长自己有意义。
  */
-export async function AboutProfile({
-  variant = "page",
-  activity,
-}: AboutProfileProps) {
-  const [status, uptime, activityData] = await Promise.all([
-    getStatusSentence(),
-    getUptimeSnapshot(),
-    activity ?? getGithubActivity(),
-  ]);
+export async function AboutProfile({ variant = "page" }: AboutProfileProps) {
+  const status = await getStatusSentence();
   const notesCount = getAllNotes().length;
-
-  const commitsValue = activityData.available
-    ? `${activityData.truncated ? "≥" : ""}${activityData.total90}`
-    : null;
-
-  const rows: { label: string; value: ReactNode }[] = [
-    { label: "OS", value: "Z·OS" },
-    { label: "Host", value: siteConfig.weather.city },
-    {
-      label: "Uptime",
-      value:
-        uptime.days === null
-          ? "建站 —（起始日期未配置）"
-          : `建站 ${uptime.daysText} 天`,
-    },
-    { label: "Shell", value: "zsh (simulated)" },
-    { label: "Stack", value: STACK },
-    // 主入口真实值；终端 neofetch 的 Apps 行用的是同一份数据。
-    { label: "Apps", value: String(primaryApps.length) },
-    { label: "Notes", value: String(notesCount) },
-    {
-      label: "Commits·90D",
-      value: commitsValue ?? (
-        <span className="text-wait">NOT AVAILABLE</span>
-      ),
-    },
-    // /api/chat 只需要聊天密钥；没有向量密钥时仍能无检索问答。
-    { label: "AI", value: chatEnabled ? "已配置" : "未配置" },
-    { label: "Theme", value: <ThemeValue /> },
-  ];
 
   const isPage = variant === "page";
 
   const profile = (
     <>
       <header>
-        <p className="reading-label">关于本机</p>
+        <p className="reading-label">关于</p>
         <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-2">
           {isPage ? (
             <h1 className="about-title">{siteConfig.author.name}</h1>
@@ -129,24 +64,12 @@ export async function AboutProfile({
               </a>
             </>
           )}
+          <span aria-hidden>·</span>
+          <span>{siteConfig.weather.city}</span>
+          <span aria-hidden>·</span>
+          <span>{notesCount} 篇笔记</span>
         </p>
       </header>
-
-      <div className="os-about-neofetch">
-        <div className="os-about-mark-wrap">
-          <pre aria-hidden className="os-about-mark">
-            {ASCII_Z}
-          </pre>
-        </div>
-        <dl className="os-about-rows">
-          {rows.map((row) => (
-            <div key={row.label} className="os-about-row">
-              <dt>{row.label}</dt>
-              <dd>{row.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
     </>
   );
 

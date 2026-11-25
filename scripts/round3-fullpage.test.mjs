@@ -151,11 +151,14 @@ test("助理页复用真实流式状态、来源卡片与仓库笔记建议", ()
   assert.match(assistantProvider, /useChat\(\{/);
   assert.match(assistantView, /useAssistantChat\(\)/);
   assert.match(assistantWindow, /useAssistantChat\(\)/);
-  assert.match(assistantView, /messageSources\(/);
+  // 来源解析与流式状态都在共享内核里；助理页只传数据与身份。
+  const thread = read("../src/components/assistant/chat-thread.tsx");
+  assert.match(thread, /messageSources\(/);
+  assert.match(thread, /status === "streaming"/);
+  assert.match(assistantView, /<ChatThread/);
   assert.match(assistantView, /retrievalEnabled/);
   assert.match(assistantView, /prompts\.map/);
   assert.match(assistantView, /window\.location\.search/);
-  assert.match(assistantView, /status === "streaming"/);
   assert.match(assistantView, /NOT AVAILABLE/);
   assert.doesNotMatch(assistantView, /在线人数|示例文章|假数据/);
 });
