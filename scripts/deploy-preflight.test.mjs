@@ -161,7 +161,13 @@ function runDeploy({ confirmedUrl, buildUrl = siteUrl, failAt, omitDocker = fals
   }
   writeFileSync(join(work, "images.tsv"), fixtureRows.join("\n") + (fixtureRows.length ? "\n" : ""));
 
+  // 「Docker CLI 不可用」要模拟一台没装 docker 的机器。只靠「不铺 docker 桩」
+  // 是挡不住的：CI runner 预装了 docker，PATH 里照样找得到 /usr/bin/docker，
+  // 脚本就真的去跑 docker compose build 了。也不能把 /usr/bin 从 PATH 里摘掉——
+  // sh 自己也住在那儿。所以铺一个「永远不存在」的 docker：让 command -v 成功，
+  // 随后的 docker info 以 127 失败，正好落在 deploy.sh 的第二道检查上。
   if (!omitDocker) writeStub(join(work, "bin"), "docker", DOCKER_STUB);
+  else writeStub(join(work, "bin"), "docker", "exit 127\n");
   writeStub(join(work, "bin"), "ssh", REMOTE_STUB);
   writeStub(join(work, "bin"), "scp", `
 printf 'scp %s\\n' "$*" >> "$DEPLOY_TEST_LOG"
@@ -199,17 +205,6 @@ exec /usr/bin/sha256sum "$@"
 `);
   writeStub(join(work, "bin"), "mktemp", 'printf \'%s\\n\' "$DEPLOY_TEST_TMP_TEMPLATE"\nmkdir -p "$DEPLOY_TEST_TMP_TEMPLATE"\n');
 
-  // 「Docker CLI 不可用」这条用例要模拟一个真的没有 docker 的机器。CI runner
-  // 预装了 docker，只靠不铺桩是挡不住的——PATH 里照样能找到 /usr/bin/docker，
-  // 脚本就会真的去跑 docker compose build。这里把带 docker 的目录从 PATH 里摘掉。
-  const dockerBinary = process.platform === "win32" ? "docker.exe" : "docker";
-  const inheritedPath = omitDocker
-    ? (process.env.PATH ?? "")
-        .split(delimiter)
-        .filter((entry) => entry && !existsSync(join(entry, dockerBinary)))
-        .join(delimiter)
-    : process.env.PATH;
-
   const env = {
     ...process.env,
     NEXT_PUBLIC_SITE_URL: buildUrl,
@@ -223,7 +218,7 @@ exec /usr/bin/sha256sum "$@"
     DEPLOY_TEST_BACKUP_DIR: posixPath(join(work, "remote", "backups")),
     DEPLOY_TEST_FAIL_AT: failAt,
     DEPLOY_TEST_FIXTURE: fixturePath,
-    PATH: `${bin}${delimiter}${inheritedPath}`,
+    PATH: `${bin}${delimiter}${process.env.PATH}`,
     HOME: home,
     DEPLOY_RELEASE_AUTHORIZED: "yes",
     DEPLOY_TEST_STUBS: "1",
