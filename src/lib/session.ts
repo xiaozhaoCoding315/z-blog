@@ -7,15 +7,16 @@ import { SESSION_COOKIE, sessionSecret, verifySession } from "@/lib/auth";
 export interface SessionUser {
   id: number;
   login: string;
+  displayName: string | null;
   avatarUrl: string | null;
+  role: "owner" | "visitor";
 }
 
 /**
  * 从请求 cookie 解出当前登录用户。
  * 未登录 / 未配置 / 用户已删除一律返回 null，调用方据此降级。
  *
- * 用 cookies() 会让调用它的路由进入动态渲染——这正是我们要的：
- * 掌握度接口本来就必须按请求识别身份。
+ * 用 cookies() 会让调用它的路由进入动态渲染——这正是我们要的。
  */
 export async function getSessionUser(): Promise<SessionUser | null> {
   const secret = sessionSecret();
@@ -34,12 +35,21 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       .select({
         id: users.id,
         login: users.login,
+        displayName: users.displayName,
         avatarUrl: users.avatarUrl,
+        role: users.role,
       })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    return {
+      id: row.id,
+      login: row.login,
+      displayName: row.displayName,
+      avatarUrl: row.avatarUrl,
+      role: row.role === "owner" ? "owner" : "visitor",
+    };
   } catch {
     return null;
   }

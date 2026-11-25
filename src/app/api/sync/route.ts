@@ -1,25 +1,23 @@
 import { NextResponse } from "next/server";
 import { syncPosts } from "@/lib/sync";
-import { getClientIp } from "@/lib/rate-limit";
 
 export const maxDuration = 300;
 
 /**
  * 触发内容同步（容器启动时由 entrypoint 调用，也可手动调用）。
- * 配置 SYNC_SECRET 后必须携带请求头 x-sync-secret。
+ * fail-closed：未配置 SYNC_SECRET 时接口关闭；配置后必须携带请求头 x-sync-secret。
  */
 export async function POST(request: Request) {
-  const secret = process.env.SYNC_SECRET;
-  if (secret) {
-    if (request.headers.get("x-sync-secret") !== secret) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-  } else if (getClientIp(request) !== "local") {
-    // 未配置密钥时仅放行容器内部调用（entrypoint），公网直接拒绝
+  const secret = process.env.SYNC_SECRET?.trim();
+  if (!secret) {
+    // 不能靠「没有 X-Forwarded-For 就是内部调用」兜底：公网直连同样没有 XFF
     return NextResponse.json(
-      { error: "未配置 SYNC_SECRET，公网调用已拒绝" },
-      { status: 401 }
+      { error: "未配置 SYNC_SECRET，同步接口已关闭" },
+      { status: 503 }
     );
+  }
+  if (request.headers.get("x-sync-secret") !== secret) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   if (!process.env.DATABASE_URL) {

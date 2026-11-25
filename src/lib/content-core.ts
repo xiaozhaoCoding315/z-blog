@@ -1,14 +1,15 @@
 /**
- * 内容层核心：读取与解析 content/posts 下的 MDX 文章。
+ * 内容层核心：读取与解析 content/notes 下的 MDX 笔记。
  * 纯 Node 模块，RSC 与同步脚本（scripts/sync.ts）共用。
  */
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import matter from "gray-matter";
+import GithubSlugger from "github-slugger";
 import { z } from "zod";
 
-export const POSTS_DIR = path.join(process.cwd(), "content", "posts");
+export const NOTES_DIR = path.join(process.cwd(), "content", "notes");
 
 /** 兼容加引号的字符串日期与 YAML 原生 Date 两种写法 */
 const dateSchema = z
@@ -18,7 +19,7 @@ const dateSchema = z
     message: "日期格式应为 YYYY-MM-DD",
   });
 
-export const postMetaSchema = z.object({
+export const noteMetaSchema = z.object({
   title: z.string().min(1),
   date: dateSchema,
   // YAML 中 `description:` 留空会解析为 null，这里一并放行（null 视为未写，AI 摘要兜底）
@@ -29,20 +30,30 @@ export const postMetaSchema = z.object({
   tags: z.array(z.string()).default([]),
   pinned: z.boolean().default(false),
   draft: z.boolean().default(false),
-  /** 封面图：/images/... 下的相对路径；不写则文章顶部直接进正文 */
+  /** 封面图：/images/... 下的相对路径；不写则笔记顶部直接进正文 */
   cover: z.string().nullish(),
+  /**
+   * 系列名。同一系列的笔记按 order 排成一条线，笔记页顶部会挂一条
+   * 「这是第几篇」的导轨。不写就是独立文章，导轨不出现。
+   */
+  series: z
+    .string()
+    .nullish()
+    .transform((v) => (v && v.trim() ? v.trim() : undefined)),
+  /** 系列内的顺序，从 1 开始。同一系列里重复的顺序会在读取时暴露出来。 */
+  order: z.number().int().positive().nullish(),
 });
 
-export type PostMeta = z.infer<typeof postMetaSchema>;
+export type NoteMeta = z.infer<typeof noteMetaSchema>;
 
-export interface Post {
+export interface Note {
   slug: string;
-  meta: PostMeta;
+  meta: NoteMeta;
   content: string;
   /** 原始 markdown 字符数（用于同步时的内容哈希） */
   readingMinutes: number;
   readingText: string;
-  /** 内容哈希：同步脚本用它跳过未变更的文章 */
+  /** 内容哈希：同步脚本用它跳过未变更的笔记 */
   hash: string;
 }
 
@@ -68,14 +79,14 @@ export function contentHash(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
 }
 
-function parseFile(filepath: string): Post | null {
+function parseFile(filepath: string): Note | null {
   const slug = path.basename(filepath, ".mdx");
   const raw = fs.readFileSync(filepath, "utf-8");
   const { data, content } = matter(raw);
-  const parsed = postMetaSchema.safeParse(data);
+  const parsed = noteMetaSchema.safeParse(data);
   if (!parsed.success) {
     console.warn(
-      `[content] 文章 ${slug} 的 frontmatter 不合法，已跳过：`,
+      `[content] 笔记 ${slug} 的 frontmatter 不合法，已跳过：`,
       parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
     );
     return null;
@@ -91,43 +102,90 @@ function parseFile(filepath: string): Post | null {
   };
 }
 
-/** 列出所有文章（含草稿），按日期倒序 */
-export function listRawPosts(): Post[] {
-  if (!fs.existsSync(POSTS_DIR)) return [];
+/** 列出所有笔记（含草稿），按日期倒序 */
+export function listRawNotes(): Note[] {
+  if (!fs.existsSync(NOTES_DIR)) return [];
   return fs
-    .readdirSync(POSTS_DIR)
+    .readdirSync(NOTES_DIR)
     .filter((f) => f.endsWith(".mdx"))
-    .map((f) => parseFile(path.join(POSTS_DIR, f)))
-    .filter((p): p is Post => p !== null)
+    .map((f) => parseFile(path.join(NOTES_DIR, f)))
+    .filter((p): p is Note => p !== null)
     .sort(
       (a, b) =>
         new Date(b.meta.date).getTime() - new Date(a.meta.date).getTime()
     );
 }
 
-export function getRawPost(slug: string): Post | null {
-  const filepath = path.join(POSTS_DIR, `${slug}.mdx`);
+/**
+ * 笔记 slug 白名单：只允许小写字母/数字，用单个连字符分段。
+ * 动态段会把 `%2F` 解码成 `/`，所以不能只靠字符串替换；
+ * `../posts/...` 这类值必须在拼路径之前就被拒绝。
+ */
+export function isValidNoteSlug(slug: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+}
+
+/** 只有已发布笔记才允许浏览量/点赞计数：草稿与不存在的 slug 都不写库 */
+export function isPublishedNoteSlug(slug: string): boolean {
+  const note = getRawNote(slug);
+  return Boolean(note && !note.meta.draft);
+}
+
+export function getRawNote(slug: string): Note | null {
+  if (!isValidNoteSlug(slug)) return null;
+  const filepath = path.resolve(NOTES_DIR, `${slug}.mdx`);
+  // 白名单之外再加一道目录边界断言，防止未来放宽规则时重新打开穿越
+  if (!filepath.startsWith(NOTES_DIR + path.sep)) return null;
   if (!fs.existsSync(filepath)) return null;
   return parseFile(filepath);
 }
 
-export function getAllTags(posts: Post[]): { tag: string; count: number }[] {
+/**
+ * 按系列归组。只收「写了 series 且写了 order」的笔记：缺 order 的笔记
+ * 排不出位置，硬塞一个默认值只会让导轨说谎，所以直接不进系列。
+ * 系列内按 order 升序；同一 order 重复时按日期兜底，保证顺序稳定。
+ */
+export function groupNotesBySeries(notes: Note[]) {
+  const map = new Map<string, Note[]>();
+  for (const note of notes) {
+    const { series, order } = note.meta;
+    if (!series || typeof order !== "number") continue;
+    const list = map.get(series);
+    if (list) list.push(note);
+    else map.set(series, [note]);
+  }
+  return [...map.entries()]
+    .map(([title, items]) => ({
+      title,
+      notes: items.sort(
+        (a, b) =>
+          (a.meta.order ?? 0) - (b.meta.order ?? 0) ||
+          new Date(a.meta.date).getTime() - new Date(b.meta.date).getTime()
+      ),
+    }))
+    .sort((a, b) => a.title.localeCompare(b.title, "zh-Hans-CN"));
+}
+
+export function getAllTags(notes: Note[]): { tag: string; count: number }[] {
   const map = new Map<string, number>();
-  for (const p of posts) {
-    for (const t of p.meta.tags) map.set(t, (map.get(t) ?? 0) + 1);
+  for (const note of notes) {
+    for (const t of note.meta.tags) map.set(t, (map.get(t) ?? 0) + 1);
   }
   return [...map.entries()]
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count);
 }
 
-/** 从 markdown 提取二级/三级标题，用于文章目录 TOC */
+/** 从 markdown 提取二级/三级标题，用于笔记目录 TOC */
 export function extractHeadings(markdown: string): {
   level: 2 | 3;
   text: string;
   id: string;
 }[] {
   const headings: { level: 2 | 3; text: string; id: string }[] = [];
+  // 同一个 slugger 实例让重复标题得到 -1 / -2 后缀，
+  // 与 rehype-slug 编译正文时的去重行为保持一致。
+  const slugger = new GithubSlugger();
   const lines = markdown.split("\n");
   let inCode = false;
   for (const line of lines) {
@@ -139,13 +197,11 @@ export function extractHeadings(markdown: string): {
         .replace(/`([^`]*)`/g, "$1")
         .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
         .trim();
-      // 与 rehype-slug 相同的 GitHub slugify 规则
-      const id = text
-        .toLowerCase()
-        .trim()
-        .replace(/[^\p{L}\p{N}\s-]/gu, "")
-        .replace(/\s+/g, "-");
-      headings.push({ level: m[1].length as 2 | 3, text, id });
+      headings.push({
+        level: m[1].length as 2 | 3,
+        text,
+        id: slugger.slug(text),
+      });
     }
   }
   return headings;

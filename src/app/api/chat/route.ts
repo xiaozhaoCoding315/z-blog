@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  APICallError,
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
@@ -7,7 +8,6 @@ import {
   toUIMessageStream,
   embed,
 } from "ai";
-import type { UIMessage } from "ai";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
@@ -18,6 +18,12 @@ import {
   embeddingModel,
 } from "@/lib/ai";
 import { githubSlug } from "@/lib/slug";
+import {
+  buildRetrievalQuery,
+  mergeChunksByPost,
+  type RetrievedChunk,
+} from "@/lib/chat-retrieval";
+import { parseChatPayload } from "@/lib/chat-input";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 120;
@@ -39,23 +45,11 @@ const SIMILARITY_WINDOW = 0.12;
 /** 输出上限：公网接口不设上限，等于把 token 账单交给陌生人 */
 const MAX_OUTPUT_TOKENS = 800;
 
-/** 指代类开头：这类追问单独拿去向量化会失去指代对象 */
-const CONTINUATION_START =
-  /^(那|这|它|他|她|还有|以及|继续|再|那么|所以|然后|呢|为什么|怎么)/;
-
 /** GET /api/chat：查询能力状态（前端据此显示不同的引导文案） */
 export async function GET() {
   return NextResponse.json({ enabled: chatEnabled, retrieval: aiEnabled });
 }
 
-interface RetrievedChunk {
-  [key: string]: unknown;
-  post_slug: string;
-  title: string;
-  heading: string | null;
-  content: string;
-  similarity: number;
-}
 
 /**
  * POST /api/chat —— RAG 问答：
@@ -83,9 +77,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json()) as { messages: UIMessage[] };
-  const messages = body.messages ?? [];
-  const question = getLastUserText(messages);
+  const rawBody = await request.text().catch(() => null);
+  if (rawBody === null) {
+    return NextResponse.json({ error: "读取请求失败" }, { status: 400 });
+  }
+  const payload = parseChatPayload(rawBody);
+  if (!payload.ok) {
+    return NextResponse.json(
+      { error: payload.error },
+      { status: payload.status }
+    );
+  }
+  const { messages, question } = payload;
 
   // ---- 检索 ----
   let retrieved: RetrievedChunk[] = [];
@@ -104,7 +107,7 @@ export async function POST(request: Request) {
             ORDER BY c.embedding <=> ${vectorStr}::vector
             LIMIT ${RETRIEVAL_CANDIDATES}`
       );
-      retrieved = pickContext(candidates);
+      retrieved = mergeChunksByPost(pickContext(candidates));
     } catch (err) {
       console.warn("[api/chat] 检索失败，退化为无上下文回答：", err);
     }
@@ -117,12 +120,13 @@ export async function POST(request: Request) {
     })
     .join("\n\n");
 
-  const systemPrompt = `你是这个个人博客的 AI 助手。博客主是一位 Java 后端 + Agent 方向的程序员。
+  const systemPrompt = `你是「小元同学」，赵小元个人站里的站内问答同学。站长是一位 Java 后端 + Agent 方向的程序员。
+被问到身份时，说自己是站内的小元同学，不要自称「AI 助理」或通用聊天机器人。
 
 规则：
 - 优先依据下方「参考资料」回答，并在对应句子末尾用 [1]、[2] 这样的编号标注引用来源。
-- 资料中没有的问题：如果是技术问题（编程、框架、原理、面试八股、系统设计等），直接基于你自己的知识认真回答，并在开头说明「这个问题博客里暂无相关文章，以下基于我的知识回答」。
-- 与博客和技术都无关的问题，礼貌引导回技术话题。
+- 资料中没有的问题：如果是技术问题（编程、框架、原理、面试八股、系统设计等），直接基于你自己的知识认真回答，并在开头说明「站内笔记里暂无相关文章，以下基于我的知识回答」。
+- 与站内笔记和技术都无关的问题，礼貌引导回技术话题。
 - 回答使用中文，简洁直接，适度使用 Markdown 列表，不要过度客套。
 ${
   context
@@ -136,7 +140,7 @@ ${
     slug: chunk.post_slug,
     title: chunk.title,
     heading: chunk.heading,
-    href: `/blog/${chunk.post_slug}${
+    href: `/notes/${chunk.post_slug}${
       chunk.heading ? `#${githubSlug(chunk.heading)}` : ""
     }`,
   }));
@@ -150,13 +154,56 @@ ${
         system: systemPrompt,
         messages: modelMessages,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
+        // 供应商的 429 是账号级并发限制，重试只会让用户多等一轮；留一次兜底即可。
+        maxRetries: 1,
+        // 免费模型偶发「连上但不出字」：首字 30s、字间 20s 无响应就收尾，
+        // 避免界面永远停在「流式生成中」。
+        timeout: { firstChunkMs: 30_000, chunkMs: 20_000 },
       });
       // result.toUIMessageStream() 已标记废弃，改用独立 helper
-      writer.merge(toUIMessageStream({ stream: result.stream }));
+      writer.merge(
+        toUIMessageStream({
+          stream: result.stream,
+          onError: (error) => chatErrorMessage(error),
+        })
+      );
     },
+    onError: (error) => chatErrorMessage(error),
   });
 
   return createUIMessageStreamResponse({ stream });
+}
+
+/**
+ * 模型错误 → 用户能看懂的一句话。
+ * 不透传供应商原文（可能包含内部错误码），只在服务端留下状态码。
+ */
+function chatErrorMessage(error: unknown): string {
+  // AI SDK 重试耗尽时会把真实错误包进 RetryError.lastError
+  let cause = error;
+  for (let depth = 0; depth < 3; depth += 1) {
+    const last = (cause as { lastError?: unknown } | null)?.lastError;
+    if (!last || last === cause) break;
+    cause = last;
+  }
+  const retried = (error as { reason?: string } | null)?.reason;
+
+  if (APICallError.isInstance(cause)) {
+    console.warn("[api/chat] 模型调用失败：", cause.statusCode ?? "unknown", retried ?? "");
+    if (cause.statusCode === 429) {
+      return "小元同学的模型这会儿排队较多，请等几秒再试一次。";
+    }
+    if (cause.statusCode === 401 || cause.statusCode === 403) {
+      return "模型访问凭证无效，请联系站长检查 AI_API_KEY。";
+    }
+    return "模型服务暂时不可用，请稍后再试。";
+  }
+  const name = cause instanceof Error ? cause.name : "unknown";
+  console.warn("[api/chat] 回答生成失败：", name, retried ?? "");
+  if (name === "AbortError" || name === "TimeoutError") {
+    return "模型迟迟没有响应，这次先停下了，请稍后再试。";
+  }
+  return "这次回答没有生成成功，请稍后再试。";
 }
 
 /**
@@ -182,42 +229,4 @@ function pickContext(candidates: RetrievedChunk[]): RetrievedChunk[] {
     if (picked.length >= MAX_CONTEXT_CHUNKS) break;
   }
   return picked;
-}
-
-/**
- * 检索用的查询串。
- *
- * 多轮对话里「那部署呢」「这个怎么做的」这类追问本身没有指代对象，
- * 直接拿去向量化会跑偏。所以在追问时把上一轮用户问题一起带上。
- */
-function buildRetrievalQuery(messages: UIMessage[]): string {
-  const userTexts = messages
-    .filter((m) => m.role === "user")
-    .map(messageText)
-    .filter(Boolean);
-  const question = userTexts.at(-1) ?? "";
-  const previous = userTexts.at(-2);
-  const needsContext =
-    question.length <= 15 || CONTINUATION_START.test(question.trim());
-  return needsContext && previous ? `${previous}\n${question}` : question;
-}
-
-function messageText(message: UIMessage): string {
-  return message.parts
-    .filter(
-      (part): part is { type: "text"; text: string } => part.type === "text"
-    )
-    .map((part) => part.text)
-    .join("")
-    .trim();
-}
-
-function getLastUserText(messages: UIMessage[]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    if (message.role !== "user") continue;
-    const text = messageText(message);
-    if (text) return text;
-  }
-  return "";
 }

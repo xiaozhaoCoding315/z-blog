@@ -1,0 +1,209 @@
+/* ==========================================================================
+   每页一种版式语言
+   --------------------------------------------------------------------------
+   之前七个页面共用一套骨架：同一张纸卡、同一个「eyebrow + 巨大等宽标题 +
+   一段导语」的模板。换页只换了内容，读起来像同一个模板填空。
+
+   现在按内容分四种骨架，由 page-frame 写在 `data-layout` 上：
+
+     editorial    笔记 / 生活 / 关于 / 开发日志
+                  纸面、衬线标题、62ch 正文、页边批注的位置。
+     workstation  项目 / 终端 / 片段
+                  深色工作台、等宽字、档案编号，内容按编号排而不是按时间。
+     letter       留言板 / 友链
+                  信纸：横线、左边距竖线、称呼与落款。
+     media        歌单 / 相册 / 书架
+                  封面直接铺在桌面上，不套纸卡。
+
+   四个骨架共用外壳（顶栏、潮汐条、页脚），只换中间那张「纸」。
+   ========================================================================== */
+
+/* 衬线只给编辑版用：2.9MB 的思源宋体按站点实际用字裁到 270KB。 */
+@font-face {
+  font-family: "Noto Serif SC Subset";
+  src: url("/fonts/noto-serif-sc-bold-subset.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-serif: "Noto Serif SC Subset", "Songti SC", "SimSun", "Source Han Serif SC",
+    serif;
+}
+
+/* --------------------------------------------------------------------------
+   编辑版：笔记 / 生活 / 关于 / 开发日志
+   -------------------------------------------------------------------------- */
+
+.fullpage-shell[data-layout="editorial"] {
+  --page-accent: #c8b89a;
+}
+
+.fullpage-shell[data-layout="editorial"] .fullpage-main {
+  background:
+    linear-gradient(90deg, rgb(200 184 154 / 0.06) 0 1px, transparent 1px) 0 0 / 100% 100%,
+    #fbf8f1;
+  border-color: #d8ccb4;
+  box-shadow: 0 24px 70px rgb(2 24 23 / 0.18);
+}
+
+/* 页边竖线：书页的版心线，不是装饰。正文与标题都从它右侧开始。 */
+.fullpage-shell[data-layout="editorial"] .fullpage-main > :is(article, section) {
+  position: relative;
+}
+
+.fullpage-shell[data-layout="editorial"] :is(h1, h2, h3, .about-title) {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+/* 中文标题用衬线时不需要负字距；等宽字才需要收紧。 */
+.fullpage-shell[data-layout="editorial"] h1 {
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.35;
+}
+
+.fullpage-shell[data-layout="editorial"] h2 {
+  font-size: clamp(19px, 2vw, 23px);
+  line-height: 1.45;
+}
+
+/*
+ * 正文版心：中文的舒适行长是 35–45 个字。用 ch 会按拉丁字宽算（一个 ch
+ * 约等于半个汉字），62ch 在中文里长到 90 多字，读起来要来回摆头。
+ * 38em 在 17px 下约 646px，正好落在 38 个汉字左右。
+ */
+.fullpage-shell[data-layout="editorial"] .prose,
+.fullpage-shell[data-layout="editorial"] .reading-body {
+  max-width: min(100%, 38em);
+}
+
+.fullpage-shell[data-layout="editorial"] .prose {
+  --tw-prose-body: #1f3b37;
+  font-size: 17px;
+  line-height: 1.9;
+}
+
+.fullpage-shell[data-layout="editorial"] .prose :is(h2, h3, h4) {
+  font-family: var(--font-serif);
+  letter-spacing: 0;
+}
+
+/* 首段稍微放大：纸面上第一句是「开篇」，不是列表里的一行。 */
+.fullpage-shell[data-layout="editorial"] .prose > p:first-of-type {
+  font-size: 1.06em;
+  color: #142c29;
+}
+
+/* --------------------------------------------------------------------------
+   工作台版：项目 / 终端 / 片段
+   -------------------------------------------------------------------------- */
+
+.fullpage-shell[data-layout="workstation"] {
+  --page-accent: #7ee8c8;
+}
+
+/*
+ * 工作台不重涂底色。项目页、终端页与片段页各自已经有一整套深浅对比的
+ * 版面（项目页的档案台本身就是深色封面 + 浅色档案区），从外壳再铺一层
+ * 深色会把浅色区压成深底深字。这里只做两件事：换等宽标题、收紧编号感。
+ */
+.fullpage-shell[data-layout="workstation"] .fullpage-main {
+  border-color: #2b5a53;
+}
+
+.fullpage-shell[data-layout="workstation"] h1 {
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+/* 工作台的「档案编号」：section 之间用一条实线分隔，而不是留白。 */
+.fullpage-shell[data-layout="workstation"] .fullpage-main > section + section {
+  border-top: 1px solid rgb(169 220 204 / 0.18);
+}
+
+/* --------------------------------------------------------------------------
+   信纸版：留言板 / 友链
+   -------------------------------------------------------------------------- */
+
+.fullpage-shell[data-layout="letter"] {
+  --page-accent: #cbb9a4;
+}
+
+.fullpage-shell[data-layout="letter"] .fullpage-main {
+  border-color: #ddcfb8;
+  background:
+    /* 左边距竖线 + 横格，像一本摊开的信纸本 */
+    linear-gradient(90deg, transparent 0 3.6rem, rgb(190 110 90 / 0.22) 3.6rem 3.65rem, transparent 3.65rem),
+    repeating-linear-gradient(180deg, transparent 0 31px, rgb(120 140 135 / 0.16) 31px 32px),
+    #fdfaf2;
+  box-shadow: 0 24px 70px rgb(2 24 23 / 0.18);
+}
+
+.fullpage-shell[data-layout="letter"] :is(h1, h2, h3) {
+  font-family: var(--font-serif);
+  letter-spacing: 0;
+}
+
+.fullpage-shell[data-layout="letter"] .fullpage-main > :is(section, article, header) {
+  padding-left: 4.4rem;
+}
+
+/* 留言正文用衬线、行高对齐横格：读起来像在读一封信。 */
+.fullpage-shell[data-layout="letter"] :is(.letters-page, .friends-page) :is(p, blockquote, li) {
+  line-height: 32px;
+}
+
+/* --------------------------------------------------------------------------
+   媒体版：歌单 / 相册 / 书架
+   -------------------------------------------------------------------------- */
+
+.fullpage-shell[data-layout="media"] .fullpage-main {
+  /* 不铺纸：封面本身就是内容，纸卡只会把封面挤小一圈。 */
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.fullpage-shell[data-layout="media"] .fullpage-main > :is(section, article) {
+  border-radius: 14px;
+}
+
+.fullpage-shell[data-layout="media"] h1 {
+  font-family: var(--font-serif);
+  letter-spacing: 0;
+}
+
+/* --------------------------------------------------------------------------
+   窄屏：版心线、编号栏与信纸边距都让位给正文
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .fullpage-shell[data-layout="letter"] .fullpage-main {
+    background:
+      repeating-linear-gradient(180deg, transparent 0 31px, rgb(120 140 135 / 0.14) 31px 32px),
+      #fdfaf2;
+  }
+
+  .fullpage-shell[data-layout="letter"] .fullpage-main > :is(section, article, header) {
+    padding-left: 0;
+  }
+
+  .fullpage-shell[data-layout="editorial"] .prose {
+    font-size: 16.5px;
+  }
+}
+
+/* 减少透明时纸面全部改成实色，不让网格与横线透出下层桌面。 */
+@media (prefers-reduced-transparency: reduce) {
+  .fullpage-shell[data-layout="editorial"] .fullpage-main {
+    background: #fbf8f1;
+  }
+
+  .fullpage-shell[data-layout="letter"] .fullpage-main {
+    background: #fdfaf2;
+  }
+}

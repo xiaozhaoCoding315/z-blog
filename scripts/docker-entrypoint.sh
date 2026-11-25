@@ -19,14 +19,18 @@ while [ $i -lt 60 ]; do
 done
 
 if [ "$ready" = "1" ]; then
-  echo "[entrypoint] server ready, syncing blog content..."
-  SYNC_RESULT=$(node -e "
-    fetch('http://127.0.0.1:3000/api/sync', {
-      method: 'POST',
-      headers: process.env.SYNC_SECRET ? { 'x-sync-secret': process.env.SYNC_SECRET } : {}
-    }).then(r => r.text()).then(t => { console.log(t); }).catch(e => { console.error(e.message); process.exit(1); })
-  ") || echo "[entrypoint] sync failed (blog still runs, retry by restarting)"
-  echo "[entrypoint] sync: $SYNC_RESULT"
+  if [ -z "$SYNC_SECRET" ]; then
+    echo "[entrypoint] SYNC_SECRET 未配置，跳过自动同步"
+  else
+    echo "[entrypoint] server ready, syncing blog content..."
+    SYNC_RESULT=$(node -e "
+      fetch('http://127.0.0.1:3000/api/sync', {
+        method: 'POST',
+        headers: { 'x-sync-secret': process.env.SYNC_SECRET }
+      }).then(r => r.text()).then(t => { console.log(t); }).catch(e => { console.error(e.message); process.exit(1); })
+    ") || echo "[entrypoint] sync failed (blog still runs, retry by restarting)"
+    echo "[entrypoint] sync: $SYNC_RESULT"
+  fi
 else
   echo "[entrypoint] server not ready in 60s, skipping sync"
 fi

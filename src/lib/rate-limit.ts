@@ -4,8 +4,14 @@
  * 模块级变量在副本间不共享，而 globalThis 在同进程内唯一。
  */
 
+interface RateLimitBucket {
+  times: number[];
+  /** 该桶自己的窗口，清理时按它算过期，而不是统一用某个固定值 */
+  windowMs: number;
+}
+
 interface RateLimitState {
-  buckets: Map<string, number[]>;
+  buckets: Map<string, RateLimitBucket>;
   cleanup?: ReturnType<typeof setInterval>;
 }
 
@@ -13,12 +19,39 @@ const g = globalThis as typeof globalThis & { __rateLimitState?: RateLimitState 
 const state: RateLimitState = (g.__rateLimitState ??= { buckets: new Map() });
 const buckets = state.buckets;
 
+/**
+ * 是否信任反向代理写入的转发头。
+ *
+ * 默认关闭：应用端口一旦被直接暴露，任何人都能自带 `X-Forwarded-For` 自报 IP，
+ * 按 IP 限频就形同虚设。只有确认流量经过我们自己的单层/受信代理时才打开。
+ */
+function trustsProxy(): boolean {
+  const value = process.env.TRUST_PROXY?.trim().toLowerCase();
+  return value === "1" || value === "true";
+}
+
+/**
+ * 取限频用的客户端标识。
+ *
+ * 不信任转发头时统一返回 `direct`：所有直连请求共用一个桶，宁可误伤也不让伪造头
+ * 绕开限额。启用 `TRUST_PROXY=1` 后取 XFF 的**最后一跳**：代理覆盖写入时它就是真实
+ * 客户端；用 `$proxy_add_x_forwarded_for` 追加时，访客伪造的条目在左侧，最后一跳
+ * 仍是代理看到的地址。
+ */
 export function getClientIp(request: Request): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "local"
-  );
+  if (!trustsProxy()) return "direct";
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const hops = forwarded
+      .split(",")
+      .map((hop) => hop.trim())
+      .filter(Boolean);
+    const client = hops[hops.length - 1];
+    if (client) return client;
+  }
+
+  return request.headers.get("x-real-ip")?.trim() || "proxy";
 }
 
 /**
@@ -33,13 +66,15 @@ export function rateLimit(
   windowMs: number
 ): boolean {
   const now = Date.now();
-  const list = (buckets.get(key) ?? []).filter((t) => now - t < windowMs);
-  if (list.length >= limit) {
-    buckets.set(key, list);
+  const times = (buckets.get(key)?.times ?? []).filter(
+    (t) => now - t < windowMs
+  );
+  if (times.length >= limit) {
+    buckets.set(key, { times, windowMs });
     return false;
   }
-  list.push(now);
-  buckets.set(key, list);
+  times.push(now);
+  buckets.set(key, { times, windowMs });
   return true;
 }
 
@@ -47,10 +82,10 @@ export function rateLimit(
 if (typeof setInterval !== "undefined" && !state.cleanup) {
   state.cleanup = setInterval(() => {
     const now = Date.now();
-    for (const [key, list] of buckets) {
-      const alive = list.filter((t) => now - t < 10 * 60_000);
+    for (const [key, bucket] of buckets) {
+      const alive = bucket.times.filter((t) => now - t < bucket.windowMs);
       if (alive.length === 0) buckets.delete(key);
-      else buckets.set(key, alive);
+      else buckets.set(key, { times: alive, windowMs: bucket.windowMs });
     }
   }, 10 * 60_000);
   // Node 环境下不阻止进程退出

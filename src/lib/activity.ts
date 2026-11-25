@@ -1,9 +1,9 @@
 /**
- * 迭代活跃度热力图数据：开发日志 + 文章发布日期。
+ * 迭代活跃度热力图数据：开发日志 + 笔记发布日期。
  *
- * 抽到 lib 里是因为首页和 /changelog 都要用，避免两处各算一遍导致数字对不上。
+ * 抽到 lib 里是因为首页和 /journal 都要用，避免两处各算一遍导致数字对不上。
  */
-import { getAllPosts } from "@/content";
+import { getAllNotes } from "@/content";
 import { getChangelog } from "@/config/changelog";
 
 export interface ActivityDay {
@@ -23,7 +23,7 @@ export function buildActivityDays(): ActivityDay[] {
     // 一条日志里的若干改动视为同一天的多次提交
     bump(entry.date, Math.max(1, entry.items?.length ?? 1));
   }
-  for (const post of getAllPosts()) bump(post.meta.date);
+  for (const note of getAllNotes()) bump(note.meta.date);
 
   return [...counts.entries()]
     .map(([date, count]) => ({ date, count }))

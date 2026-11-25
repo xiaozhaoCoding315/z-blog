@@ -3,15 +3,16 @@
  */
 import { cache } from "react";
 import {
-  listRawPosts,
-  getRawPost,
+  listRawNotes,
+  getRawNote,
   getAllTags,
-  type Post,
+  groupNotesBySeries,
+  type Note,
 } from "@/lib/content-core";
 
-/** 所有已发布文章（不含草稿），日期倒序，置顶优先 */
-export const getAllPosts = cache((): Post[] =>
-  listRawPosts()
+/** 所有已发布笔记（不含草稿），日期倒序，置顶优先 */
+export const getAllNotes = cache((): Note[] =>
+  listRawNotes()
     .filter((p) => !p.meta.draft)
     .sort((a, b) => {
       if (a.meta.pinned !== b.meta.pinned) return a.meta.pinned ? -1 : 1;
@@ -19,28 +20,56 @@ export const getAllPosts = cache((): Post[] =>
     })
 );
 
-export const getPostBySlug = cache((slug: string): Post | null =>
-  getRawPost(slug)
+export const getNoteBySlug = cache((slug: string): Note | null =>
+  getRawNote(slug)
 );
 
 /** 按日期顺序的上一篇 / 下一篇（忽略置顶排序） */
-export function getAdjacentPosts(slug: string) {
-  const posts = listRawPosts()
+export function getAdjacentNotes(slug: string) {
+  const notes = listRawNotes()
     .filter((p) => !p.meta.draft)
     .sort(
       (a, b) =>
         new Date(b.meta.date).getTime() - new Date(a.meta.date).getTime()
     );
-  const index = posts.findIndex((p) => p.slug === slug);
+  const index = notes.findIndex((p) => p.slug === slug);
   if (index === -1) return { prev: null, next: null };
   return {
     // 列表按时间倒序：索引更小 = 更新
-    prev: posts[index - 1] ?? null,
-    next: posts[index + 1] ?? null,
+    prev: notes[index - 1] ?? null,
+    next: notes[index + 1] ?? null,
   };
 }
 
-export const getTags = cache(() => {
-  const posts = listRawPosts().filter((p) => !p.meta.draft);
-  return getAllTags(posts);
+export const getNoteTags = cache(() => {
+  const notes = listRawNotes().filter((p) => !p.meta.draft);
+  return getAllTags(notes);
+});
+
+/** 已发布笔记的系列分组，供 /notes/start 导读页使用 */
+export const getNoteSeries = cache(() => {
+  const notes = listRawNotes().filter((p) => !p.meta.draft);
+  return groupNotesBySeries(notes);
+});
+
+/**
+ * 某一篇笔记所在的系列与它在系列里的位置。不在系列里就返回 null，
+ * 笔记页据此决定是否渲染导轨。
+ */
+export const getNoteSeriesContext = cache((slug: string) => {
+  const notes = listRawNotes().filter((p) => !p.meta.draft);
+  const note = notes.find((p) => p.slug === slug);
+  const series = note?.meta.series;
+  if (!note || !series) return null;
+  const group = groupNotesBySeries(notes).find((g) => g.title === series);
+  if (!group) return null;
+  const index = group.notes.findIndex((p) => p.slug === slug);
+  if (index === -1) return null;
+  return {
+    title: group.title,
+    notes: group.notes,
+    index,
+    position: index + 1,
+    total: group.notes.length,
+  };
 });

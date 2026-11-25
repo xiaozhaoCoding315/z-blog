@@ -11,25 +11,25 @@ const styles: Record<
     icon: Info,
     label: "信息",
     className:
-      "border-l-primary/70 bg-primary/[0.06] [--callout-fg:var(--primary))]",
+      "border-l-primary/70 bg-primary/[0.06] [--callout-fg:var(--primary)]",
   },
   tip: {
     icon: Lightbulb,
     label: "提示",
     className:
-      "border-l-emerald-500/70 bg-emerald-500/[0.06] [--callout-fg:oklch(0.72_0.15_160)]",
+      "border-l-ok/70 bg-ok/[0.06] [--callout-fg:var(--ok)]",
   },
   warning: {
     icon: TriangleAlert,
     label: "注意",
     className:
-      "border-l-amber-500/70 bg-amber-500/[0.06] [--callout-fg:oklch(0.78_0.15_75)]",
+      "border-l-warn/70 bg-warn/[0.06] [--callout-fg:var(--warn)]",
   },
   danger: {
     icon: OctagonAlert,
     label: "危险",
     className:
-      "border-l-red-500/70 bg-red-500/[0.06] [--callout-fg:oklch(0.68_0.2_25)]",
+      "border-l-danger/70 bg-danger/[0.06] [--callout-fg:var(--danger)]",
   },
 };
 

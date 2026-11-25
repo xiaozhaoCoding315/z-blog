@@ -41,12 +41,17 @@ export async function ensureSchema() {
       slug text PRIMARY KEY,
       title text NOT NULL,
       content_hash text NOT NULL,
+      embedding_hash text,
       summary text,
       suggested_tags jsonb DEFAULT '[]'::jsonb,
       summary_embedding vector(1024),
       synced_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  // 老库没有 embedding_hash：补列后第一次同步会自动回填缺失的向量
+  await db.execute(
+    sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS embedding_hash text`
+  );
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS chunks (
       id bigserial PRIMARY KEY,
@@ -93,6 +98,79 @@ export async function ensureSchema() {
       last_seen_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  // 邮箱用户没有 GitHub id；老库的 NOT NULL 必须放开（这条语句本身幂等）
+  await db.execute(sql`ALTER TABLE users ALTER COLUMN github_id DROP NOT NULL`);
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email text`);
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'visitor'`
+  );
+  // 第二版公开资料：全部走 ALTER，老库启动时自动补齐
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name text`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio text NOT NULL DEFAULT ''`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS gender text`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS birthday date`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location text NOT NULL DEFAULT ''`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS website text`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS github_url text`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS show_birthday boolean NOT NULL DEFAULT false`
+  );
+  await db.execute(
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS show_gender boolean NOT NULL DEFAULT false`
+  );
+  // 普通唯一索引允许多个 NULL：GitHub 老用户没有邮箱，不能因此互相冲突
+  await db.execute(
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS users_email_key ON users (email)`
+  );
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS login_codes (
+      id bigserial PRIMARY KEY,
+      email text NOT NULL,
+      code_hash text NOT NULL,
+      expires_at timestamptz NOT NULL,
+      attempts integer NOT NULL DEFAULT 0,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS login_codes_email_idx ON login_codes (email)`
+  );
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS moments (
+      id bigserial PRIMARY KEY,
+      kind text NOT NULL,
+      body text NOT NULL DEFAULT '',
+      images jsonb NOT NULL DEFAULT '[]'::jsonb,
+      tags jsonb NOT NULL DEFAULT '[]'::jsonb,
+      mood text,
+      weather text,
+      place text,
+      card jsonb,
+      published_at timestamptz NOT NULL DEFAULT now(),
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS moments_published_idx ON moments (published_at DESC)`
+  );
+  // 老库的 moments 建表早于 tags 列，CREATE TABLE IF NOT EXISTS 不会补列
+  await db.execute(
+    sql`ALTER TABLE moments ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]'::jsonb`
+  );
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS interview_mastery (
       user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -120,4 +198,207 @@ export async function ensureSchema() {
   await db.execute(
     sql`CREATE INDEX IF NOT EXISTS interview_review_user_idx ON interview_review (user_id)`
   );
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS comments (
+      id bigserial PRIMARY KEY,
+      target_type text NOT NULL,
+      target_id text NOT NULL,
+      user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      body text NOT NULL,
+      status text NOT NULL DEFAULT 'visible',
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS comments_target_idx ON comments (target_type, target_id, status, created_at DESC)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS comments_user_idx ON comments (user_id)`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS letters (
+      id bigserial PRIMARY KEY,
+      user_id integer REFERENCES users(id) ON DELETE SET NULL,
+      guest_name text,
+      legacy_guestbook_id integer,
+      body text NOT NULL,
+      song_title text,
+      song_artist text,
+      song_url text,
+      status text NOT NULL DEFAULT 'pending',
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS letters_legacy_guestbook_key ON letters (legacy_guestbook_id)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS letters_status_idx ON letters (status, created_at DESC)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS letters_user_idx ON letters (user_id)`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS playlists (
+      id bigserial PRIMARY KEY,
+      title text NOT NULL,
+      description text NOT NULL DEFAULT '',
+      cover_url text,
+      platform text NOT NULL DEFAULT 'other',
+      external_id text,
+      external_url text,
+      user_id integer REFERENCES users(id) ON DELETE SET NULL,
+      pinned boolean NOT NULL DEFAULT false,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  // 同一平台同一张歌单只留一行：重复导入走更新，不会在页面上叠出副本。
+  // 普通唯一索引允许多个 NULL，手动歌单不受影响。
+  await db.execute(
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS playlists_external_key ON playlists (platform, external_id)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS playlists_pinned_idx ON playlists (pinned, created_at DESC)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS playlists_user_idx ON playlists (user_id)`
+  );
+  // 社区推荐：谁建议的、建议语是什么；老库启动时补齐
+  await db.execute(
+    sql`ALTER TABLE playlists ADD COLUMN IF NOT EXISTS suggested_by integer REFERENCES users(id) ON DELETE SET NULL`
+  );
+  await db.execute(
+    sql`ALTER TABLE playlists ADD COLUMN IF NOT EXISTS suggestion_note text NOT NULL DEFAULT ''`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS playlist_suggestions (
+      id bigserial PRIMARY KEY,
+      user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      platform text NOT NULL DEFAULT 'netease',
+      external_id text NOT NULL,
+      title text NOT NULL,
+      cover_url text,
+      note text NOT NULL DEFAULT '',
+      status text NOT NULL DEFAULT 'pending',
+      playlist_id integer REFERENCES playlists(id) ON DELETE SET NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS playlist_suggestions_status_idx ON playlist_suggestions (status, created_at DESC)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS playlist_suggestions_user_idx ON playlist_suggestions (user_id)`
+  );
+  await db.execute(
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS playlist_suggestions_user_external_key ON playlist_suggestions (user_id, platform, external_id)`
+  );
+
+  // 第三方音乐账号：只存加密后的会话 cookie，绝不下发浏览器
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS music_accounts (
+      user_id integer PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      provider text NOT NULL DEFAULT 'netease',
+      external_user_id text NOT NULL,
+      nickname text NOT NULL DEFAULT '',
+      avatar_url text,
+      cookie_enc text NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS songs (
+      id bigserial PRIMARY KEY,
+      title text NOT NULL,
+      artist text NOT NULL,
+      url text NOT NULL,
+      platform text NOT NULL DEFAULT 'other',
+      note text NOT NULL DEFAULT '',
+      source text NOT NULL DEFAULT 'owner',
+      user_id integer REFERENCES users(id) ON DELETE SET NULL,
+      status text NOT NULL DEFAULT 'pending',
+      pinned boolean NOT NULL DEFAULT false,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS songs_status_idx ON songs (status, created_at DESC)`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS songs_user_idx ON songs (user_id)`
+  );
+  // 歌单曲目字段：老库的 songs 表没有这些列，启动时补齐
+  await db.execute(
+    sql`ALTER TABLE songs ADD COLUMN IF NOT EXISTS playlist_id integer REFERENCES playlists(id) ON DELETE CASCADE`
+  );
+  await db.execute(
+    sql`ALTER TABLE songs ADD COLUMN IF NOT EXISTS external_id text`
+  );
+  await db.execute(
+    sql`ALTER TABLE songs ADD COLUMN IF NOT EXISTS cover_url text`
+  );
+  await db.execute(
+    sql`ALTER TABLE songs ADD COLUMN IF NOT EXISTS duration integer`
+  );
+  await db.execute(
+    sql`ALTER TABLE songs ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0`
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS songs_playlist_idx ON songs (playlist_id, sort_order)`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS shelf_items (
+      id bigserial PRIMARY KEY,
+      type text NOT NULL,
+      title text NOT NULL,
+      creator text NOT NULL DEFAULT '',
+      rating integer,
+      note text NOT NULL DEFAULT '',
+      cover_url text,
+      finished_at date,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS shelf_items_type_idx ON shelf_items (type, finished_at DESC)`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS friends (
+      id bigserial PRIMARY KEY,
+      name text NOT NULL,
+      url text NOT NULL,
+      description text NOT NULL DEFAULT '',
+      avatar text,
+      tags jsonb NOT NULL DEFAULT '[]'::jsonb,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS friends_created_idx ON friends (created_at DESC)`
+  );
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS site_settings (
+      key text PRIMARY KEY,
+      value text NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+
+  /*
+   * 旧留言板并入信箱：旧记录没有账号，用 guest_name 显示名字。
+   * legacy_guestbook_id 与唯一索引让这条语句可以在每次启动时安全重跑。
+   */
+  await db.execute(sql`
+    INSERT INTO letters (legacy_guestbook_id, guest_name, body, status, created_at)
+    SELECT id, name, message, 'approved', created_at FROM guestbook
+    ON CONFLICT (legacy_guestbook_id) DO NOTHING
+  `);
 }

@@ -35,13 +35,20 @@ export async function GET(request: Request) {
   try {
     const { embedding } = await embed({ model: embeddingModel, value: q });
     const vectorStr = `[${embedding.join(",")}]`;
+    // 先取每篇文章的最佳分块，再按相似度取全局前 8。
+    // 旧写法把 DISTINCT ON 和 LIMIT 放在同层，ORDER BY 必须先是 post_slug，
+    // 结果等于「按字母序挑 8 篇文章」，相似度只负责挑中哪一块。
     const rows = await db.execute<SearchRow>(
-      sql`SELECT DISTINCT ON (c.post_slug)
-            c.post_slug, p.title, c.heading,
-            left(c.content, 120) AS snippet,
-            1 - (c.embedding <=> ${vectorStr}::vector) AS similarity
-          FROM chunks c JOIN posts p ON p.slug = c.post_slug
-          ORDER BY c.post_slug, c.embedding <=> ${vectorStr}::vector
+      sql`WITH best AS (
+            SELECT DISTINCT ON (c.post_slug)
+              c.post_slug, p.title, c.heading,
+              left(c.content, 120) AS snippet,
+              1 - (c.embedding <=> ${vectorStr}::vector) AS similarity
+            FROM chunks c JOIN posts p ON p.slug = c.post_slug
+            ORDER BY c.post_slug, c.embedding <=> ${vectorStr}::vector
+          )
+          SELECT * FROM best
+          ORDER BY similarity DESC
           LIMIT 8`
     );
     return NextResponse.json({

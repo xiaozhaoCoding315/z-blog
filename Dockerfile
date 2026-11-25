@@ -1,4 +1,7 @@
 # 多阶段构建：deps → builder → runner（standalone 产物，最终镜像不含源码与 node_modules）
+# NODE_IMAGE_DIGEST_REQUIRED：本地 Docker engine 不可用，无法解析并锁定官方 node 镜像 digest；
+# 发布前须在有 Docker 的构建机用 `docker buildx imagetools inspect node:20-alpine` 取得 digest，
+# 将三个 FROM 改为 `node@sha256:<已验证 digest>` 后再执行发布。
 
 FROM node:20-alpine AS deps
 WORKDIR /app
@@ -12,17 +15,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # NEXT_PUBLIC_* 在构建时内联进产物，必须在此注入正确的公网地址
-ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
-ARG NEXT_PUBLIC_GISCUS_REPO=""
-ARG NEXT_PUBLIC_GISCUS_REPO_ID=""
-ARG NEXT_PUBLIC_GISCUS_CATEGORY="Announcements"
-ARG NEXT_PUBLIC_GISCUS_CATEGORY_ID=""
+ARG NEXT_PUBLIC_SITE_URL
+# 「关于」页的联系邮箱同样是构建期内联，留空则不显示邮箱入口
+ARG NEXT_PUBLIC_CONTACT_EMAIL=
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
-    NEXT_PUBLIC_GISCUS_REPO=$NEXT_PUBLIC_GISCUS_REPO \
-    NEXT_PUBLIC_GISCUS_REPO_ID=$NEXT_PUBLIC_GISCUS_REPO_ID \
-    NEXT_PUBLIC_GISCUS_CATEGORY=$NEXT_PUBLIC_GISCUS_CATEGORY \
-    NEXT_PUBLIC_GISCUS_CATEGORY_ID=$NEXT_PUBLIC_GISCUS_CATEGORY_ID
+    NEXT_PUBLIC_CONTACT_EMAIL=$NEXT_PUBLIC_CONTACT_EMAIL
 RUN npm run build
 
 FROM node:20-alpine AS runner
@@ -38,11 +36,15 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/content ./content
+# 运行期只读笔记；content/posts 与 content/interview 是归档，不进生产镜像
+COPY --from=builder --chown=nextjs:nodejs /app/content/notes ./content/notes
 # 分享卡片的中文字体：OG 路由运行时读这个文件，不进 public（不必公开）
 COPY --from=builder --chown=nextjs:nodejs /app/assets ./assets
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/docker-entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
+
+# 上传目录：镜像里只建空目录并交给运行用户，实际内容由 volume 覆盖
+RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
 
 USER nextjs
 EXPOSE 3000

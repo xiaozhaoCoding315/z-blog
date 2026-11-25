@@ -3,6 +3,8 @@ name: blog
 services:
   # PostgreSQL + pgvector：文章向量与浏览量数据
   db:
+    # DB_IMAGE_DIGEST_REQUIRED：本地 Docker engine 不可用，无法核对 tag/digest；
+    # 发布前须在有 Docker 的构建机解析 pgvector/pgvector:pg17 的 digest 并固定。
     image: pgvector/pgvector:pg17
     restart: unless-stopped
     logging:
@@ -25,18 +27,16 @@ services:
     # ports:
     #   - "5432:5432"
 
-  # Next.js 应用（standalone 产物），首次部署：docker compose up -d --build
+  # Next.js 应用（standalone 产物）；发布脚本用 BLOG_IMAGE 注入不可变 tag。
   app:
+    image: ${BLOG_IMAGE:-blog-app:local}
     build:
       context: .
       dockerfile: Dockerfile
       args:
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
-        NEXT_PUBLIC_GISCUS_REPO: ${NEXT_PUBLIC_GISCUS_REPO:-}
-        NEXT_PUBLIC_GISCUS_REPO_ID: ${NEXT_PUBLIC_GISCUS_REPO_ID:-}
-        NEXT_PUBLIC_GISCUS_CATEGORY: ${NEXT_PUBLIC_GISCUS_CATEGORY:-Announcements}
-        NEXT_PUBLIC_GISCUS_CATEGORY_ID: ${NEXT_PUBLIC_GISCUS_CATEGORY_ID:-}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?上线必须设置最终 https:// 域名}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
     restart: unless-stopped
     logging:
       driver: json-file
@@ -51,27 +51,35 @@ services:
       HOSTNAME: 0.0.0.0
       DATABASE_URL: postgres://blog:${DB_PASSWORD}@db:5432/blog
       AI_API_KEY: ${AI_API_KEY:-}
-      AI_BASE_URL: ${AI_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
-      CHAT_MODEL: ${CHAT_MODEL:-glm-4.6}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.agnes-ai.cn/v1}
+      CHAT_MODEL: ${CHAT_MODEL:-agnes-3.0-flash}
       EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
       EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-v3}
       EMBEDDING_DIMS: ${EMBEDDING_DIMS:-1024}
       SYNC_SECRET: ${SYNC_SECRET:-}
       NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-}
-      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
       NEXT_PUBLIC_SITE_START_DATE: ${NEXT_PUBLIC_SITE_START_DATE:-}
-      NEXT_PUBLIC_GISCUS_REPO: ${NEXT_PUBLIC_GISCUS_REPO:-}
-      NEXT_PUBLIC_GISCUS_REPO_ID: ${NEXT_PUBLIC_GISCUS_REPO_ID:-}
-      NEXT_PUBLIC_GISCUS_CATEGORY: ${NEXT_PUBLIC_GISCUS_CATEGORY:-Announcements}
-      NEXT_PUBLIC_GISCUS_CATEGORY_ID: ${NEXT_PUBLIC_GISCUS_CATEGORY_ID:-}
-      # GitHub 登录（面试题库掌握度同步）；留空时功能自动降级为本地存储
+      # 只有经过受信反代时才设为 1；默认 0，防止伪造 XFF 绕开限频
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+      # GitHub OAuth：历史遗留路由，站内没有 UI 入口；当前登录使用邮箱验证码
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
       GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
       # 会话签名密钥；留空则回退到 SYNC_SECRET
       AUTH_SECRET: ${AUTH_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-smtp.qq.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
     ports:
       - "80:3000"
 
 volumes:
   pgdata:
+  uploads:

@@ -2,16 +2,24 @@ import { NextResponse } from "next/server";
 import { connection } from "next/server";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
+import { isPublishedNoteSlug } from "@/lib/content-core";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { NO_STORE } from "@/app/api/_shared/no-store";
 
 /** GET：查询点赞数 */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   // 计数类接口禁止被构建期预渲染（Cache Components 下 GET 默认会预渲染）
   await connection();
   const { slug } = await params;
+  if (!isPublishedNoteSlug(slug)) {
+    return NextResponse.json({ error: "未知的笔记" }, { status: 404, headers: NO_STORE });
+  }
+  if (!rateLimit(`likes:get:${getClientIp(request)}`, 120, 60_000)) {
+    return NextResponse.json({ error: "请求太频繁" }, { status: 429, headers: NO_STORE });
+  }
   const db = getDb();
   if (!db) return NextResponse.json({ count: null }, { headers: NO_STORE });
 
@@ -30,10 +38,16 @@ export async function GET(
 
 /** POST：点赞 +1（同一浏览器由前端 localStorage 去重） */
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
+  if (!isPublishedNoteSlug(slug)) {
+    return NextResponse.json({ error: "未知的笔记" }, { status: 404, headers: NO_STORE });
+  }
+  if (!rateLimit(`likes:post:${getClientIp(request)}`, 30, 60_000)) {
+    return NextResponse.json({ error: "请求太频繁" }, { status: 429, headers: NO_STORE });
+  }
   const db = getDb();
   if (!db) return NextResponse.json({ count: null }, { headers: NO_STORE });
 

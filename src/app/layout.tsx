@@ -1,8 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./motion.css";
+import "./lyrics.css";
+import "./ambient.css";
+import "./assistant.css";
+import "./pet.css";
+import "./friends.css";
+import "./projects.css";
+import "./layouts.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
+import { MotionRuntime } from "@/components/motion/motion-runtime";
 import { siteConfig } from "@/config/site";
 
 const geistSans = Geist({
@@ -46,14 +55,36 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0d0d12" },
-    { media: "(prefers-color-scheme: light)", color: "#f8f8fa" },
-  ],
+  themeColor: "#042421",
 };
 
+const PRESET_SCRIPT = `(() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem("z-os:settings") || "{}");
+    const preset = saved.preset === "paper" || saved.preset === "blueprint" ? saved.preset : "night";
+    const root = document.documentElement;
+    root.dataset.wallpaper = preset;
+    root.classList.toggle("dark", preset !== "paper");
+    root.dataset.deskObjects = saved.objects === false ? "off" : "on";
+    root.style.colorScheme = preset === "paper" ? "light" : "dark";
+  } catch {}
+})();`;
+
+// 在首帧之前挂上动效开关，避免服务端先画出内容、水合后又闪一下再入场。
+// 4 秒兜底：万一客户端脚本没跑起来，也别把内容永久藏在透明里。
+const MOTION_BOOT_SCRIPT = `(() => {
+  try {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const root = document.documentElement;
+    root.classList.add("motion-ready");
+    window.setTimeout(() => {
+      if (!root.classList.contains("motion-booted")) root.classList.add("motion-fallback");
+    }, 4000);
+  } catch {}
+})();`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  // 站点级结构化数据：让搜索引擎知道这是一个人在持续维护的技术博客
+  // 站点级结构化数据：让搜索引擎知道这是一个人在持续维护的个人空间
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -67,32 +98,27 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       url: siteConfig.url,
       sameAs: [siteConfig.links.github],
     },
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${siteConfig.url}/blog?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
   };
 
   return (
     <html
       lang="zh-CN"
       suppressHydrationWarning
+      data-wallpaper="night"
       className={cn(
-        "h-full antialiased",
+        // 夜班是默认：把 dark 写进服务端 HTML，关掉 JS 也还是夜班
+        "dark min-h-dvh antialiased",
         geistSans.variable,
         geistMono.variable
       )}
     >
-      <body className="min-h-full flex flex-col">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: PRESET_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT_SCRIPT }} />
+      </head>
+      <body className="flex min-h-dvh flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+        <MotionRuntime />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

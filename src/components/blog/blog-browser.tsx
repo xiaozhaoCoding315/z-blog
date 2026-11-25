@@ -43,12 +43,12 @@ export function BlogBrowser({
       {/* 筛选：一行输入 + 一行标签，没有胶囊按钮和卡片容器 */}
       <div className="flex flex-col gap-3 border-b border-border pb-4">
         <div className="relative max-w-sm">
-          <Search className="absolute left-0 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-0 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="按关键词过滤"
-            className="w-full border-b border-border bg-transparent py-1.5 pl-5 pr-6 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
+            className="w-full border-b border-border bg-transparent py-2 pl-6 pr-6 text-[15px] leading-6 outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
           />
           {query && (
             <button
@@ -61,7 +61,7 @@ export function BlogBrowser({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px]">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[13px] leading-6">
           <button
             onClick={() => setActiveTag(null)}
             className={cn(
@@ -85,7 +85,7 @@ export function BlogBrowser({
               )}
             >
               {tag}
-              <span className="ml-0.5 opacity-50">{count}</span>
+              <span className="ml-0.5">{count}</span>
             </button>
           ))}
         </div>
@@ -93,8 +93,8 @@ export function BlogBrowser({
 
       {filtered.length === 0 ? (
         <div className="py-16 text-center">
-          <p className="text-sm text-muted-foreground">没有匹配的文章</p>
-          <p className="mt-1 font-mono text-[11px] text-muted-foreground/70">
+          <p className="text-[15px] leading-6 text-muted-foreground">没有匹配的笔记</p>
+          <p className="mt-1 font-mono text-[13px] leading-6 text-muted-foreground">
             换个关键词，或按 ⌘K 用语义搜索
           </p>
         </div>
